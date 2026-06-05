@@ -55,3 +55,52 @@ export const downloadMockFile = (cv, type) => {
   link.remove();
   URL.revokeObjectURL(url);
 };
+
+export const buildCoverLetterHtml = (letter, cv) => `
+  <html>
+    <head>
+      <meta charset="UTF-8" />
+      <style>
+        body { font-family: Arial, sans-serif; color: #111827; line-height: 1.65; }
+        h1 { color: #0f172a; margin-bottom: 4px; }
+        .muted { color: #4b5563; }
+        .section { margin-top: 18px; }
+      </style>
+    </head>
+    <body>
+      <h1>${cv.fullName}</h1>
+      <p class="muted">${cv.jobTitle} | ${cv.email} | ${cv.phone} | ${cv.country}</p>
+      <div class="section">
+        <p>${letter.companyName}</p>
+        <p>${letter.companyAddress}</p>
+      </div>
+      <p class="section">Dear ${letter.hiringManager || "Hiring Manager"},</p>
+      <p>${letter.opening}</p>
+      <p>${letter.body}</p>
+      <p>${letter.closing}</p>
+      <p class="section">Sincerely,</p>
+      <p><strong>${cv.fullName}</strong></p>
+    </body>
+  </html>
+`;
+
+export const downloadCoverLetterMockFile = (letter, cv, type) => {
+  const html = buildCoverLetterHtml(letter, cv);
+  const blob =
+    type === "word"
+      ? new Blob([html], { type: "application/msword" })
+      : new Blob(
+          [
+            `Mock PDF cover letter export\n\n${cv.fullName}\n${cv.jobTitle}\n${cv.email} | ${cv.phone} | ${cv.country}\n\nDear ${letter.hiringManager || "Hiring Manager"},\n\n${letter.opening}\n\n${letter.body}\n\n${letter.closing}\n\nSincerely,\n${cv.fullName}`,
+          ],
+          { type: "application/pdf" }
+        );
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${cv.fullName.replaceAll(" ", "-").toLowerCase()}-cover-letter.${type === "word" ? "doc" : "pdf"}`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+};

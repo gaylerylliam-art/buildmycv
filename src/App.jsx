@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { categories, layouts, themes } from "./data/categories";
+import { coverLetterFonts, coverLetterLayouts, coverLetterTemplates } from "./data/coverLetterTemplates";
 import { careerTips, faqs } from "./data/siteContent";
-import { downloadMockFile } from "./utils/downloads";
+import { downloadCoverLetterMockFile, downloadMockFile } from "./utils/downloads";
 
 const defaultCategory = categories[0];
 
@@ -20,6 +21,19 @@ const initialCv = {
   references: "Available upon request",
   profilePhoto: "",
   photoShape: "round",
+};
+
+const createCoverLetterFromCv = (cv, categoryId) => {
+  const template = coverLetterTemplates[categoryId] || coverLetterTemplates.hospitality;
+  return {
+    hiringManager: "Hiring Manager",
+    companyName: "Company Name",
+    companyAddress: cv.country,
+    position: cv.jobTitle || template.position,
+    opening: template.opening,
+    body: `${template.body}\n\nMy key skills include ${cv.skills}. My work experience includes ${cv.experience.split("\n").slice(0, 2).join(" ")}`,
+    closing: template.closing,
+  };
 };
 
 function Icon({ name, className = "h-5 w-5" }) {
@@ -724,7 +738,7 @@ function LiveCVPreview({ cv, theme, layout }) {
   );
 }
 
-function DownloadModal({ cv, onClose, onVerifiedDownload }) {
+function DownloadModal({ cv, onClose, onVerifiedDownload, title = "Verify to download", description = "Enter your contact details. This mock flow displays an OTP so real email or SMS can be added later.", label = "Downloads" }) {
   const [details, setDetails] = useState({ name: cv.fullName, email: cv.email, country: cv.country, phone: cv.phone });
   const [otp, setOtp] = useState("");
   const [sentOtp, setSentOtp] = useState("");
@@ -740,8 +754,8 @@ function DownloadModal({ cv, onClose, onVerifiedDownload }) {
       <div className="w-full max-w-lg rounded bg-white p-6 shadow-soft">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-black text-slate-950">Verify to download</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">Enter your contact details. This mock flow displays an OTP so real email or SMS can be added later.</p>
+            <h2 className="text-2xl font-black text-slate-950">{title}</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
           </div>
           <button onClick={onClose} className="text-2xl leading-none text-slate-500">×</button>
         </div>
@@ -766,7 +780,7 @@ function DownloadModal({ cv, onClose, onVerifiedDownload }) {
               <input value={otp} onChange={(event) => setOtp(event.target.value)} inputMode="numeric" maxLength={6} className="form-field" placeholder="Enter 6-digit OTP" />
               <button onClick={verify} className="rounded bg-green-600 px-5 py-3 font-bold text-white">Verify</button>
             </div>
-            {verified && <p className="mt-3 text-sm font-bold text-green-800">OTP verified. Downloads are unlocked.</p>}
+            {verified && <p className="mt-3 text-sm font-bold text-green-800">OTP verified. {label} are unlocked.</p>}
           </div>
         )}
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -778,35 +792,217 @@ function DownloadModal({ cv, onClose, onVerifiedDownload }) {
   );
 }
 
+function CoverLetterTemplateSelector({ categoryId, onSelect }) {
+  return (
+    <label className="block">
+      <span className="form-label">Matching cover letter template</span>
+      <select value={categoryId} onChange={(event) => onSelect(event.target.value)} className="form-field">
+        {categories.map((category) => (
+          <option value={category.id} key={category.id}>{category.name} - {category.title}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function CoverLetterForm({ letter, onChange }) {
+  const fields = [
+    ["hiringManager", "Hiring manager name", "text"],
+    ["companyName", "Company name", "text"],
+    ["companyAddress", "Company address/location", "text"],
+    ["position", "Job position applied for", "text"],
+    ["opening", "Opening paragraph", "textarea"],
+    ["body", "Skills/experience paragraph", "textarea"],
+    ["closing", "Closing paragraph", "textarea"],
+  ];
+  return (
+    <div className="space-y-4">
+      {fields.map(([key, label, type]) => (
+        <label key={key} className="block">
+          <span className="form-label">{label}</span>
+          {type === "textarea" ? (
+            <textarea value={letter[key]} onChange={(event) => onChange(key, event.target.value)} rows={key === "body" ? 6 : 4} className="form-field resize-y" />
+          ) : (
+            <input value={letter[key]} onChange={(event) => onChange(key, event.target.value)} className="form-field" />
+          )}
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function FontSelector({ selected, onSelect }) {
+  return (
+    <section>
+      <h3 className="panel-title">Font style</h3>
+      <div className="mt-3 grid gap-2">
+        {coverLetterFonts.map((font) => (
+          <button key={font.id} onClick={() => onSelect(font.id)} className={`rounded border px-4 py-3 text-left text-sm font-bold ${selected === font.id ? "border-green-600 bg-green-50 text-green-800" : "border-slate-200 bg-white text-slate-700"}`}>
+            {font.name}
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CoverLetterLayoutSelector({ selected, onSelect }) {
+  return (
+    <section>
+      <h3 className="panel-title">Letter layout</h3>
+      <div className="mt-3 grid gap-2">
+        {coverLetterLayouts.map((layout) => (
+          <button key={layout.id} onClick={() => onSelect(layout.id)} className={`rounded border px-4 py-3 text-left text-sm font-bold ${selected === layout.id ? "border-blue-600 bg-blue-50 text-blue-800" : "border-slate-200 bg-white text-slate-700"}`}>
+            {layout.name}
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CoverLetterPreview({ cv, letter, theme, fontId, layoutId }) {
+  const font = coverLetterFonts.find((item) => item.id === fontId) || coverLetterFonts[0];
+  const compact = layoutId === "compact";
+  return (
+    <article className={`letter-paper ${font.className} ${compact ? "p-7" : "p-10"}`}>
+      <header className={layoutId === "accent" ? "rounded p-5 text-white" : "border-b border-slate-200 pb-5"} style={layoutId === "accent" ? { background: theme.dark } : {}}>
+        <h2 className="text-2xl font-black leading-tight">{cv.fullName}</h2>
+        <p className={`mt-2 text-sm font-bold ${layoutId === "accent" ? "text-white/90" : "text-slate-600"}`}>{letter.position}</p>
+        <p className={`mt-2 text-xs ${layoutId === "accent" ? "text-white/80" : "text-slate-500"}`}>{cv.email} | {cv.phone} | {cv.country}</p>
+      </header>
+      <div className={`${compact ? "mt-6 space-y-4 text-[13px]" : "mt-8 space-y-5 text-sm"} leading-7 text-slate-700`}>
+        <div className="text-slate-600">
+          <p>{letter.companyName}</p>
+          <p>{letter.companyAddress}</p>
+        </div>
+        <p>Dear {letter.hiringManager || "Hiring Manager"},</p>
+        <p className="whitespace-pre-line">{letter.opening}</p>
+        <p className="whitespace-pre-line">{letter.body}</p>
+        <p className="whitespace-pre-line">{letter.closing}</p>
+        <div>
+          <p>Sincerely,</p>
+          <p className="mt-2 font-black text-slate-950" style={{ color: theme.dark }}>{cv.fullName}</p>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function CoverLetterDownloadModal({ cv, onClose, onVerifiedDownload }) {
+  return (
+    <DownloadModal
+      cv={cv}
+      onClose={onClose}
+      onVerifiedDownload={onVerifiedDownload}
+      title="Verify to download cover letter"
+      description="Enter your contact details to unlock your free cover letter download. This uses the same mock OTP flow as the CV."
+      label="Cover letter downloads"
+    />
+  );
+}
+
+function CoverLetterBuilder({
+  categoryId,
+  cv,
+  letter,
+  onCategoryChange,
+  onLetterChange,
+  themeId,
+  onThemeChange,
+  fontId,
+  onFontChange,
+  layoutId,
+  onLayoutChange,
+  onDownload,
+  downloaded,
+}) {
+  const theme = themes.find((item) => item.id === themeId) || themes[1];
+  return (
+    <div className="builder-shell mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)] gap-5 px-5 py-6 lg:grid-cols-[0.9fr_1.1fr_0.65fr]">
+      <aside className="builder-panel min-w-0 space-y-5 rounded bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <div className="rounded border border-green-200 bg-green-50 p-4">
+          <h2 className="font-black text-green-900">Create Cover Letter</h2>
+          <p className="mt-2 text-sm leading-6 text-green-900">
+            This letter matches your selected CV category and uses your CV details. You can edit every paragraph before downloading for free.
+          </p>
+        </div>
+        <CoverLetterTemplateSelector categoryId={categoryId} onSelect={onCategoryChange} />
+        <CoverLetterForm letter={letter} onChange={onLetterChange} />
+      </aside>
+      <section className="builder-panel min-w-0">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-black text-slate-950">Live cover letter preview</h2>
+          <span className="flex items-center gap-2 text-sm font-bold text-slate-500"><Icon name="eye" className="h-4 w-4" /> Updates instantly</span>
+        </div>
+        <CoverLetterPreview cv={cv} letter={letter} theme={theme} fontId={fontId} layoutId={layoutId} />
+      </section>
+      <aside className="builder-panel min-w-0 space-y-6 rounded bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <ThemeSelector selected={themeId} onSelect={onThemeChange} />
+        <FontSelector selected={fontId} onSelect={onFontChange} />
+        <CoverLetterLayoutSelector selected={layoutId} onSelect={onLayoutChange} />
+        <button onClick={onDownload} className="flex w-full items-center justify-center gap-2 rounded bg-green-600 px-5 py-4 font-bold text-white hover:bg-green-700">
+          <Icon name="download" /> Download Cover Letter
+        </button>
+        <AdPlaceholder compact label="Cover letter ad area" />
+        {downloaded && <div className="rounded border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-900">Cover letter download confirmed. You can also download your CV for free.</div>}
+      </aside>
+    </div>
+  );
+}
+
 function CVBuilderApp({ onHome }) {
+  const [activeBuilder, setActiveBuilder] = useState(() => (window.location.hash === "#cover-letter" ? "cover" : "cv"));
   const [categoryId, setCategoryId] = useState(defaultCategory.id);
   const [cv, setCv] = useState(initialCv);
+  const [coverLetter, setCoverLetter] = useState(() => createCoverLetterFromCv(initialCv, defaultCategory.id));
   const [themeId, setThemeId] = useState("blue");
   const [layoutId, setLayoutId] = useState("sidebar");
-  const [modalOpen, setModalOpen] = useState(false);
+  const [coverThemeId, setCoverThemeId] = useState("blue");
+  const [coverFontId, setCoverFontId] = useState("sans");
+  const [coverLayoutId, setCoverLayoutId] = useState("classic");
+  const [downloadTarget, setDownloadTarget] = useState(null);
   const [downloaded, setDownloaded] = useState(false);
+  const [coverDownloaded, setCoverDownloaded] = useState(false);
   const theme = useMemo(() => themes.find((item) => item.id === themeId), [themeId]);
   const handleCategory = (id) => {
     const category = categories.find((item) => item.id === id);
     setCategoryId(id);
-    setCv((current) => ({
-      ...current,
-      jobTitle: category.title,
-      summary: category.summary,
-      skills: category.skills,
-      experience: category.experience,
-    }));
+    setCv((current) => {
+      const nextCv = {
+        ...current,
+        jobTitle: category.title,
+        summary: category.summary,
+        skills: category.skills,
+        experience: category.experience,
+      };
+      setCoverLetter(createCoverLetterFromCv(nextCv, id));
+      return nextCv;
+    });
   };
   const handleImport = (extracted) => {
-    setCv((current) => ({
-      ...current,
-      ...Object.fromEntries(Object.entries(extracted).filter(([, value]) => value)),
-    }));
+    setCv((current) => {
+      const nextCv = {
+        ...current,
+        ...Object.fromEntries(Object.entries(extracted).filter(([, value]) => value)),
+      };
+      setCoverLetter(createCoverLetterFromCv(nextCv, categoryId));
+      return nextCv;
+    });
   };
   const handleDownload = (type) => {
     downloadMockFile(cv, type);
     setDownloaded(true);
-    setModalOpen(false);
+    setDownloadTarget(null);
+  };
+  const handleCoverDownload = (type) => {
+    downloadCoverLetterMockFile(coverLetter, cv, type);
+    setCoverDownloaded(true);
+    setDownloadTarget(null);
+  };
+  const switchBuilder = (id) => {
+    window.location.hash = id === "cover" ? "cover-letter" : "builder";
+    setActiveBuilder(id);
   };
   return (
     <main className="min-h-screen bg-slate-100">
@@ -819,34 +1015,70 @@ function CVBuilderApp({ onHome }) {
           <div className="hidden items-center gap-5 text-sm font-bold text-slate-500 md:flex">
             <span className="text-green-700">1 Category</span><span>2 Details</span><span>3 Customize</span><span>4 Download</span>
           </div>
-          <button onClick={() => setModalOpen(true)} className="inline-flex items-center gap-2 rounded bg-green-600 px-3 py-3 text-sm font-bold text-white hover:bg-green-700 sm:px-5"><Icon name="download" className="h-4 w-4" /> <span className="hidden sm:inline">Download</span></button>
+          <button onClick={() => setDownloadTarget(activeBuilder === "cv" ? "cv" : "cover")} className="inline-flex items-center gap-2 rounded bg-green-600 px-3 py-3 text-sm font-bold text-white hover:bg-green-700 sm:px-5"><Icon name="download" className="h-4 w-4" /> <span className="hidden sm:inline">Download</span></button>
+        </div>
+        <div className="mx-auto flex max-w-7xl gap-2 px-5 pb-4">
+          {[
+            ["cv", "CV Builder"],
+            ["cover", "Cover Letter Builder"],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              onClick={() => switchBuilder(id)}
+              className={`rounded px-5 py-3 text-sm font-black ${activeBuilder === id ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
-      <div className="builder-shell mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)] gap-5 px-5 py-6 lg:grid-cols-[0.9fr_1.1fr_0.65fr]">
-        <aside className="builder-panel min-w-0 space-y-5 rounded bg-white p-5 shadow-sm ring-1 ring-slate-200">
-          <ExistingCVImporter onImport={handleImport} />
-          <ProfilePhotoUploader cv={cv} onChange={(key, value) => setCv((current) => ({ ...current, [key]: value }))} />
-          <CategorySelector selected={categoryId} onSelect={handleCategory} />
-          <CVBuilderForm cv={cv} onChange={(key, value) => setCv((current) => ({ ...current, [key]: value }))} />
-        </aside>
-        <section className="builder-panel min-w-0">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-black text-slate-950">Live CV preview</h2>
-            <span className="flex items-center gap-2 text-sm font-bold text-slate-500"><Icon name="eye" className="h-4 w-4" /> Updates instantly</span>
-          </div>
-          <LiveCVPreview cv={cv} theme={theme} layout={layoutId} />
-        </section>
-        <aside className="builder-panel min-w-0 space-y-6 rounded bg-white p-5 shadow-sm ring-1 ring-slate-200">
-          <ThemeSelector selected={themeId} onSelect={setThemeId} />
-          <LayoutSelector selected={layoutId} onSelect={setLayoutId} />
-          <button onClick={() => setModalOpen(true)} className="flex w-full items-center justify-center gap-2 rounded bg-green-600 px-5 py-4 font-bold text-white hover:bg-green-700">
-            <Icon name="download" /> Download CV
-          </button>
-          <AdPlaceholder compact label="Builder page ad area" />
-          {downloaded && <div className="rounded border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-900">Download confirmed. Ad area can appear below confirmation.</div>}
-        </aside>
-      </div>
-      {modalOpen && <DownloadModal cv={cv} onClose={() => setModalOpen(false)} onVerifiedDownload={handleDownload} />}
+      {activeBuilder === "cv" ? (
+        <div className="builder-shell mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)] gap-5 px-5 py-6 lg:grid-cols-[0.9fr_1.1fr_0.65fr]">
+          <aside className="builder-panel min-w-0 space-y-5 rounded bg-white p-5 shadow-sm ring-1 ring-slate-200">
+            <ExistingCVImporter onImport={handleImport} />
+            <ProfilePhotoUploader cv={cv} onChange={(key, value) => setCv((current) => ({ ...current, [key]: value }))} />
+            <CategorySelector selected={categoryId} onSelect={handleCategory} />
+            <CVBuilderForm cv={cv} onChange={(key, value) => setCv((current) => ({ ...current, [key]: value }))} />
+          </aside>
+          <section className="builder-panel min-w-0">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="font-black text-slate-950">Live CV preview</h2>
+              <span className="flex items-center gap-2 text-sm font-bold text-slate-500"><Icon name="eye" className="h-4 w-4" /> Updates instantly</span>
+            </div>
+            <LiveCVPreview cv={cv} theme={theme} layout={layoutId} />
+          </section>
+          <aside className="builder-panel min-w-0 space-y-6 rounded bg-white p-5 shadow-sm ring-1 ring-slate-200">
+            <ThemeSelector selected={themeId} onSelect={setThemeId} />
+            <LayoutSelector selected={layoutId} onSelect={setLayoutId} />
+            <button onClick={() => setDownloadTarget("cv")} className="flex w-full items-center justify-center gap-2 rounded bg-green-600 px-5 py-4 font-bold text-white hover:bg-green-700">
+              <Icon name="download" /> Download CV
+            </button>
+            <button onClick={() => switchBuilder("cover")} className="flex w-full items-center justify-center gap-2 rounded border border-blue-600 px-5 py-4 font-bold text-blue-700 hover:bg-blue-50">
+              <Icon name="file" /> Create Cover Letter
+            </button>
+            <AdPlaceholder compact label="Builder page ad area" />
+            {downloaded && <div className="rounded border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-900">Download confirmed. Ad area can appear below confirmation.</div>}
+          </aside>
+        </div>
+      ) : (
+        <CoverLetterBuilder
+          categoryId={categoryId}
+          cv={cv}
+          letter={coverLetter}
+          onCategoryChange={handleCategory}
+          onLetterChange={(key, value) => setCoverLetter((current) => ({ ...current, [key]: value }))}
+          themeId={coverThemeId}
+          onThemeChange={setCoverThemeId}
+          fontId={coverFontId}
+          onFontChange={setCoverFontId}
+          layoutId={coverLayoutId}
+          onLayoutChange={setCoverLayoutId}
+          onDownload={() => setDownloadTarget("cover")}
+          downloaded={coverDownloaded}
+        />
+      )}
+      {downloadTarget === "cv" && <DownloadModal cv={cv} onClose={() => setDownloadTarget(null)} onVerifiedDownload={handleDownload} />}
+      {downloadTarget === "cover" && <CoverLetterDownloadModal cv={cv} onClose={() => setDownloadTarget(null)} onVerifiedDownload={handleCoverDownload} />}
     </main>
   );
 }
@@ -861,13 +1093,13 @@ function initials(name) {
 }
 
 export default function App() {
-  const [view, setView] = useState(() => (window.location.hash === "#builder" ? "builder" : "landing"));
+  const [view, setView] = useState(() => (["#builder", "#cover-letter"].includes(window.location.hash) ? "builder" : "landing"));
   const goTo = (nextView) => {
     window.location.hash = nextView === "builder" ? "builder" : "top";
     setView(nextView);
   };
   useEffect(() => {
-    const syncHash = () => setView(window.location.hash === "#builder" ? "builder" : "landing");
+    const syncHash = () => setView(["#builder", "#cover-letter"].includes(window.location.hash) ? "builder" : "landing");
     window.addEventListener("hashchange", syncHash);
     return () => window.removeEventListener("hashchange", syncHash);
   }, []);

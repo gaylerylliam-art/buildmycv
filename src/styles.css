@@ -75,6 +75,17 @@ summary {
   border-radius: 0.25rem;
 }
 
+.letter-paper {
+  min-height: 880px;
+  width: min(100%, 760px);
+  margin-inline: auto;
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 18px 60px rgba(15, 23, 42, 0.12);
+  border: 1px solid #e2e8f0;
+  border-radius: 0.25rem;
+}
+
 .cv-section-title {
   border-bottom-width: 1px;
   padding-bottom: 0.35rem;
@@ -141,6 +152,10 @@ summary {
 
 @media (max-width: 900px) {
   .cv-paper {
+    min-height: auto;
+  }
+
+  .letter-paper {
     min-height: auto;
   }
 }
