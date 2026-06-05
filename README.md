@@ -38,6 +38,15 @@ src/
     siteContent.js
   utils/
     downloads.js
+netlify/
+  functions/
+    atsCheck.js
+    generateCoverLetter.js
+    generateCvBullets.js
+supabase/
+  schema.sql
+docs/
+  implementation-notes.md
 ```
 
 ## Main components
@@ -58,14 +67,18 @@ The named reusable components are implemented in `src/App.jsx`:
 - `CoverLetterTemplateSelector`
 - `CoverLetterDownloadModal`
 
-Supporting data lives in `src/data/categories.js`. Mock PDF and Word download helpers live in `src/utils/downloads.js`.
+Supporting data lives in `src/data/categories.js`. PDF and Word download helpers live in `src/utils/downloads.js`.
 FAQ and career-tip article content lives in `src/data/siteContent.js`.
 Cover letter templates, fonts, and layouts live in `src/data/coverLetterTemplates.js`.
 
 ## Notes
 
 - OTP is mock-only for now and displays the generated code in the modal.
-- PDF and Word generation are mock browser downloads structured for replacement with real export services later.
+- PDF generation uses `html2pdf.js`; Word export uses browser-generated HTML `.doc` files.
+- CV drafts auto-save locally every 30 seconds and can be restored when the builder opens.
+- Mobile CV editing includes an Edit/Preview toggle while desktop keeps the side-by-side builder layout.
 - The Cover Letter Builder matches the selected CV job category and uses the same OTP download flow.
 - Google AdSense areas are clean placeholders and do not block the CV creation flow.
 - About Us, Contact Us, Privacy Policy, Terms & Conditions, FAQ, and Blog/Career Tips are frontend sections ready for routing or CMS integration later.
+- Supabase schema/RLS scaffolding is in `supabase/schema.sql`.
+- OpenAI-backed Netlify Function scaffolds are in `netlify/functions/` and return mock JSON until `OPENAI_API_KEY` is configured.

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { categories, layouts, themes } from "./data/categories";
 import { coverLetterFonts, coverLetterLayouts, coverLetterTemplates } from "./data/coverLetterTemplates";
 import { careerTips, faqs } from "./data/siteContent";
-import { downloadCoverLetterMockFile, downloadMockFile } from "./utils/downloads";
+import { downloadCoverLetterFile, downloadCvFile } from "./utils/downloads";
 
 const defaultCategory = categories[0];
 
@@ -33,6 +33,29 @@ const createCoverLetterFromCv = (cv, categoryId) => {
     opening: template.opening,
     body: `${template.body}\n\nMy key skills include ${cv.skills}. My work experience includes ${cv.experience.split("\n").slice(0, 2).join(" ")}`,
     closing: template.closing,
+  };
+};
+
+const DRAFT_STORAGE_KEY = "cvforall:draft:v1";
+
+const completenessFields = [
+  ["Contact details", (cv) => cv.fullName && cv.email && cv.phone && cv.country],
+  ["Professional summary", (cv) => cv.summary && cv.summary.length > 40],
+  ["Skills", (cv) => cv.skills && cv.skills.split(",").length >= 3],
+  ["Work experience", (cv) => cv.experience && cv.experience.length > 35],
+  ["Education", (cv) => cv.education && cv.education.length > 10],
+  ["Certifications", (cv) => cv.certifications && cv.certifications.length > 5],
+  ["Languages", (cv) => cv.languages && cv.languages.length > 2],
+];
+
+const getCompleteness = (cv) => {
+  const completed = completenessFields.filter(([, test]) => Boolean(test(cv)));
+  const nextMissing = completenessFields.find(([, test]) => !test(cv));
+  return {
+    score: Math.round((completed.length / completenessFields.length) * 100),
+    completed: completed.length,
+    total: completenessFields.length,
+    tip: nextMissing ? `Next: add ${nextMissing[0].toLowerCase()}.` : "Ready to download.",
   };
 };
 
@@ -645,6 +668,24 @@ function mockAiExtractCv(text, fileName) {
   };
 }
 
+function CVCompletenessPanel({ cv }) {
+  const completeness = getCompleteness(cv);
+  return (
+    <section className="rounded border border-green-200 bg-green-50 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="panel-title text-green-950">CV completeness</h3>
+        <span className="text-sm font-black text-green-800">{completeness.score}%</span>
+      </div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
+        <div className="h-full rounded-full bg-green-600 transition-all" style={{ width: `${completeness.score}%` }} />
+      </div>
+      <p className="mt-3 text-xs font-bold leading-5 text-green-900">
+        {completeness.completed} of {completeness.total} sections complete. {completeness.tip}
+      </p>
+    </section>
+  );
+}
+
 function ThemeSelector({ selected, onSelect }) {
   return (
     <section>
@@ -964,7 +1005,52 @@ function CVBuilderApp({ onHome }) {
   const [downloadTarget, setDownloadTarget] = useState(null);
   const [downloaded, setDownloaded] = useState(false);
   const [coverDownloaded, setCoverDownloaded] = useState(false);
+  const [saveStatus, setSaveStatus] = useState("Auto-save ready");
+  const [mobileCvView, setMobileCvView] = useState("edit");
   const theme = useMemo(() => themes.find((item) => item.id === themeId), [themeId]);
+  const coverTheme = useMemo(() => themes.find((item) => item.id === coverThemeId), [coverThemeId]);
+  useEffect(() => {
+    const rawDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
+    if (!rawDraft) return;
+    try {
+      const draft = JSON.parse(rawDraft);
+      const shouldRestore = window.confirm("You have an unsaved CV - continue editing?");
+      if (!shouldRestore) return;
+      setCv(draft.cv || initialCv);
+      setCategoryId(draft.categoryId || defaultCategory.id);
+      setCoverLetter(draft.coverLetter || createCoverLetterFromCv(draft.cv || initialCv, draft.categoryId || defaultCategory.id));
+      setThemeId(draft.themeId || "blue");
+      setLayoutId(draft.layoutId || "sidebar");
+      setCoverThemeId(draft.coverThemeId || "blue");
+      setCoverFontId(draft.coverFontId || "sans");
+      setCoverLayoutId(draft.coverLayoutId || "classic");
+      setSaveStatus("Draft restored");
+    } catch {
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+    }
+  }, []);
+  useEffect(() => {
+    const saveDraft = () => {
+      localStorage.setItem(
+        DRAFT_STORAGE_KEY,
+        JSON.stringify({
+          cv,
+          coverLetter,
+          categoryId,
+          themeId,
+          layoutId,
+          coverThemeId,
+          coverFontId,
+          coverLayoutId,
+          updatedAt: new Date().toISOString(),
+        })
+      );
+      setSaveStatus("Saved locally");
+      window.setTimeout(() => setSaveStatus("Auto-save ready"), 2200);
+    };
+    const timer = window.setInterval(saveDraft, 30000);
+    return () => window.clearInterval(timer);
+  }, [cv, coverLetter, categoryId, themeId, layoutId, coverThemeId, coverFontId, coverLayoutId]);
   const handleCategory = (id) => {
     const category = categories.find((item) => item.id === id);
     setCategoryId(id);
@@ -990,13 +1076,13 @@ function CVBuilderApp({ onHome }) {
       return nextCv;
     });
   };
-  const handleDownload = (type) => {
-    downloadMockFile(cv, type);
+  const handleDownload = async (type) => {
+    await downloadCvFile(cv, type, theme);
     setDownloaded(true);
     setDownloadTarget(null);
   };
-  const handleCoverDownload = (type) => {
-    downloadCoverLetterMockFile(coverLetter, cv, type);
+  const handleCoverDownload = async (type) => {
+    await downloadCoverLetterFile(coverLetter, cv, type, coverTheme);
     setCoverDownloaded(true);
     setDownloadTarget(null);
   };
@@ -1017,37 +1103,58 @@ function CVBuilderApp({ onHome }) {
           </div>
           <button onClick={() => setDownloadTarget(activeBuilder === "cv" ? "cv" : "cover")} className="inline-flex items-center gap-2 rounded bg-green-600 px-3 py-3 text-sm font-bold text-white hover:bg-green-700 sm:px-5"><Icon name="download" className="h-4 w-4" /> <span className="hidden sm:inline">Download</span></button>
         </div>
-        <div className="mx-auto flex max-w-7xl gap-2 px-5 pb-4">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 pb-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex gap-2">
+            {[
+              ["cv", "CV Builder"],
+              ["cover", "Cover Letter Builder"],
+            ].map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => switchBuilder(id)}
+                className={`rounded px-5 py-3 text-sm font-black ${activeBuilder === id ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="text-xs font-bold text-slate-500">
+            {saveStatus} · Supabase sync ready when login is connected
+          </div>
+        </div>
+      </div>
+      {activeBuilder === "cv" ? (
+        <>
+        <div className="mx-auto flex max-w-7xl gap-2 px-5 pt-5 lg:hidden">
           {[
-            ["cv", "CV Builder"],
-            ["cover", "Cover Letter Builder"],
+            ["edit", "Edit"],
+            ["preview", "Preview"],
           ].map(([id, label]) => (
             <button
               key={id}
-              onClick={() => switchBuilder(id)}
-              className={`rounded px-5 py-3 text-sm font-black ${activeBuilder === id ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
+              onClick={() => setMobileCvView(id)}
+              className={`flex-1 rounded px-4 py-3 text-sm font-black ${mobileCvView === id ? "bg-green-600 text-white" : "bg-white text-slate-700 ring-1 ring-slate-200"}`}
             >
               {label}
             </button>
           ))}
         </div>
-      </div>
-      {activeBuilder === "cv" ? (
         <div className="builder-shell mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)] gap-5 px-5 py-6 lg:grid-cols-[0.9fr_1.1fr_0.65fr]">
-          <aside className="builder-panel min-w-0 space-y-5 rounded bg-white p-5 shadow-sm ring-1 ring-slate-200">
+          <aside className={`builder-panel min-w-0 space-y-5 rounded bg-white p-5 shadow-sm ring-1 ring-slate-200 ${mobileCvView === "preview" ? "hidden lg:block" : ""}`}>
             <ExistingCVImporter onImport={handleImport} />
             <ProfilePhotoUploader cv={cv} onChange={(key, value) => setCv((current) => ({ ...current, [key]: value }))} />
             <CategorySelector selected={categoryId} onSelect={handleCategory} />
             <CVBuilderForm cv={cv} onChange={(key, value) => setCv((current) => ({ ...current, [key]: value }))} />
           </aside>
-          <section className="builder-panel min-w-0">
+          <section className={`builder-panel min-w-0 ${mobileCvView === "edit" ? "hidden lg:block" : ""}`}>
             <div className="mb-3 flex items-center justify-between">
               <h2 className="font-black text-slate-950">Live CV preview</h2>
               <span className="flex items-center gap-2 text-sm font-bold text-slate-500"><Icon name="eye" className="h-4 w-4" /> Updates instantly</span>
             </div>
             <LiveCVPreview cv={cv} theme={theme} layout={layoutId} />
           </section>
-          <aside className="builder-panel min-w-0 space-y-6 rounded bg-white p-5 shadow-sm ring-1 ring-slate-200">
+          <aside className={`builder-panel min-w-0 space-y-6 rounded bg-white p-5 shadow-sm ring-1 ring-slate-200 ${mobileCvView === "preview" ? "hidden lg:block" : ""}`}>
+            <CVCompletenessPanel cv={cv} />
             <ThemeSelector selected={themeId} onSelect={setThemeId} />
             <LayoutSelector selected={layoutId} onSelect={setLayoutId} />
             <button onClick={() => setDownloadTarget("cv")} className="flex w-full items-center justify-center gap-2 rounded bg-green-600 px-5 py-4 font-bold text-white hover:bg-green-700">
@@ -1060,6 +1167,7 @@ function CVBuilderApp({ onHome }) {
             {downloaded && <div className="rounded border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-900">Download confirmed. Ad area can appear below confirmation.</div>}
           </aside>
         </div>
+        </>
       ) : (
         <CoverLetterBuilder
           categoryId={categoryId}
