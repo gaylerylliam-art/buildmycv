@@ -1,0 +1,161 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color: #0f172a;
+  background: #ffffff;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: #ffffff;
+  overflow-x: hidden;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+a,
+summary {
+  outline-color: #0f9f4a;
+  outline-offset: 3px;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #334155;
+}
+
+.form-field {
+  width: 100%;
+  border-radius: 0.375rem;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  padding: 0.72rem 0.85rem;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: #0f172a;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.form-field:focus {
+  border-color: #0f66d0;
+  box-shadow: 0 0 0 3px rgba(15, 102, 208, 0.15);
+  outline: none;
+}
+
+.panel-title {
+  font-size: 0.88rem;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.cv-paper {
+  min-height: 880px;
+  width: min(100%, 760px);
+  margin-inline: auto;
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 18px 60px rgba(15, 23, 42, 0.12);
+  border: 1px solid #e2e8f0;
+  border-radius: 0.25rem;
+}
+
+.cv-section-title {
+  border-bottom-width: 1px;
+  padding-bottom: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.iphone-frame {
+  position: relative;
+  width: min(100%, 330px);
+  border-radius: 2.3rem;
+  background: #0f172a;
+  padding: 0.75rem;
+  box-shadow: 0 26px 80px rgba(15, 23, 42, 0.18);
+}
+
+.iphone-frame::before {
+  content: "";
+  position: absolute;
+  inset: 0.35rem;
+  border-radius: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  pointer-events: none;
+}
+
+.iphone-notch {
+  position: absolute;
+  left: 50%;
+  top: 1rem;
+  z-index: 2;
+  height: 1.35rem;
+  width: 6rem;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: #0f172a;
+}
+
+.iphone-screen {
+  position: relative;
+  overflow: hidden;
+  min-height: 650px;
+  border-radius: 1.65rem;
+  background: #ffffff;
+}
+
+.profile-photo-preview {
+  display: flex;
+  height: 5.5rem;
+  width: 5.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+}
+
+.profile-photo-preview img {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+}
+
+@media (max-width: 900px) {
+  .cv-paper {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .builder-shell {
+    width: 100%;
+  }
+
+  .builder-panel {
+    width: calc(100vw - 2.5rem);
+    max-width: calc(100vw - 2.5rem);
+  }
+
+  .form-field {
+    max-width: calc(100vw - 5rem);
+  }
+}
