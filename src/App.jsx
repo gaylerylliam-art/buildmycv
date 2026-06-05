@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { categories, layouts, themes } from "./data/categories";
+import { careerTips, faqs } from "./data/siteContent";
 import { downloadMockFile } from "./utils/downloads";
 
 const defaultCategory = categories[0];
@@ -65,10 +66,12 @@ function Header({ onStart }) {
           </span>
           <span className="text-xl">CV<span className="text-green-600">forAll</span></span>
         </a>
-        <nav className="hidden items-center gap-8 text-sm font-semibold text-slate-700 md:flex">
+        <nav className="hidden items-center gap-6 text-sm font-semibold text-slate-700 md:flex">
           <a href="#templates">Templates</a>
-          <a href="#how">How it works</a>
+          <a href="#about">About</a>
+          <a href="#blog">Career Tips</a>
           <a href="#faq">FAQ</a>
+          <a href="#contact">Contact</a>
         </nav>
         <button onClick={onStart} className="rounded bg-green-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-green-700">
           Start your free CV
@@ -84,12 +87,6 @@ function LandingPage({ onStart }) {
     ["file", "Professional templates", "Simple wording that fits real job categories."],
     ["lock", "Private and secure", "Mock verification flow today, ready for real security later."],
     ["download", "PDF and Word", "Download in the format employers commonly request."],
-  ];
-  const faqs = [
-    ["Is this CV builder really free?", "Yes. The builder is designed for free CV creation with non-intrusive ad spaces."],
-    ["Do I need technical skills?", "No. Choose a category, fill in simple fields, then review the live preview."],
-    ["Can I use it on mobile?", "Yes. The layout adapts for mobile, tablet, and desktop screens."],
-    ["Is OTP real?", "For now it is mock OTP logic, so developers can connect SMS or email later."],
   ];
   return (
     <main id="top">
@@ -175,11 +172,13 @@ function LandingPage({ onStart }) {
         </div>
       </section>
       <div className="px-5 pb-6"><AdPlaceholder /></div>
+      <AboutSection onStart={onStart} />
+      <BlogCareerTips />
       <section id="faq" className="mx-auto grid max-w-7xl gap-10 px-5 py-14 lg:grid-cols-[0.8fr_1fr]">
         <div>
-          <h2 className="text-3xl font-black text-slate-950">Helpful for first-time CV creators</h2>
+          <h2 className="text-3xl font-black text-slate-950">Frequently asked questions</h2>
           <p className="mt-4 text-lg leading-8 text-slate-600">
-            The app uses simple words, suggested summaries, and job-category examples so workers can create a clean CV without starting from a blank page.
+            Simple answers for first-time CV creators, workers, and job seekers using CVforAll.
           </p>
           <button onClick={onStart} className="mt-7 rounded bg-green-600 px-6 py-4 font-bold text-white hover:bg-green-700">Start your free CV</button>
         </div>
@@ -192,7 +191,162 @@ function LandingPage({ onStart }) {
           ))}
         </div>
       </section>
+      <ContactSection />
+      <PolicySections />
+      <SiteFooter onStart={onStart} />
     </main>
+  );
+}
+
+function AboutSection({ onStart }) {
+  return (
+    <section id="about" className="border-y border-slate-200 bg-slate-50 px-5 py-14">
+      <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.9fr_1.1fr]">
+        <div>
+          <h2 className="text-3xl font-black text-slate-950">About Us</h2>
+          <p className="mt-5 text-lg leading-8 text-slate-600">
+            CVforAll was created to help people prepare a clear, professional CV without cost or confusion.
+            The builder focuses on practical job categories, simple words, and editable templates that workers can use right away.
+          </p>
+          <button onClick={onStart} className="mt-7 rounded bg-green-600 px-6 py-4 font-bold text-white hover:bg-green-700">
+            Build my CV
+          </button>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {[
+            ["Community-focused", "Made for fresh graduates, skilled workers, domestic workers, helpers, and job seekers."],
+            ["Beginner-friendly", "Every section uses simple form fields and suggested wording."],
+            ["Free access", "The experience is designed for free CV creation with clean ad placements."],
+            ["Ready to grow", "The mock AI, OTP, PDF, and Word flows are structured for real backend services later."],
+          ].map(([title, text]) => (
+            <div key={title} className="rounded bg-white p-5 shadow-sm ring-1 ring-slate-200">
+              <h3 className="font-black text-slate-950">{title}</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{text}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function BlogCareerTips() {
+  return (
+    <section id="blog" className="mx-auto max-w-7xl px-5 py-14">
+      <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
+        <div>
+          <h2 className="text-3xl font-black text-slate-950">Blog and Career Tips</h2>
+          <p className="mt-4 max-w-3xl text-lg leading-8 text-slate-600">
+            Short, practical articles to help job seekers write stronger CVs and prepare for applications.
+          </p>
+        </div>
+        <AdPlaceholder compact label="Career tips ad area" />
+      </div>
+      <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {careerTips.map((article) => (
+          <article key={article.title} className="rounded border border-slate-200 bg-white p-5 transition hover:border-green-500 hover:shadow-soft">
+            <div className="flex items-center justify-between gap-3 text-xs font-black text-slate-500">
+              <span>{article.category}</span>
+              <span>{article.readTime}</span>
+            </div>
+            <h3 className="mt-4 text-lg font-black leading-7 text-slate-950">{article.title}</h3>
+            <p className="mt-3 text-sm leading-6 text-slate-600">{article.summary}</p>
+            <a href="#builder" className="mt-5 inline-flex items-center gap-2 text-sm font-black text-green-700">
+              Use this tip in my CV <Icon name="arrow" className="h-4 w-4" />
+            </a>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ContactSection() {
+  return (
+    <section id="contact" className="border-y border-slate-200 bg-slate-50 px-5 py-14">
+      <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.8fr_1fr]">
+        <div>
+          <h2 className="text-3xl font-black text-slate-950">Contact Us</h2>
+          <p className="mt-4 text-lg leading-8 text-slate-600">
+            Questions, feedback, and partnership messages are welcome. This frontend form is ready to connect to email or CRM later.
+          </p>
+          <div className="mt-6 rounded bg-white p-5 text-sm leading-6 text-slate-600 ring-1 ring-slate-200">
+            <p><strong className="text-slate-950">Email:</strong> support@cvforall.example</p>
+            <p><strong className="text-slate-950">Response time:</strong> 1-2 business days</p>
+          </div>
+        </div>
+        <form className="grid gap-4 rounded bg-white p-5 shadow-sm ring-1 ring-slate-200">
+          <label>
+            <span className="form-label">Your name</span>
+            <input className="form-field" placeholder="Enter your name" />
+          </label>
+          <label>
+            <span className="form-label">Email address</span>
+            <input className="form-field" type="email" placeholder="Enter your email" />
+          </label>
+          <label>
+            <span className="form-label">Message</span>
+            <textarea className="form-field" rows={5} placeholder="How can we help?" />
+          </label>
+          <button type="button" className="rounded bg-green-600 px-6 py-4 font-bold text-white hover:bg-green-700">
+            Send message
+          </button>
+        </form>
+      </div>
+    </section>
+  );
+}
+
+function PolicySections() {
+  return (
+    <section className="mx-auto grid max-w-7xl gap-6 px-5 py-14 lg:grid-cols-2">
+      <PolicyCard id="privacy" title="Privacy Policy">
+        <p>CVforAll is designed to collect only the information needed to create and download a CV. Form data, uploaded CV text, profile photos, contact details, and OTP information are handled in the browser in this mock frontend.</p>
+        <p>Do not upload sensitive documents unless you trust the final production deployment. A real production version should include secure storage, encryption, clear retention rules, and a way to delete user data.</p>
+        <p>Ad areas are placeholders for Google AdSense. When ads are enabled, Google and partners may use cookies or similar technologies according to their own policies.</p>
+      </PolicyCard>
+      <PolicyCard id="terms" title="Terms & Conditions">
+        <p>CVforAll provides free CV-building tools, templates, and career tips for general guidance. Users remain responsible for checking the accuracy of their CV before sending it to employers.</p>
+        <p>The mock AI import, OTP, PDF, and Word features are demonstration flows until connected to real production services.</p>
+        <p>The service does not guarantee job interviews, job offers, or employer acceptance. Templates and tips should be adapted honestly to each user&apos;s real experience.</p>
+      </PolicyCard>
+    </section>
+  );
+}
+
+function PolicyCard({ id, title, children }) {
+  return (
+    <article id={id} className="rounded border border-slate-200 bg-white p-6">
+      <h2 className="text-2xl font-black text-slate-950">{title}</h2>
+      <div className="mt-4 space-y-4 text-sm leading-7 text-slate-600">{children}</div>
+    </article>
+  );
+}
+
+function SiteFooter({ onStart }) {
+  return (
+    <footer className="border-t border-slate-200 bg-slate-950 px-5 py-10 text-white">
+      <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-[1fr_1.4fr_auto]">
+        <div>
+          <div className="flex items-center gap-2 font-black">
+            <span className="flex h-9 w-9 items-center justify-center rounded bg-green-600 text-white"><Icon name="file" className="h-5 w-5" /></span>
+            CVforAll
+          </div>
+          <p className="mt-3 max-w-sm text-sm leading-6 text-slate-300">Free, simple CV creation for workers and job seekers.</p>
+        </div>
+        <nav className="grid gap-3 text-sm font-bold text-slate-300 sm:grid-cols-3">
+          <a href="#about">About Us</a>
+          <a href="#contact">Contact Us</a>
+          <a href="#privacy">Privacy Policy</a>
+          <a href="#terms">Terms & Conditions</a>
+          <a href="#faq">FAQ</a>
+          <a href="#blog">Blog/Career Tips</a>
+        </nav>
+        <button onClick={onStart} className="rounded bg-green-600 px-5 py-3 text-sm font-black text-white hover:bg-green-700">
+          Start free CV
+        </button>
+      </div>
+    </footer>
   );
 }
 
