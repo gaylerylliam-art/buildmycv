@@ -1,8 +1,29 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { categories, layouts, themes } from "./data/categories";
-import { coverLetterFonts, coverLetterLayouts, coverLetterTemplates } from "./data/coverLetterTemplates";
+import {
+  coverLetterFonts,
+  coverLetterLayouts,
+  coverLetterRoleGroups,
+  coverLetterTemplates,
+  experienceLevels,
+  generateCoverLetterTemplate,
+  regionalFormats,
+  sampleCoverLetters,
+} from "./data/coverLetterTemplates";
 import { careerTips, faqs } from "./data/siteContent";
 import { downloadCoverLetterFile, downloadCvFile } from "./utils/downloads";
+import { initAnalytics, trackEvent } from "./utils/analytics";
+import { isEmailJsConfigured, sendContactEmail } from "./utils/email";
+import { getRecaptchaToken, isRecaptchaConfigured } from "./utils/recaptcha";
+import {
+  deleteUserCv,
+  duplicateUserCv,
+  isSupabaseConfigured,
+  listUserCvs,
+  saveCvForUser,
+  supabase,
+  uploadProfilePhoto,
+} from "./utils/supabaseClient";
 
 const defaultCategory = categories[0];
 
@@ -25,15 +46,51 @@ const initialCv = {
 
 const createCoverLetterFromCv = (cv, categoryId) => {
   const template = coverLetterTemplates[categoryId] || coverLetterTemplates.hospitality;
-  return {
-    hiringManager: "Hiring Manager",
-    companyName: "Company Name",
-    companyAddress: cv.country,
-    position: cv.jobTitle || template.position,
-    opening: template.opening,
-    body: `${template.body}\n\nMy key skills include ${cv.skills}. My work experience includes ${cv.experience.split("\n").slice(0, 2).join(" ")}`,
-    closing: template.closing,
-  };
+  return generateCoverLetterTemplate({
+    cv,
+    role: template.position,
+    letter: {
+      companyName: "Company Name",
+      companyAddress: cv.country,
+      position: cv.jobTitle || template.position,
+      opening: template.opening,
+      body: template.body,
+      closing: template.closing,
+    },
+  });
+};
+
+const coverLetterToText = (letter, cv) => {
+  const today = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+  return [
+    cv.fullName,
+    `${cv.email} | ${cv.phone} | ${cv.country}`,
+    letter.linkedIn ? `LinkedIn: ${letter.linkedIn}` : "",
+    letter.nationality ? `Nationality: ${letter.nationality}` : "",
+    letter.visaStatus ? `Visa Status: ${letter.visaStatus}` : "",
+    "",
+    today,
+    "",
+    letter.companyName,
+    letter.companyAddress,
+    "",
+    `Dear ${letter.hiringManager || "Hiring Manager"},`,
+    "",
+    letter.opening,
+    "",
+    letter.body,
+    "",
+    letter.qualifications,
+    "",
+    letter.value,
+    "",
+    letter.closing,
+    "",
+    "Sincerely,",
+    cv.fullName,
+  ]
+    .filter((line) => line !== "")
+    .join("\n");
 };
 
 const DRAFT_STORAGE_KEY = "cvforall:draft:v1";
@@ -299,35 +356,60 @@ function BlogCareerTips() {
 }
 
 function ContactSection() {
+  const [status, setStatus] = useState(isEmailJsConfigured ? "Ready to send your message." : "EmailJS is not configured yet. Add the EmailJS Vite variables to enable sending.");
+  const [sending, setSending] = useState(false);
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setSending(true);
+    setStatus("Sending your message...");
+    try {
+      await sendContactEmail(event.currentTarget);
+      trackEvent("contact_form_sent");
+      event.currentTarget.reset();
+      setStatus("Message sent successfully. We will reply as soon as possible.");
+    } catch (error) {
+      trackEvent("contact_form_failed");
+      setStatus(error.message || "Could not send message. Please try again later.");
+    } finally {
+      setSending(false);
+    }
+  };
   return (
     <section id="contact" className="border-y border-slate-200 bg-slate-50 px-5 py-14">
       <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.8fr_1fr]">
         <div>
           <h2 className="text-3xl font-black text-slate-950">Contact Us</h2>
           <p className="mt-4 text-lg leading-8 text-slate-600">
-            Questions, feedback, and partnership messages are welcome. This frontend form is ready to connect to email or CRM later.
+            Questions, feedback, and partnership messages are welcome. This form sends email through EmailJS when your service, template, and public key are configured.
           </p>
           <div className="mt-6 rounded bg-white p-5 text-sm leading-6 text-slate-600 ring-1 ring-slate-200">
             <p><strong className="text-slate-950">Email:</strong> support@cvforall.example</p>
             <p><strong className="text-slate-950">Response time:</strong> 1-2 business days</p>
           </div>
         </div>
-        <form className="grid gap-4 rounded bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <form onSubmit={handleSubmit} className="grid gap-4 rounded bg-white p-5 shadow-sm ring-1 ring-slate-200">
+          <input type="hidden" name="app_name" value="CVforAll" />
+          <input type="hidden" name="sent_at" value={new Date().toISOString()} />
           <label>
             <span className="form-label">Your name</span>
-            <input className="form-field" placeholder="Enter your name" />
+            <input className="form-field" name="user_name" placeholder="Enter your name" required />
           </label>
           <label>
             <span className="form-label">Email address</span>
-            <input className="form-field" type="email" placeholder="Enter your email" />
+            <input className="form-field" name="user_email" type="email" placeholder="Enter your email" required />
+          </label>
+          <label>
+            <span className="form-label">Subject</span>
+            <input className="form-field" name="subject" placeholder="What is your message about?" required />
           </label>
           <label>
             <span className="form-label">Message</span>
-            <textarea className="form-field" rows={5} placeholder="How can we help?" />
+            <textarea className="form-field" name="message" rows={5} placeholder="How can we help?" required />
           </label>
-          <button type="button" className="rounded bg-green-600 px-6 py-4 font-bold text-white hover:bg-green-700">
-            Send message
+          <button disabled={!isEmailJsConfigured || sending} className="rounded bg-green-600 px-6 py-4 font-bold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-slate-300">
+            {sending ? "Sending..." : "Send message"}
           </button>
+          <p className="rounded bg-slate-50 p-3 text-sm font-bold leading-6 text-slate-600">{status}</p>
         </form>
       </div>
     </section>
@@ -826,45 +908,274 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, title = "Verify to dow
         )}
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <button disabled={!verified} onClick={() => onVerifiedDownload("pdf")} className="rounded bg-green-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">Download PDF</button>
-          <button disabled={!verified} onClick={() => onVerifiedDownload("word")} className="rounded border border-blue-600 px-5 py-3 font-bold text-blue-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400">Download Word</button>
+          <button disabled={!verified} onClick={() => onVerifiedDownload("word")} className="rounded border border-blue-600 px-5 py-3 font-bold text-blue-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400">Download DOCX</button>
         </div>
       </div>
     </div>
   );
 }
 
-function CoverLetterTemplateSelector({ categoryId, onSelect }) {
+function AuthModal({ onClose }) {
+  const [mode, setMode] = useState("signin");
+  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [message, setMessage] = useState(isSupabaseConfigured ? "" : "Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env to enable login.");
+  const [loading, setLoading] = useState(false);
+  const submit = async (event) => {
+    event.preventDefault();
+    if (!supabase) return;
+    setLoading(true);
+    setMessage("");
+    try {
+      const captchaToken = await getRecaptchaToken(mode === "signup" ? "signup" : "signin");
+      if (isRecaptchaConfigured) {
+        const captchaResponse = await fetch("/.netlify/functions/verifyRecaptcha", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: captchaToken, action: mode === "signup" ? "signup" : "signin" }),
+        });
+        if (captchaResponse.ok && captchaResponse.headers.get("content-type")?.includes("application/json")) {
+          const captchaResult = await captchaResponse.json();
+          if (captchaResult.success === false) throw new Error("reCAPTCHA verification failed.");
+        }
+      }
+      const redirectTo = `${window.location.origin}/#builder`;
+      const options = {
+        emailRedirectTo: redirectTo,
+        data: { full_name: form.name },
+        captchaToken,
+      };
+      const { error } =
+        mode === "signup"
+          ? await supabase.auth.signUp({ email: form.email, password: form.password, options })
+          : await supabase.auth.signInWithPassword({ email: form.email, password: form.password, captchaToken });
+      if (error) throw error;
+      trackEvent(mode === "signup" ? "signup" : "login", { method: "email" });
+      setMessage(mode === "signup" ? "Account created. Please check your email if confirmation is enabled." : "Signed in successfully.");
+      if (mode === "signin") onClose();
+    } catch (error) {
+      setMessage(error.message || "Authentication failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  const signInWithGoogle = async () => {
+    if (!supabase) return;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/#builder` },
+    });
+    if (error) setMessage(error.message);
+  };
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4">
+      <div className="w-full max-w-md rounded bg-white p-6 shadow-soft">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-black text-slate-950">{mode === "signin" ? "Login" : "Create account"}</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">Save up to 5 CVs, restore drafts, and manage your files securely.</p>
+          </div>
+          <button onClick={onClose} className="text-2xl leading-none text-slate-500">x</button>
+        </div>
+        <div className="mt-5 grid grid-cols-2 gap-2">
+          {[
+            ["signin", "Login"],
+            ["signup", "Sign up"],
+          ].map(([id, label]) => (
+            <button key={id} onClick={() => setMode(id)} className={`rounded px-4 py-3 text-sm font-black ${mode === id ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-700"}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <form onSubmit={submit} className="mt-5 grid gap-3">
+          {mode === "signup" && (
+            <label>
+              <span className="form-label">Full name</span>
+              <input className="form-field" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
+            </label>
+          )}
+          <label>
+            <span className="form-label">Email address</span>
+            <input className="form-field" type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} required />
+          </label>
+          <label>
+            <span className="form-label">Password</span>
+            <input className="form-field" type="password" minLength={6} value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} required />
+          </label>
+          {isRecaptchaConfigured && <p className="text-xs font-bold text-slate-500">Protected by Google reCAPTCHA.</p>}
+          <button disabled={!isSupabaseConfigured || loading} className="rounded bg-green-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
+            {loading ? "Please wait..." : mode === "signin" ? "Login" : "Create account"}
+          </button>
+        </form>
+        <button disabled={!isSupabaseConfigured} onClick={signInWithGoogle} className="mt-3 w-full rounded border border-blue-600 px-5 py-3 font-bold text-blue-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400">
+          Continue with Google
+        </button>
+        {message && <p className="mt-4 rounded bg-slate-50 p-3 text-sm font-bold leading-6 text-slate-700">{message}</p>}
+      </div>
+    </div>
+  );
+}
+
+function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad }) {
+  const [items, setItems] = useState([]);
+  const [message, setMessage] = useState(user ? "Load your saved CVs." : "Login to save and manage up to 5 CVs.");
+  const refresh = async () => {
+    if (!user) return;
+    try {
+      setItems(await listUserCvs(user.id));
+      setMessage("Saved CVs loaded.");
+    } catch (error) {
+      setMessage(error.message);
+    }
+  };
+  useEffect(() => {
+    refresh();
+  }, [user?.id]);
+  const saveCurrent = async () => {
+    if (!user) {
+      setMessage("Please login first.");
+      return;
+    }
+    try {
+      await saveCvForUser({ userId: user.id, cv, categoryId, themeId, layoutId });
+      trackEvent("save_cv");
+      await refresh();
+    } catch (error) {
+      setMessage(error.message);
+    }
+  };
+  const duplicate = async (item) => {
+    try {
+      await duplicateUserCv(item);
+      await refresh();
+    } catch (error) {
+      setMessage(error.message);
+    }
+  };
+  const remove = async (id) => {
+    try {
+      await deleteUserCv(id);
+      await refresh();
+    } catch (error) {
+      setMessage(error.message);
+    }
+  };
+  return (
+    <section className="rounded border border-slate-200 bg-white p-4">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="panel-title">My CVs</h3>
+        <button onClick={saveCurrent} className="rounded bg-green-600 px-3 py-2 text-xs font-black text-white">Save</button>
+      </div>
+      <p className="mt-2 text-xs font-bold leading-5 text-slate-500">{message}</p>
+      <div className="mt-3 space-y-2">
+        {items.map((item) => (
+          <div key={item.id} className="rounded border border-slate-200 p-3">
+            <p className="text-sm font-black text-slate-900">{item.title}</p>
+            <p className="text-xs text-slate-500">{new Date(item.updated_at || item.created_at).toLocaleDateString()}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button onClick={() => onLoad(item)} className="rounded bg-blue-50 px-3 py-2 text-xs font-black text-blue-700">Edit</button>
+              <button onClick={() => duplicate(item)} className="rounded bg-slate-100 px-3 py-2 text-xs font-black text-slate-700">Duplicate</button>
+              <button onClick={() => remove(item.id)} className="rounded bg-red-50 px-3 py-2 text-xs font-black text-red-700">Delete</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CoverLetterTemplateSelector({ selectedRole, onSelect }) {
   return (
     <label className="block">
-      <span className="form-label">Matching cover letter template</span>
-      <select value={categoryId} onChange={(event) => onSelect(event.target.value)} className="form-field">
-        {categories.map((category) => (
-          <option value={category.id} key={category.id}>{category.name} - {category.title}</option>
+      <span className="form-label">Cover letter job category</span>
+      <select value={selectedRole} onChange={(event) => onSelect(event.target.value)} className="form-field">
+        {coverLetterRoleGroups.map((group) => (
+          <optgroup label={group.group} key={group.group}>
+            {group.roles.map((role) => (
+              <option value={role} key={role}>{role}</option>
+            ))}
+          </optgroup>
         ))}
       </select>
     </label>
   );
 }
 
-function CoverLetterForm({ letter, onChange }) {
+function CoverLetterApplicantForm({ cv, letter, onCvChange, onLetterChange }) {
+  const cvFields = [
+    ["fullName", "Full Name", "text"],
+    ["email", "Email Address", "email"],
+    ["phone", "Phone Number", "tel"],
+    ["country", "Location", "text"],
+    ["skills", "Key Skills", "textarea"],
+    ["summary", "Professional Summary", "textarea"],
+  ];
+  const letterFields = [
+    ["nationality", "Nationality (optional)", "text"],
+    ["visaStatus", "Visa Status (optional)", "text"],
+    ["linkedIn", "LinkedIn URL (optional)", "url"],
+    ["yearsExperience", "Years of Experience", "text"],
+  ];
+  return (
+    <div className="grid gap-4">
+      {cvFields.map(([key, label, type]) => (
+        <label key={key} className="block">
+          <span className="form-label">{label}</span>
+          {type === "textarea" ? (
+            <textarea value={cv[key]} onChange={(event) => onCvChange(key, event.target.value)} rows={key === "summary" ? 4 : 3} className="form-field resize-y" />
+          ) : (
+            <input type={type} value={cv[key]} onChange={(event) => onCvChange(key, event.target.value)} className="form-field" />
+          )}
+        </label>
+      ))}
+      {letterFields.map(([key, label, type]) => (
+        <label key={key} className="block">
+          <span className="form-label">{label}</span>
+          <input type={type} value={letter[key] || ""} onChange={(event) => onLetterChange(key, event.target.value)} className="form-field" />
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function CoverLetterForm({ letter, onChange, onRegenerate }) {
   const fields = [
     ["hiringManager", "Hiring manager name", "text"],
     ["companyName", "Company name", "text"],
     ["companyAddress", "Company address/location", "text"],
     ["position", "Job position applied for", "text"],
+    ["jobDescription", "Job Description", "textarea"],
     ["opening", "Opening paragraph", "textarea"],
     ["body", "Skills/experience paragraph", "textarea"],
+    ["qualifications", "Skills and qualifications", "textarea"],
+    ["value", "Value proposition", "textarea"],
     ["closing", "Closing paragraph", "textarea"],
   ];
   return (
     <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label>
+          <span className="form-label">Experience Level</span>
+          <select value={letter.experienceLevel || experienceLevels[0]} onChange={(event) => onChange("experienceLevel", event.target.value)} className="form-field">
+            {experienceLevels.map((level) => <option key={level}>{level}</option>)}
+          </select>
+        </label>
+        <label>
+          <span className="form-label">Regional Format</span>
+          <select value={letter.region || "gcc"} onChange={(event) => onChange("region", event.target.value)} className="form-field">
+            {regionalFormats.map((region) => <option value={region.id} key={region.id}>{region.name}</option>)}
+          </select>
+        </label>
+      </div>
+      <button onClick={onRegenerate} type="button" className="w-full rounded bg-blue-600 px-5 py-3 text-sm font-black text-white hover:bg-blue-700">
+        Generate ATS-friendly letter
+      </button>
       {fields.map(([key, label, type]) => (
         <label key={key} className="block">
           <span className="form-label">{label}</span>
           {type === "textarea" ? (
-            <textarea value={letter[key]} onChange={(event) => onChange(key, event.target.value)} rows={key === "body" ? 6 : 4} className="form-field resize-y" />
+            <textarea value={letter[key] || ""} onChange={(event) => onChange(key, event.target.value)} rows={key === "body" ? 6 : 4} className="form-field resize-y" />
           ) : (
-            <input value={letter[key]} onChange={(event) => onChange(key, event.target.value)} className="form-field" />
+            <input value={letter[key] || ""} onChange={(event) => onChange(key, event.target.value)} className="form-field" />
           )}
         </label>
       ))}
@@ -905,14 +1216,21 @@ function CoverLetterLayoutSelector({ selected, onSelect }) {
 function CoverLetterPreview({ cv, letter, theme, fontId, layoutId }) {
   const font = coverLetterFonts.find((item) => item.id === fontId) || coverLetterFonts[0];
   const compact = layoutId === "compact";
+  const today = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
   return (
     <article className={`letter-paper ${font.className} ${compact ? "p-7" : "p-10"}`}>
       <header className={layoutId === "accent" ? "rounded p-5 text-white" : "border-b border-slate-200 pb-5"} style={layoutId === "accent" ? { background: theme.dark } : {}}>
         <h2 className="text-2xl font-black leading-tight">{cv.fullName}</h2>
         <p className={`mt-2 text-sm font-bold ${layoutId === "accent" ? "text-white/90" : "text-slate-600"}`}>{letter.position}</p>
         <p className={`mt-2 text-xs ${layoutId === "accent" ? "text-white/80" : "text-slate-500"}`}>{cv.email} | {cv.phone} | {cv.country}</p>
+        {(letter.linkedIn || letter.nationality || letter.visaStatus) && (
+          <p className={`mt-2 text-xs ${layoutId === "accent" ? "text-white/80" : "text-slate-500"}`}>
+            {[letter.linkedIn, letter.nationality && `Nationality: ${letter.nationality}`, letter.visaStatus && `Visa: ${letter.visaStatus}`].filter(Boolean).join(" | ")}
+          </p>
+        )}
       </header>
       <div className={`${compact ? "mt-6 space-y-4 text-[13px]" : "mt-8 space-y-5 text-sm"} leading-7 text-slate-700`}>
+        <p className="text-slate-600">{today}</p>
         <div className="text-slate-600">
           <p>{letter.companyName}</p>
           <p>{letter.companyAddress}</p>
@@ -920,6 +1238,8 @@ function CoverLetterPreview({ cv, letter, theme, fontId, layoutId }) {
         <p>Dear {letter.hiringManager || "Hiring Manager"},</p>
         <p className="whitespace-pre-line">{letter.opening}</p>
         <p className="whitespace-pre-line">{letter.body}</p>
+        {letter.qualifications && <p className="whitespace-pre-line">{letter.qualifications}</p>}
+        {letter.value && <p className="whitespace-pre-line">{letter.value}</p>}
         <p className="whitespace-pre-line">{letter.closing}</p>
         <div>
           <p>Sincerely,</p>
@@ -944,11 +1264,12 @@ function CoverLetterDownloadModal({ cv, onClose, onVerifiedDownload }) {
 }
 
 function CoverLetterBuilder({
-  categoryId,
   cv,
   letter,
-  onCategoryChange,
+  onCvChange,
+  onRoleChange,
   onLetterChange,
+  onRegenerate,
   themeId,
   onThemeChange,
   fontId,
@@ -959,8 +1280,30 @@ function CoverLetterBuilder({
   downloaded,
 }) {
   const theme = themes.find((item) => item.id === themeId) || themes[1];
+  const [mode, setMode] = useState("light");
+  const [copyStatus, setCopyStatus] = useState("Copy to clipboard");
+  const [savedTemplates, setSavedTemplates] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("cvforall:cover-letter-templates") || "[]");
+    } catch {
+      return [];
+    }
+  });
+  const copyLetter = async () => {
+    await navigator.clipboard.writeText(coverLetterToText(letter, cv));
+    setCopyStatus("Copied");
+    window.setTimeout(() => setCopyStatus("Copy to clipboard"), 1800);
+  };
+  const saveTemplate = () => {
+    const nextTemplates = [
+      { id: Date.now(), name: `${letter.position || "Cover Letter"} - ${letter.companyName || "Company"}`, letter },
+      ...savedTemplates,
+    ].slice(0, 8);
+    setSavedTemplates(nextTemplates);
+    localStorage.setItem("cvforall:cover-letter-templates", JSON.stringify(nextTemplates));
+  };
   return (
-    <div className="builder-shell mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)] gap-5 px-5 py-6 lg:grid-cols-[0.9fr_1.1fr_0.65fr]">
+    <div className={`builder-shell mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)] gap-5 px-5 py-6 lg:grid-cols-[0.9fr_1.1fr_0.65fr] ${mode === "dark" ? "text-white" : ""}`}>
       <aside className="builder-panel min-w-0 space-y-5 rounded bg-white p-5 shadow-sm ring-1 ring-slate-200">
         <div className="rounded border border-green-200 bg-green-50 p-4">
           <h2 className="font-black text-green-900">Create Cover Letter</h2>
@@ -968,23 +1311,68 @@ function CoverLetterBuilder({
             This letter matches your selected CV category and uses your CV details. You can edit every paragraph before downloading for free.
           </p>
         </div>
-        <CoverLetterTemplateSelector categoryId={categoryId} onSelect={onCategoryChange} />
-        <CoverLetterForm letter={letter} onChange={onLetterChange} />
+        <CoverLetterTemplateSelector selectedRole={letter.position} onSelect={onRoleChange} />
+        <CoverLetterApplicantForm cv={cv} letter={letter} onCvChange={onCvChange} onLetterChange={onLetterChange} />
+        <CoverLetterForm letter={letter} onChange={onLetterChange} onRegenerate={onRegenerate} />
       </aside>
       <section className="builder-panel min-w-0">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="font-black text-slate-950">Live cover letter preview</h2>
           <span className="flex items-center gap-2 text-sm font-bold text-slate-500"><Icon name="eye" className="h-4 w-4" /> Updates instantly</span>
         </div>
-        <CoverLetterPreview cv={cv} letter={letter} theme={theme} fontId={fontId} layoutId={layoutId} />
+        <div className={mode === "dark" ? "rounded bg-slate-950 p-4" : ""}>
+          <CoverLetterPreview cv={cv} letter={letter} theme={theme} fontId={fontId} layoutId={layoutId} />
+        </div>
+        <section className="mt-5 rounded bg-white p-5 shadow-sm ring-1 ring-slate-200">
+          <h3 className="panel-title">Sample generated letters</h3>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {sampleCoverLetters.slice(0, 13).map((sample) => (
+              <button
+                key={sample.role}
+                onClick={() => onRoleChange(sample.role)}
+                className="rounded border border-slate-200 px-3 py-2 text-left text-xs font-bold text-slate-700 hover:border-green-500 hover:bg-green-50"
+              >
+                {sample.role}
+              </button>
+            ))}
+          </div>
+        </section>
       </section>
       <aside className="builder-panel min-w-0 space-y-6 rounded bg-white p-5 shadow-sm ring-1 ring-slate-200">
+        <section>
+          <h3 className="panel-title">Display mode</h3>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {["light", "dark"].map((item) => (
+              <button key={item} onClick={() => setMode(item)} className={`rounded px-4 py-3 text-sm font-black capitalize ${mode === item ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-700"}`}>
+                {item}
+              </button>
+            ))}
+          </div>
+        </section>
         <ThemeSelector selected={themeId} onSelect={onThemeChange} />
         <FontSelector selected={fontId} onSelect={onFontChange} />
         <CoverLetterLayoutSelector selected={layoutId} onSelect={onLayoutChange} />
         <button onClick={onDownload} className="flex w-full items-center justify-center gap-2 rounded bg-green-600 px-5 py-4 font-bold text-white hover:bg-green-700">
           <Icon name="download" /> Download Cover Letter
         </button>
+        <button onClick={copyLetter} className="flex w-full items-center justify-center gap-2 rounded border border-slate-300 px-5 py-4 font-bold text-slate-700 hover:bg-slate-50">
+          <Icon name="file" /> {copyStatus}
+        </button>
+        <button onClick={saveTemplate} className="flex w-full items-center justify-center gap-2 rounded border border-blue-600 px-5 py-4 font-bold text-blue-700 hover:bg-blue-50">
+          <Icon name="check" /> Save template
+        </button>
+        {savedTemplates.length > 0 && (
+          <section>
+            <h3 className="panel-title">Saved templates</h3>
+            <div className="mt-3 space-y-2">
+              {savedTemplates.slice(0, 4).map((item) => (
+                <button key={item.id} onClick={() => Object.entries(item.letter).forEach(([key, value]) => onLetterChange(key, value))} className="w-full rounded border border-slate-200 px-3 py-2 text-left text-xs font-bold text-slate-600 hover:bg-slate-50">
+                  {item.name}
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
         <AdPlaceholder compact label="Cover letter ad area" />
         {downloaded && <div className="rounded border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-900">Cover letter download confirmed. You can also download your CV for free.</div>}
       </aside>
@@ -1007,24 +1395,26 @@ function CVBuilderApp({ onHome }) {
   const [coverDownloaded, setCoverDownloaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState("Auto-save ready");
   const [mobileCvView, setMobileCvView] = useState("edit");
+  const [session, setSession] = useState(null);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [storageMessage, setStorageMessage] = useState("");
+  const [pendingDraft, setPendingDraft] = useState(null);
   const theme = useMemo(() => themes.find((item) => item.id === themeId), [themeId]);
   const coverTheme = useMemo(() => themes.find((item) => item.id === coverThemeId), [coverThemeId]);
+  const user = session?.user || null;
+  useEffect(() => {
+    initAnalytics();
+    if (!supabase) return;
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => setSession(nextSession));
+    return () => data.subscription.unsubscribe();
+  }, []);
   useEffect(() => {
     const rawDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
     if (!rawDraft) return;
     try {
       const draft = JSON.parse(rawDraft);
-      const shouldRestore = window.confirm("You have an unsaved CV - continue editing?");
-      if (!shouldRestore) return;
-      setCv(draft.cv || initialCv);
-      setCategoryId(draft.categoryId || defaultCategory.id);
-      setCoverLetter(draft.coverLetter || createCoverLetterFromCv(draft.cv || initialCv, draft.categoryId || defaultCategory.id));
-      setThemeId(draft.themeId || "blue");
-      setLayoutId(draft.layoutId || "sidebar");
-      setCoverThemeId(draft.coverThemeId || "blue");
-      setCoverFontId(draft.coverFontId || "sans");
-      setCoverLayoutId(draft.coverLayoutId || "classic");
-      setSaveStatus("Draft restored");
+      setPendingDraft(draft);
     } catch {
       localStorage.removeItem(DRAFT_STORAGE_KEY);
     }
@@ -1076,6 +1466,61 @@ function CVBuilderApp({ onHome }) {
       return nextCv;
     });
   };
+  const handleProfilePhotoChange = async (key, value) => {
+    if (key !== "profilePhoto" || !value || !user) {
+      setCv((current) => ({ ...current, [key]: value }));
+      return;
+    }
+    try {
+      setStorageMessage("Uploading photo to Supabase Storage...");
+      const uploaded = await uploadProfilePhoto(user.id, value);
+      setCv((current) => ({ ...current, profilePhoto: uploaded.publicUrl }));
+      setStorageMessage("Photo uploaded to Supabase Storage.");
+    } catch (error) {
+      setCv((current) => ({ ...current, profilePhoto: value }));
+      setStorageMessage(`Photo kept locally: ${error.message}`);
+    }
+  };
+  const loadSavedCv = (item) => {
+    const nextCv = item.cv_data || initialCv;
+    setCv(nextCv);
+    setCategoryId(item.category_id || defaultCategory.id);
+    setThemeId(item.theme_id || "blue");
+    setLayoutId(item.layout_id || "sidebar");
+    setCoverLetter(createCoverLetterFromCv(nextCv, item.category_id || defaultCategory.id));
+    trackEvent("load_saved_cv");
+  };
+  const updateCvFromCoverLetter = (key, value) => {
+    setCv((current) => ({ ...current, [key]: value }));
+  };
+  const handleCoverRoleChange = (role) => {
+    setCoverLetter((current) => generateCoverLetterTemplate({ cv: { ...cv, jobTitle: role }, role, letter: current }));
+    setCv((current) => ({ ...current, jobTitle: role }));
+  };
+  const regenerateCoverLetter = async () => {
+    const localDraft = generateCoverLetterTemplate({ cv, role: coverLetter.position, letter: coverLetter });
+    try {
+      const response = await fetch("/.netlify/functions/generateCoverLetter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cv,
+          companyName: coverLetter.companyName,
+          position: coverLetter.position,
+          category: coverLetter.position,
+          experienceLevel: coverLetter.experienceLevel,
+          yearsExperience: coverLetter.yearsExperience,
+          region: coverLetter.region,
+          jobDescription: coverLetter.jobDescription,
+        }),
+      });
+      if (!response.ok) throw new Error("AI generation unavailable");
+      const aiDraft = await response.json();
+      setCoverLetter((current) => ({ ...current, ...localDraft, ...aiDraft }));
+    } catch {
+      setCoverLetter(localDraft);
+    }
+  };
   const handleDownload = async (type) => {
     await downloadCvFile(cv, type, theme);
     setDownloaded(true);
@@ -1090,6 +1535,28 @@ function CVBuilderApp({ onHome }) {
     window.location.hash = id === "cover" ? "cover-letter" : "builder";
     setActiveBuilder(id);
   };
+  const restoreDraft = () => {
+    if (!pendingDraft) return;
+    setCv(pendingDraft.cv || initialCv);
+    setCategoryId(pendingDraft.categoryId || defaultCategory.id);
+    setCoverLetter(pendingDraft.coverLetter || createCoverLetterFromCv(pendingDraft.cv || initialCv, pendingDraft.categoryId || defaultCategory.id));
+    setThemeId(pendingDraft.themeId || "blue");
+    setLayoutId(pendingDraft.layoutId || "sidebar");
+    setCoverThemeId(pendingDraft.coverThemeId || "blue");
+    setCoverFontId(pendingDraft.coverFontId || "sans");
+    setCoverLayoutId(pendingDraft.coverLayoutId || "classic");
+    setSaveStatus("Draft restored");
+    setPendingDraft(null);
+  };
+  const discardDraft = () => {
+    localStorage.removeItem(DRAFT_STORAGE_KEY);
+    setPendingDraft(null);
+    setSaveStatus("Fresh CV started");
+  };
+  const signOut = async () => {
+    await supabase?.auth.signOut();
+    trackEvent("logout");
+  };
   return (
     <main className="min-h-screen bg-slate-100">
       <div className="border-b border-slate-200 bg-white">
@@ -1101,7 +1568,18 @@ function CVBuilderApp({ onHome }) {
           <div className="hidden items-center gap-5 text-sm font-bold text-slate-500 md:flex">
             <span className="text-green-700">1 Category</span><span>2 Details</span><span>3 Customize</span><span>4 Download</span>
           </div>
-          <button onClick={() => setDownloadTarget(activeBuilder === "cv" ? "cv" : "cover")} className="inline-flex items-center gap-2 rounded bg-green-600 px-3 py-3 text-sm font-bold text-white hover:bg-green-700 sm:px-5"><Icon name="download" className="h-4 w-4" /> <span className="hidden sm:inline">Download</span></button>
+          <div className="flex items-center gap-2">
+            {user ? (
+              <button onClick={signOut} className="rounded border border-slate-300 px-3 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50">
+                Logout
+              </button>
+            ) : (
+              <button onClick={() => setAuthOpen(true)} className="rounded border border-blue-600 px-3 py-3 text-sm font-bold text-blue-700 hover:bg-blue-50">
+                Login
+              </button>
+            )}
+            <button onClick={() => setDownloadTarget(activeBuilder === "cv" ? "cv" : "cover")} className="inline-flex items-center gap-2 rounded bg-green-600 px-3 py-3 text-sm font-bold text-white hover:bg-green-700 sm:px-5"><Icon name="download" className="h-4 w-4" /> <span className="hidden sm:inline">Download</span></button>
+          </div>
         </div>
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 pb-4 md:flex-row md:items-center md:justify-between">
           <div className="flex gap-2">
@@ -1119,10 +1597,28 @@ function CVBuilderApp({ onHome }) {
             ))}
           </div>
           <div className="text-xs font-bold text-slate-500">
-            {saveStatus} · Supabase sync ready when login is connected
+            {saveStatus} - {user ? `Logged in as ${user.email}` : "Login to sync with Supabase"}
           </div>
         </div>
       </div>
+      {pendingDraft && (
+        <section className="border-b border-amber-200 bg-amber-50 px-5 py-4">
+          <div className="mx-auto flex max-w-7xl flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-sm font-black text-amber-950">You have an unsaved CV draft</h2>
+              <p className="mt-1 text-sm font-semibold text-amber-900">Continue editing your saved draft or start a fresh CV.</p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={restoreDraft} className="rounded bg-green-600 px-4 py-3 text-sm font-black text-white hover:bg-green-700">
+                Continue editing
+              </button>
+              <button onClick={discardDraft} className="rounded border border-amber-300 bg-white px-4 py-3 text-sm font-black text-amber-900 hover:bg-amber-100">
+                Start fresh
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
       {activeBuilder === "cv" ? (
         <>
         <div className="mx-auto flex max-w-7xl gap-2 px-5 pt-5 lg:hidden">
@@ -1142,7 +1638,8 @@ function CVBuilderApp({ onHome }) {
         <div className="builder-shell mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)] gap-5 px-5 py-6 lg:grid-cols-[0.9fr_1.1fr_0.65fr]">
           <aside className={`builder-panel min-w-0 space-y-5 rounded bg-white p-5 shadow-sm ring-1 ring-slate-200 ${mobileCvView === "preview" ? "hidden lg:block" : ""}`}>
             <ExistingCVImporter onImport={handleImport} />
-            <ProfilePhotoUploader cv={cv} onChange={(key, value) => setCv((current) => ({ ...current, [key]: value }))} />
+            <ProfilePhotoUploader cv={cv} onChange={handleProfilePhotoChange} />
+            {storageMessage && <p className="rounded bg-slate-50 p-3 text-xs font-bold leading-5 text-slate-600">{storageMessage}</p>}
             <CategorySelector selected={categoryId} onSelect={handleCategory} />
             <CVBuilderForm cv={cv} onChange={(key, value) => setCv((current) => ({ ...current, [key]: value }))} />
           </aside>
@@ -1155,6 +1652,7 @@ function CVBuilderApp({ onHome }) {
           </section>
           <aside className={`builder-panel min-w-0 space-y-6 rounded bg-white p-5 shadow-sm ring-1 ring-slate-200 ${mobileCvView === "preview" ? "hidden lg:block" : ""}`}>
             <CVCompletenessPanel cv={cv} />
+            <MyCvsPanel user={user} cv={cv} categoryId={categoryId} themeId={themeId} layoutId={layoutId} onLoad={loadSavedCv} />
             <ThemeSelector selected={themeId} onSelect={setThemeId} />
             <LayoutSelector selected={layoutId} onSelect={setLayoutId} />
             <button onClick={() => setDownloadTarget("cv")} className="flex w-full items-center justify-center gap-2 rounded bg-green-600 px-5 py-4 font-bold text-white hover:bg-green-700">
@@ -1170,11 +1668,12 @@ function CVBuilderApp({ onHome }) {
         </>
       ) : (
         <CoverLetterBuilder
-          categoryId={categoryId}
           cv={cv}
           letter={coverLetter}
-          onCategoryChange={handleCategory}
+          onCvChange={updateCvFromCoverLetter}
+          onRoleChange={handleCoverRoleChange}
           onLetterChange={(key, value) => setCoverLetter((current) => ({ ...current, [key]: value }))}
+          onRegenerate={regenerateCoverLetter}
           themeId={coverThemeId}
           onThemeChange={setCoverThemeId}
           fontId={coverFontId}
@@ -1187,6 +1686,7 @@ function CVBuilderApp({ onHome }) {
       )}
       {downloadTarget === "cv" && <DownloadModal cv={cv} onClose={() => setDownloadTarget(null)} onVerifiedDownload={handleDownload} />}
       {downloadTarget === "cover" && <CoverLetterDownloadModal cv={cv} onClose={() => setDownloadTarget(null)} onVerifiedDownload={handleCoverDownload} />}
+      {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
     </main>
   );
 }
@@ -1207,6 +1707,7 @@ export default function App() {
     setView(nextView);
   };
   useEffect(() => {
+    initAnalytics();
     const syncHash = () => setView(["#builder", "#cover-letter"].includes(window.location.hash) ? "builder" : "landing");
     window.addEventListener("hashchange", syncHash);
     return () => window.removeEventListener("hashchange", syncHash);

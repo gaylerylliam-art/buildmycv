@@ -6,8 +6,11 @@
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
+    "@emailjs/browser": "^4.4.1",
+    "@supabase/supabase-js": "^2.107.0",
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.4.20",
+    "docx": "^9.7.1",
     "html2pdf.js": "^0.14.0",
     "postcss": "^8.4.49",
     "react": "^19.0.0",

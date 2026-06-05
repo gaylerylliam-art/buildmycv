@@ -43,6 +43,28 @@ create table if not exists public.cv_history (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.cover_letters (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  cv_id uuid references public.cvs(id) on delete set null,
+  title text not null default 'My Cover Letter',
+  role text not null,
+  letter_data jsonb not null default '{}'::jsonb,
+  theme_id text not null default 'blue',
+  font_id text not null default 'sans',
+  layout_id text not null default 'classic',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.analytics_events (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete set null,
+  event_name text not null,
+  event_data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.download_requests (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete set null,
@@ -81,10 +103,17 @@ create trigger cv_drafts_touch_updated_at
 before update on public.cv_drafts
 for each row execute function public.touch_updated_at();
 
+drop trigger if exists cover_letters_touch_updated_at on public.cover_letters;
+create trigger cover_letters_touch_updated_at
+before update on public.cover_letters
+for each row execute function public.touch_updated_at();
+
 alter table public.profiles enable row level security;
 alter table public.cvs enable row level security;
 alter table public.cv_drafts enable row level security;
 alter table public.cv_history enable row level security;
+alter table public.cover_letters enable row level security;
+alter table public.analytics_events enable row level security;
 alter table public.download_requests enable row level security;
 
 drop policy if exists "Users can read their profile" on public.profiles;
@@ -129,6 +158,22 @@ drop policy if exists "Users can add their cv history" on public.cv_history;
 create policy "Users can add their cv history"
 on public.cv_history for insert
 with check (auth.uid() = user_id);
+
+drop policy if exists "Users can manage their cover letters" on public.cover_letters;
+create policy "Users can manage their cover letters"
+on public.cover_letters for all
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+drop policy if exists "Users can add analytics events" on public.analytics_events;
+create policy "Users can add analytics events"
+on public.analytics_events for insert
+with check (auth.uid() = user_id or user_id is null);
+
+drop policy if exists "Users can read their analytics events" on public.analytics_events;
+create policy "Users can read their analytics events"
+on public.analytics_events for select
+using (auth.uid() = user_id);
 
 drop policy if exists "Users can add download requests" on public.download_requests;
 create policy "Users can add download requests"

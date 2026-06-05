@@ -58,6 +58,92 @@ const downloadPdfFromHtml = async (html, filename) => {
   }
 };
 
+const downloadCoverLetterDocx = async (letter, cv, filename) => {
+  const { AlignmentType, Document, Packer, Paragraph, TextRun } = await import("docx");
+  const today = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+  const paragraph = (text = "", options = {}) =>
+    new Paragraph({
+      spacing: { after: options.after ?? 180 },
+      alignment: options.alignment,
+      children: [
+        new TextRun({
+          text: String(text || ""),
+          bold: options.bold,
+          size: options.size || 22,
+        }),
+      ],
+    });
+  const contactLines = [
+    `${cv.email} | ${cv.phone} | ${cv.country}`,
+    letter.linkedIn ? `LinkedIn: ${letter.linkedIn}` : "",
+    letter.nationality ? `Nationality: ${letter.nationality}` : "",
+    letter.visaStatus ? `Visa Status: ${letter.visaStatus}` : "",
+  ].filter(Boolean);
+  const doc = new Document({
+    sections: [
+      {
+        properties: {},
+        children: [
+          paragraph(cv.fullName, { bold: true, size: 32, after: 80 }),
+          ...contactLines.map((line) => paragraph(line, { size: 18, after: 70 })),
+          paragraph(today),
+          paragraph(letter.companyName),
+          paragraph(letter.companyAddress),
+          paragraph(`Dear ${letter.hiringManager || "Hiring Manager"},`),
+          paragraph(letter.opening),
+          paragraph(letter.body),
+          letter.qualifications ? paragraph(letter.qualifications) : paragraph("", { after: 0 }),
+          letter.value ? paragraph(letter.value) : paragraph("", { after: 0 }),
+          paragraph(letter.closing),
+          paragraph("Sincerely,", { after: 80 }),
+          paragraph(cv.fullName, { bold: true }),
+          paragraph("", { alignment: AlignmentType.LEFT, after: 0 }),
+        ],
+      },
+    ],
+  });
+  const blob = await Packer.toBlob(doc);
+  saveBlob(blob, filename);
+};
+
+const downloadCvDocx = async (cv, filename) => {
+  const { Document, Packer, Paragraph, TextRun } = await import("docx");
+  const paragraph = (text = "", options = {}) =>
+    new Paragraph({
+      spacing: { after: options.after ?? 150 },
+      children: [new TextRun({ text: String(text || ""), bold: options.bold, size: options.size || 22 })],
+    });
+  const sectionHeading = (text) => paragraph(text, { bold: true, size: 24, after: 100 });
+  const doc = new Document({
+    sections: [
+      {
+        properties: {},
+        children: [
+          paragraph(cv.fullName, { bold: true, size: 34, after: 80 }),
+          paragraph(cv.jobTitle, { bold: true, size: 24, after: 80 }),
+          paragraph(`${cv.email} | ${cv.phone} | ${cv.country}`, { size: 18 }),
+          sectionHeading("Professional Summary"),
+          paragraph(cv.summary),
+          sectionHeading("Skills"),
+          paragraph(cv.skills),
+          sectionHeading("Work Experience"),
+          ...String(cv.experience || "").split("\n").filter(Boolean).map((line) => paragraph(`• ${line}`)),
+          sectionHeading("Education"),
+          paragraph(cv.education),
+          sectionHeading("Certifications"),
+          paragraph(cv.certifications),
+          sectionHeading("Languages"),
+          paragraph(cv.languages),
+          sectionHeading("References"),
+          paragraph(cv.references),
+        ],
+      },
+    ],
+  });
+  const blob = await Packer.toBlob(doc);
+  saveBlob(blob, filename);
+};
+
 export const buildCvHtml = (cv, theme = { color: "#0f66d0", dark: "#0f172a" }) => `
   <html>
     <head>
@@ -103,7 +189,7 @@ export const downloadCvFile = async (cv, type, theme) => {
   const html = buildCvHtml(cv, theme);
   const baseName = fileBaseName(cv.fullName, "CV");
   if (type === "word") {
-    saveBlob(new Blob([html], { type: "application/msword" }), `${baseName}.doc`);
+    await downloadCvDocx(cv, `${baseName}.docx`);
     return;
   }
   await downloadPdfFromHtml(html, `${baseName}.pdf`);
@@ -128,7 +214,9 @@ export const buildCoverLetterHtml = (letter, cv, theme = { color: "#0f66d0", dar
       <div class="header">
         <h1>${escapeHtml(cv.fullName)}</h1>
         <p class="muted">${escapeHtml(cv.jobTitle)} | ${escapeHtml(cv.email)} | ${escapeHtml(cv.phone)} | ${escapeHtml(cv.country)}</p>
+        ${letter.linkedIn || letter.nationality || letter.visaStatus ? `<p class="muted">${escapeHtml([letter.linkedIn, letter.nationality && `Nationality: ${letter.nationality}`, letter.visaStatus && `Visa Status: ${letter.visaStatus}`].filter(Boolean).join(" | "))}</p>` : ""}
       </div>
+      <p>${escapeHtml(new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }))}</p>
       <div class="section">
         <p>${escapeHtml(letter.companyName)}</p>
         <p>${escapeHtml(letter.companyAddress)}</p>
@@ -136,6 +224,8 @@ export const buildCoverLetterHtml = (letter, cv, theme = { color: "#0f66d0", dar
       <p class="section">Dear ${escapeHtml(letter.hiringManager || "Hiring Manager")},</p>
       <p>${escapeHtml(letter.opening).replaceAll("\n", "<br />")}</p>
       <p>${escapeHtml(letter.body).replaceAll("\n", "<br />")}</p>
+      ${letter.qualifications ? `<p>${escapeHtml(letter.qualifications).replaceAll("\n", "<br />")}</p>` : ""}
+      ${letter.value ? `<p>${escapeHtml(letter.value).replaceAll("\n", "<br />")}</p>` : ""}
       <p>${escapeHtml(letter.closing).replaceAll("\n", "<br />")}</p>
       <p class="section">Sincerely,</p>
       <p class="signature">${escapeHtml(cv.fullName)}</p>
@@ -147,7 +237,7 @@ export const downloadCoverLetterFile = async (letter, cv, type, theme) => {
   const html = buildCoverLetterHtml(letter, cv, theme);
   const baseName = fileBaseName(cv.fullName, "Cover_Letter");
   if (type === "word") {
-    saveBlob(new Blob([html], { type: "application/msword" }), `${baseName}.doc`);
+    await downloadCoverLetterDocx(letter, cv, `${baseName}.docx`);
     return;
   }
   await downloadPdfFromHtml(html, `${baseName}.pdf`);
