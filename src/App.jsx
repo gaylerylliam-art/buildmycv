@@ -1525,7 +1525,6 @@ function CVBuilderApp({ onHome }) {
   const [session, setSession] = useState(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [storageMessage, setStorageMessage] = useState("");
-  const [pendingDraft, setPendingDraft] = useState(null);
   const [userMode, setUserMode] = useState(() => localStorage.getItem("cvforall:user-mode") || "guest");
   const theme = useMemo(() => themes.find((item) => item.id === themeId), [themeId]);
   const coverTheme = useMemo(() => themes.find((item) => item.id === coverThemeId), [coverThemeId]);
@@ -1556,16 +1555,6 @@ function CVBuilderApp({ onHome }) {
     window.addEventListener("beforeunload", warnBeforeLeave);
     return () => window.removeEventListener("beforeunload", warnBeforeLeave);
   }, [noCloudMode, downloaded, coverDownloaded]);
-  useEffect(() => {
-    const rawDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
-    if (!rawDraft) return;
-    try {
-      const draft = JSON.parse(rawDraft);
-      setPendingDraft(draft);
-    } catch {
-      localStorage.removeItem(DRAFT_STORAGE_KEY);
-    }
-  }, []);
   useEffect(() => {
     const saveDraft = () => {
       localStorage.setItem(
@@ -1682,24 +1671,6 @@ function CVBuilderApp({ onHome }) {
     window.location.hash = id === "cover" ? "cover-letter" : "builder";
     setActiveBuilder(id);
   };
-  const restoreDraft = () => {
-    if (!pendingDraft) return;
-    setCv(pendingDraft.cv || initialCv);
-    setCategoryId(pendingDraft.categoryId || defaultCategory.id);
-    setCoverLetter(pendingDraft.coverLetter || createCoverLetterFromCv(pendingDraft.cv || initialCv, pendingDraft.categoryId || defaultCategory.id));
-    setThemeId(pendingDraft.themeId || "blue");
-    setLayoutId(pendingDraft.layoutId || "sidebar");
-    setCoverThemeId(pendingDraft.coverThemeId || "blue");
-    setCoverFontId(pendingDraft.coverFontId || "sans");
-    setCoverLayoutId(pendingDraft.coverLayoutId || "classic");
-    setSaveStatus("Draft restored");
-    setPendingDraft(null);
-  };
-  const discardDraft = () => {
-    localStorage.removeItem(DRAFT_STORAGE_KEY);
-    setPendingDraft(null);
-    setSaveStatus("Fresh CV started");
-  };
   const signOut = async () => {
     await supabase?.auth.signOut();
     setUserMode("guest");
@@ -1760,24 +1731,6 @@ function CVBuilderApp({ onHome }) {
         <section className="border-b border-amber-200 bg-amber-50 px-5 py-3">
           <div className="mx-auto max-w-7xl text-sm font-bold leading-6 text-amber-950">
             Your CV will not be saved online. Download your file before closing the browser.
-          </div>
-        </section>
-      )}
-      {pendingDraft && (
-        <section className="border-b border-amber-200 bg-amber-50 px-5 py-4">
-          <div className="mx-auto flex max-w-7xl flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h2 className="text-sm font-black text-amber-950">You have an unsaved CV draft</h2>
-              <p className="mt-1 text-sm font-semibold text-amber-900">Continue editing your saved draft or start a fresh CV.</p>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={restoreDraft} className="rounded bg-green-600 px-4 py-3 text-sm font-black text-white hover:bg-green-700">
-                Continue editing
-              </button>
-              <button onClick={discardDraft} className="rounded border border-amber-300 bg-white px-4 py-3 text-sm font-black text-amber-900 hover:bg-amber-100">
-                Start fresh
-              </button>
-            </div>
           </div>
         </section>
       )}
