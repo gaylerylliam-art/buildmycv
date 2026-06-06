@@ -10,11 +10,11 @@ export const handler = async (event) => {
   }
 
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const apiKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const redirectTo = process.env.VITE_AUTH_REDIRECT_URL || "https://buildmycvforfree.netlify.app/#builder";
 
-  if (!supabaseUrl || !serviceRoleKey) {
-    return json(500, { error: "Supabase URL or service role key is not configured on the server." });
+  if (!supabaseUrl || !apiKey) {
+    return json(500, { error: "Supabase URL or API key is not configured on the server." });
   }
 
   let body;
@@ -31,8 +31,8 @@ export const handler = async (event) => {
   const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/auth/v1/resend`, {
     method: "POST",
     headers: {
-      apikey: serviceRoleKey,
-      Authorization: `Bearer ${serviceRoleKey}`,
+      apikey: apiKey,
+      Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
