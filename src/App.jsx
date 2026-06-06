@@ -922,6 +922,7 @@ function AuthModal({ onClose }) {
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [message, setMessage] = useState(isSupabaseConfigured ? "" : "Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env to enable login.");
   const [loading, setLoading] = useState(false);
+  const [lastSignupEmail, setLastSignupEmail] = useState("");
   const submit = async (event) => {
     event.preventDefault();
     if (!supabase) return;
@@ -951,10 +952,41 @@ function AuthModal({ onClose }) {
           : await supabase.auth.signInWithPassword({ email: form.email, password: form.password, captchaToken });
       if (error) throw error;
       trackEvent(mode === "signup" ? "signup" : "login", { method: "email" });
-      setMessage(mode === "signup" ? "Account created. Please check your email if confirmation is enabled." : "Signed in successfully.");
+      if (mode === "signup") {
+        setLastSignupEmail(form.email);
+        setMessage("Signup request sent. Please check your inbox and spam folder for the confirmation email. If it does not arrive, use Resend confirmation email below.");
+      } else {
+        setMessage("Signed in successfully.");
+      }
       if (mode === "signin") onClose();
     } catch (error) {
       setMessage(error.message || "Authentication failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  const resendConfirmation = async () => {
+    if (!supabase || !lastSignupEmail) return;
+    setLoading(true);
+    setMessage("Sending confirmation email again...");
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: lastSignupEmail,
+        options: { emailRedirectTo: AUTH_REDIRECT_URL },
+      });
+      if (error) {
+        const fallback = await fetch("/.netlify/functions/resendSignupConfirmation", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: lastSignupEmail }),
+        });
+        if (!fallback.ok) throw error;
+      }
+      trackEvent("signup_confirmation_resend");
+      setMessage("Confirmation email sent again. Please check your inbox and spam folder.");
+    } catch (error) {
+      setMessage(error.message || "Could not resend confirmation email.");
     } finally {
       setLoading(false);
     }
@@ -1015,6 +1047,11 @@ function AuthModal({ onClose }) {
           <p className="mt-3 rounded bg-blue-50 p-3 text-xs font-bold leading-5 text-blue-800">
             Google login is hidden until the Google provider is enabled in Supabase.
           </p>
+        )}
+        {lastSignupEmail && (
+          <button disabled={loading} onClick={resendConfirmation} className="mt-3 w-full rounded border border-green-600 px-5 py-3 font-bold text-green-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400">
+            Resend confirmation email
+          </button>
         )}
         {message && <p className="mt-4 rounded bg-slate-50 p-3 text-sm font-bold leading-6 text-slate-700">{message}</p>}
       </div>

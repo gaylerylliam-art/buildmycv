@@ -98,6 +98,8 @@ Copy `.env.example` to `.env` locally and add the matching values in Netlify:
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-4o-mini
 RECAPTCHA_SECRET_KEY=
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
 VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
 VITE_AUTH_REDIRECT_URL=https://buildmycvforfree.netlify.app/#builder
@@ -109,7 +111,7 @@ VITE_EMAILJS_TEMPLATE_ID=
 VITE_EMAILJS_PUBLIC_KEY=
 ```
 
-Do not expose `OPENAI_API_KEY` or `RECAPTCHA_SECRET_KEY` in frontend `VITE_` variables.
+Do not expose `OPENAI_API_KEY`, `RECAPTCHA_SECRET_KEY`, or `SUPABASE_SERVICE_ROLE_KEY` in frontend `VITE_` variables.
 
 ## Supabase setup
 
@@ -125,6 +127,7 @@ Do not expose `OPENAI_API_KEY` or `RECAPTCHA_SECRET_KEY` in frontend `VITE_` var
 7. Add your site URL and redirect URLs to the Google provider settings if Google login is enabled.
 8. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to `.env` and Netlify.
 9. Keep `VITE_ENABLE_GOOGLE_AUTH=false` until Google Auth is enabled in Supabase. Set it to `true` only after the Google provider is configured.
+10. Add `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to Netlify environment variables only if you want the server-side resend confirmation fallback.
 
 Google reCAPTCHA is verified through `netlify/functions/verifyRecaptcha.js`. Supabase native Auth CAPTCHA currently supports hCaptcha/Turnstile, so use this Google reCAPTCHA layer for frontend bot checks or switch to Supabase-native CAPTCHA if you prefer that validation inside Supabase Auth.
 
