@@ -94,6 +94,8 @@ const coverLetterToText = (letter, cv) => {
 };
 
 const DRAFT_STORAGE_KEY = "cvforall:draft:v1";
+const AUTH_REDIRECT_URL = import.meta.env.VITE_AUTH_REDIRECT_URL || "https://buildmycvforfree.netlify.app/#builder";
+const GOOGLE_AUTH_ENABLED = import.meta.env.VITE_ENABLE_GOOGLE_AUTH === "true";
 
 const completenessFields = [
   ["Contact details", (cv) => cv.fullName && cv.email && cv.phone && cv.country],
@@ -938,9 +940,8 @@ function AuthModal({ onClose }) {
           if (captchaResult.success === false) throw new Error("reCAPTCHA verification failed.");
         }
       }
-      const redirectTo = `${window.location.origin}/#builder`;
       const options = {
-        emailRedirectTo: redirectTo,
+        emailRedirectTo: AUTH_REDIRECT_URL,
         data: { full_name: form.name },
         captchaToken,
       };
@@ -962,7 +963,7 @@ function AuthModal({ onClose }) {
     if (!supabase) return;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/#builder` },
+      options: { redirectTo: AUTH_REDIRECT_URL },
     });
     if (error) setMessage(error.message);
   };
@@ -1006,9 +1007,15 @@ function AuthModal({ onClose }) {
             {loading ? "Please wait..." : mode === "signin" ? "Login" : "Create account"}
           </button>
         </form>
-        <button disabled={!isSupabaseConfigured} onClick={signInWithGoogle} className="mt-3 w-full rounded border border-blue-600 px-5 py-3 font-bold text-blue-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400">
-          Continue with Google
-        </button>
+        {GOOGLE_AUTH_ENABLED ? (
+          <button disabled={!isSupabaseConfigured} onClick={signInWithGoogle} className="mt-3 w-full rounded border border-blue-600 px-5 py-3 font-bold text-blue-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400">
+            Continue with Google
+          </button>
+        ) : (
+          <p className="mt-3 rounded bg-blue-50 p-3 text-xs font-bold leading-5 text-blue-800">
+            Google login is hidden until the Google provider is enabled in Supabase.
+          </p>
+        )}
         {message && <p className="mt-4 rounded bg-slate-50 p-3 text-sm font-bold leading-6 text-slate-700">{message}</p>}
       </div>
     </div>

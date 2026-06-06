@@ -100,6 +100,8 @@ OPENAI_MODEL=gpt-4o-mini
 RECAPTCHA_SECRET_KEY=
 VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
+VITE_AUTH_REDIRECT_URL=https://buildmycvforfree.netlify.app/#builder
+VITE_ENABLE_GOOGLE_AUTH=false
 VITE_GA_MEASUREMENT_ID=
 VITE_RECAPTCHA_SITE_KEY=
 VITE_EMAILJS_SERVICE_ID=
@@ -113,9 +115,16 @@ Do not expose `OPENAI_API_KEY` or `RECAPTCHA_SECRET_KEY` in frontend `VITE_` var
 
 1. Create a Supabase project.
 2. Run `supabase/schema.sql` in the SQL editor.
-3. Enable Email/Password and Google providers in Supabase Auth.
-4. Add your site URL and redirect URLs, including your Netlify URL and local `http://127.0.0.1:5173`.
-5. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to `.env` and Netlify.
+3. Enable Email/Password in Supabase Auth. Google is optional.
+4. In Supabase Auth URL Configuration, set the Site URL to `https://buildmycvforfree.netlify.app`.
+5. Add redirect URLs:
+   - `https://buildmycvforfree.netlify.app/**`
+   - `http://127.0.0.1:5173/**`
+   - `http://localhost:5173/**`
+6. If your email template uses `{{ .SiteURL }}`, change the confirmation link to use `{{ .RedirectTo }}` so `VITE_AUTH_REDIRECT_URL` is honored.
+7. Add your site URL and redirect URLs to the Google provider settings if Google login is enabled.
+8. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to `.env` and Netlify.
+9. Keep `VITE_ENABLE_GOOGLE_AUTH=false` until Google Auth is enabled in Supabase. Set it to `true` only after the Google provider is configured.
 
 Google reCAPTCHA is verified through `netlify/functions/verifyRecaptcha.js`. Supabase native Auth CAPTCHA currently supports hCaptcha/Turnstile, so use this Google reCAPTCHA layer for frontend bot checks or switch to Supabase-native CAPTCHA if you prefer that validation inside Supabase Auth.
 
