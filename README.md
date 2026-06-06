@@ -84,6 +84,8 @@ Cover letter templates, role categories, sample letters, experience levels, regi
 - PDF generation uses `html2pdf.js`; DOCX generation uses the `docx` library.
 - CV drafts auto-save locally every 30 seconds and can be restored when the builder opens.
 - Mobile CV editing includes an Edit/Preview toggle while desktop keeps the side-by-side builder layout.
+- Urgent CV mode lets users continue without cloud saving or verify by mobile OTP for download-only use.
+- Registered account mode enables cloud saving, My CVs, profile photo storage, and online CV management.
 - The Cover Letter Builder now works as a full cover letter generator with 60+ predefined roles, experience levels, UAE/GCC, UK, US, Canada, Australia, and international formats, copy-to-clipboard, saved templates, light/dark preview mode, sample generated letters, and the same OTP download flow.
 - Google AdSense areas are clean placeholders and do not block the CV creation flow.
 - About Us, Contact Us, Privacy Policy, Terms & Conditions, FAQ, and Blog/Career Tips are frontend sections ready for routing or CMS integration later.
@@ -118,16 +120,22 @@ Do not expose `OPENAI_API_KEY`, `RECAPTCHA_SECRET_KEY`, or `SUPABASE_SERVICE_ROL
 1. Create a Supabase project.
 2. Run `supabase/schema.sql` in the SQL editor.
 3. Enable Email/Password in Supabase Auth. Google is optional.
-4. In Supabase Auth URL Configuration, set the Site URL to `https://buildmycvforfree.netlify.app`.
-5. Add redirect URLs:
+4. Enable Phone Auth in Supabase if you want mobile OTP. Configure an SMS provider such as Twilio in Supabase Auth settings.
+5. In Supabase Auth URL Configuration, set the Site URL to `https://buildmycvforfree.netlify.app`.
+6. Add redirect URLs:
    - `https://buildmycvforfree.netlify.app/**`
    - `http://127.0.0.1:5173/**`
    - `http://localhost:5173/**`
-6. If your email template uses `{{ .SiteURL }}`, change the confirmation link to use `{{ .RedirectTo }}` so `VITE_AUTH_REDIRECT_URL` is honored.
-7. Add your site URL and redirect URLs to the Google provider settings if Google login is enabled.
-8. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to `.env` and Netlify.
-9. Keep `VITE_ENABLE_GOOGLE_AUTH=false` until Google Auth is enabled in Supabase. Set it to `true` only after the Google provider is configured.
-10. Add `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to Netlify environment variables only if you want the server-side resend confirmation fallback.
+7. If your email template uses `{{ .SiteURL }}`, change the confirmation link to use `{{ .RedirectTo }}` so `VITE_AUTH_REDIRECT_URL` is honored.
+8. Add your site URL and redirect URLs to the Google provider settings if Google login is enabled.
+9. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to `.env` and Netlify.
+10. Keep `VITE_ENABLE_GOOGLE_AUTH=false` until Google Auth is enabled in Supabase. Set it to `true` only after the Google provider is configured.
+11. Add `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to Netlify environment variables only if you want the server-side resend confirmation fallback.
+
+## User modes
+
+- Urgent CV mode / No cloud saving: users can continue immediately or verify by mobile OTP. CV data stays in browser state/localStorage only. Supabase CV records, file uploads, and My CVs are disabled.
+- Registered account mode / Cloud saving: users log in with email/password or Google. My CVs, save, duplicate, delete, and Supabase Storage profile photos are enabled.
 
 Google reCAPTCHA is verified through `netlify/functions/verifyRecaptcha.js`. Supabase native Auth CAPTCHA currently supports hCaptcha/Turnstile, so use this Google reCAPTCHA layer for frontend bot checks or switch to Supabase-native CAPTCHA if you prefer that validation inside Supabase Auth.
 

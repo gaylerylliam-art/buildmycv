@@ -917,12 +917,19 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, title = "Verify to dow
   );
 }
 
-function AuthModal({ onClose }) {
+function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
   const [mode, setMode] = useState("signin");
   const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [phoneForm, setPhoneForm] = useState({ phone: "", otp: "" });
+  const [phoneOtpSent, setPhoneOtpSent] = useState(false);
   const [message, setMessage] = useState(isSupabaseConfigured ? "" : "Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env to enable login.");
   const [loading, setLoading] = useState(false);
   const [lastSignupEmail, setLastSignupEmail] = useState("");
+  const startUrgentMode = () => {
+    trackEvent("urgent_mode_start", { method: "local" });
+    onUrgentMode("local");
+    onClose();
+  };
   const submit = async (event) => {
     event.preventDefault();
     if (!supabase) return;
@@ -957,6 +964,7 @@ function AuthModal({ onClose }) {
         setMessage("Signup request sent. Please check your inbox and spam folder for the confirmation email. If it does not arrive, use Resend confirmation email below.");
       } else {
         setMessage("Signed in successfully.");
+        onRegisteredMode();
       }
       if (mode === "signin") onClose();
     } catch (error) {
@@ -993,11 +1001,54 @@ function AuthModal({ onClose }) {
   };
   const signInWithGoogle = async () => {
     if (!supabase) return;
+    onRegisteredMode();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: AUTH_REDIRECT_URL },
     });
     if (error) setMessage(error.message);
+  };
+  const sendPhoneOtp = async (event) => {
+    event.preventDefault();
+    if (!supabase) return;
+    setLoading(true);
+    setMessage("Sending mobile OTP...");
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        phone: phoneForm.phone,
+        options: { channel: "sms" },
+      });
+      if (error) throw error;
+      setPhoneOtpSent(true);
+      trackEvent("phone_otp_sent");
+      setMessage("OTP sent. Enter the code from your SMS to continue without cloud saving.");
+    } catch (error) {
+      setMessage(error.message || "Could not send mobile OTP. Make sure Phone Auth is enabled in Supabase.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  const verifyPhoneOtp = async (event) => {
+    event.preventDefault();
+    if (!supabase) return;
+    setLoading(true);
+    setMessage("Verifying OTP...");
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        phone: phoneForm.phone,
+        token: phoneForm.otp,
+        type: "sms",
+      });
+      if (error) throw error;
+      await supabase.auth.signOut();
+      trackEvent("phone_otp_verified");
+      onUrgentMode("phone");
+      onClose();
+    } catch (error) {
+      setMessage(error.message || "Invalid OTP. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4">
@@ -1005,11 +1056,24 @@ function AuthModal({ onClose }) {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-2xl font-black text-slate-950">{mode === "signin" ? "Login" : "Create account"}</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">Save up to 5 CVs, restore drafts, and manage your files securely.</p>
+            <p className="mt-2 text-sm leading-6 text-slate-600">Choose quick download-only mode or sign in to save CVs online.</p>
           </div>
           <button onClick={onClose} className="text-2xl leading-none text-slate-500">x</button>
         </div>
-        <div className="mt-5 grid grid-cols-2 gap-2">
+        <div className="mt-5 grid gap-2">
+          <button onClick={startUrgentMode} className="rounded bg-green-600 px-4 py-3 text-sm font-black text-white hover:bg-green-700">
+            Continue without cloud saving
+          </button>
+          <button onClick={() => setMode("phone")} className={`rounded px-4 py-3 text-sm font-black ${mode === "phone" ? "bg-slate-950 text-white" : "bg-blue-50 text-blue-800"}`}>
+            Continue with mobile OTP
+          </button>
+          <p className="rounded bg-amber-50 p-3 text-xs font-bold leading-5 text-amber-900">
+            Download-only mode: Your CV will not be saved online. Download your file before closing the browser.
+          </p>
+        </div>
+        <div className="mt-4">
+          <p className="mb-2 text-xs font-black uppercase text-slate-500">Sign in / Create account to save online</p>
+          <div className="grid grid-cols-2 gap-2">
           {[
             ["signin", "Login"],
             ["signup", "Sign up"],
@@ -1018,7 +1082,25 @@ function AuthModal({ onClose }) {
               {label}
             </button>
           ))}
+          </div>
         </div>
+        {mode === "phone" ? (
+          <form onSubmit={phoneOtpSent ? verifyPhoneOtp : sendPhoneOtp} className="mt-5 grid gap-3">
+            <label>
+              <span className="form-label">Mobile number</span>
+              <input className="form-field" type="tel" value={phoneForm.phone} onChange={(event) => setPhoneForm({ ...phoneForm, phone: event.target.value })} placeholder="+971501234567" required />
+            </label>
+            {phoneOtpSent && (
+              <label>
+                <span className="form-label">OTP code</span>
+                <input className="form-field" inputMode="numeric" maxLength={6} value={phoneForm.otp} onChange={(event) => setPhoneForm({ ...phoneForm, otp: event.target.value })} required />
+              </label>
+            )}
+            <button disabled={!isSupabaseConfigured || loading} className="rounded bg-green-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
+              {loading ? "Please wait..." : phoneOtpSent ? "Verify OTP and continue" : "Send OTP"}
+            </button>
+          </form>
+        ) : (
         <form onSubmit={submit} className="mt-5 grid gap-3">
           {mode === "signup" && (
             <label>
@@ -1039,6 +1121,7 @@ function AuthModal({ onClose }) {
             {loading ? "Please wait..." : mode === "signin" ? "Login" : "Create account"}
           </button>
         </form>
+        )}
         {GOOGLE_AUTH_ENABLED ? (
           <button disabled={!isSupabaseConfigured} onClick={signInWithGoogle} className="mt-3 w-full rounded border border-blue-600 px-5 py-3 font-bold text-blue-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400">
             Continue with Google
@@ -1443,9 +1526,12 @@ function CVBuilderApp({ onHome }) {
   const [authOpen, setAuthOpen] = useState(false);
   const [storageMessage, setStorageMessage] = useState("");
   const [pendingDraft, setPendingDraft] = useState(null);
+  const [userMode, setUserMode] = useState(() => localStorage.getItem("cvforall:user-mode") || "guest");
   const theme = useMemo(() => themes.find((item) => item.id === themeId), [themeId]);
   const coverTheme = useMemo(() => themes.find((item) => item.id === coverThemeId), [coverThemeId]);
   const user = session?.user || null;
+  const cloudSavingEnabled = Boolean(user && userMode === "registered");
+  const noCloudMode = userMode === "urgent-local" || userMode === "urgent-phone";
   useEffect(() => {
     initAnalytics();
     if (!supabase) return;
@@ -1453,6 +1539,23 @@ function CVBuilderApp({ onHome }) {
     const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => setSession(nextSession));
     return () => data.subscription.unsubscribe();
   }, []);
+  useEffect(() => {
+    localStorage.setItem("cvforall:user-mode", userMode);
+  }, [userMode]);
+  useEffect(() => {
+    if (!noCloudMode && user) {
+      setUserMode("registered");
+    }
+  }, [user?.id, noCloudMode]);
+  useEffect(() => {
+    if (!noCloudMode || downloaded || coverDownloaded) return;
+    const warnBeforeLeave = (event) => {
+      event.preventDefault();
+      event.returnValue = "Your CV will not be saved online. Download your file before closing the browser.";
+    };
+    window.addEventListener("beforeunload", warnBeforeLeave);
+    return () => window.removeEventListener("beforeunload", warnBeforeLeave);
+  }, [noCloudMode, downloaded, coverDownloaded]);
   useEffect(() => {
     const rawDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
     if (!rawDraft) return;
@@ -1511,7 +1614,7 @@ function CVBuilderApp({ onHome }) {
     });
   };
   const handleProfilePhotoChange = async (key, value) => {
-    if (key !== "profilePhoto" || !value || !user) {
+    if (key !== "profilePhoto" || !value || !cloudSavingEnabled) {
       setCv((current) => ({ ...current, [key]: value }));
       return;
     }
@@ -1599,7 +1702,15 @@ function CVBuilderApp({ onHome }) {
   };
   const signOut = async () => {
     await supabase?.auth.signOut();
+    setUserMode("guest");
     trackEvent("logout");
+  };
+  const startUrgentMode = (method) => {
+    setUserMode(method === "phone" ? "urgent-phone" : "urgent-local");
+    setAuthOpen(false);
+  };
+  const startRegisteredMode = () => {
+    setUserMode("registered");
   };
   return (
     <main className="min-h-screen bg-slate-100">
@@ -1613,13 +1724,13 @@ function CVBuilderApp({ onHome }) {
             <span className="text-green-700">1 Category</span><span>2 Details</span><span>3 Customize</span><span>4 Download</span>
           </div>
           <div className="flex items-center gap-2">
-            {user ? (
+            {cloudSavingEnabled ? (
               <button onClick={signOut} className="rounded border border-slate-300 px-3 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50">
                 Logout
               </button>
             ) : (
               <button onClick={() => setAuthOpen(true)} className="rounded border border-blue-600 px-3 py-3 text-sm font-bold text-blue-700 hover:bg-blue-50">
-                Login
+                Access
               </button>
             )}
             <button onClick={() => setDownloadTarget(activeBuilder === "cv" ? "cv" : "cover")} className="inline-flex items-center gap-2 rounded bg-green-600 px-3 py-3 text-sm font-bold text-white hover:bg-green-700 sm:px-5"><Icon name="download" className="h-4 w-4" /> <span className="hidden sm:inline">Download</span></button>
@@ -1641,10 +1752,17 @@ function CVBuilderApp({ onHome }) {
             ))}
           </div>
           <div className="text-xs font-bold text-slate-500">
-            {saveStatus} - {user ? `Logged in as ${user.email}` : "Login to sync with Supabase"}
+            {saveStatus} - {cloudSavingEnabled ? `Cloud saving as ${user.email}` : noCloudMode ? "Download-only mode. No cloud saving." : "Choose download-only or sign in to save online."}
           </div>
         </div>
       </div>
+      {noCloudMode && (
+        <section className="border-b border-amber-200 bg-amber-50 px-5 py-3">
+          <div className="mx-auto max-w-7xl text-sm font-bold leading-6 text-amber-950">
+            Your CV will not be saved online. Download your file before closing the browser.
+          </div>
+        </section>
+      )}
       {pendingDraft && (
         <section className="border-b border-amber-200 bg-amber-50 px-5 py-4">
           <div className="mx-auto flex max-w-7xl flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -1683,7 +1801,7 @@ function CVBuilderApp({ onHome }) {
           <aside className={`builder-panel min-w-0 space-y-5 rounded bg-white p-5 shadow-sm ring-1 ring-slate-200 ${mobileCvView === "preview" ? "hidden lg:block" : ""}`}>
             <ExistingCVImporter onImport={handleImport} />
             <ProfilePhotoUploader cv={cv} onChange={handleProfilePhotoChange} />
-            {storageMessage && <p className="rounded bg-slate-50 p-3 text-xs font-bold leading-5 text-slate-600">{storageMessage}</p>}
+            {storageMessage && cloudSavingEnabled && <p className="rounded bg-slate-50 p-3 text-xs font-bold leading-5 text-slate-600">{storageMessage}</p>}
             <CategorySelector selected={categoryId} onSelect={handleCategory} />
             <CVBuilderForm cv={cv} onChange={(key, value) => setCv((current) => ({ ...current, [key]: value }))} />
           </aside>
@@ -1696,7 +1814,19 @@ function CVBuilderApp({ onHome }) {
           </section>
           <aside className={`builder-panel min-w-0 space-y-6 rounded bg-white p-5 shadow-sm ring-1 ring-slate-200 ${mobileCvView === "preview" ? "hidden lg:block" : ""}`}>
             <CVCompletenessPanel cv={cv} />
-            <MyCvsPanel user={user} cv={cv} categoryId={categoryId} themeId={themeId} layoutId={layoutId} onLoad={loadSavedCv} />
+            {cloudSavingEnabled ? (
+              <MyCvsPanel user={user} cv={cv} categoryId={categoryId} themeId={themeId} layoutId={layoutId} onLoad={loadSavedCv} />
+            ) : (
+              <section className="rounded border border-amber-200 bg-amber-50 p-4">
+                <h3 className="panel-title text-amber-950">Download-only mode</h3>
+                <p className="mt-2 text-xs font-bold leading-5 text-amber-900">
+                  Cloud saving is off. Your CV stays in this browser only and will not be saved to Supabase.
+                </p>
+                <button onClick={() => setAuthOpen(true)} className="mt-3 w-full rounded border border-amber-300 bg-white px-4 py-3 text-sm font-black text-amber-900 hover:bg-amber-100">
+                  Sign in to save online
+                </button>
+              </section>
+            )}
             <ThemeSelector selected={themeId} onSelect={setThemeId} />
             <LayoutSelector selected={layoutId} onSelect={setLayoutId} />
             <button onClick={() => setDownloadTarget("cv")} className="flex w-full items-center justify-center gap-2 rounded bg-green-600 px-5 py-4 font-bold text-white hover:bg-green-700">
@@ -1730,7 +1860,7 @@ function CVBuilderApp({ onHome }) {
       )}
       {downloadTarget === "cv" && <DownloadModal cv={cv} onClose={() => setDownloadTarget(null)} onVerifiedDownload={handleDownload} />}
       {downloadTarget === "cover" && <CoverLetterDownloadModal cv={cv} onClose={() => setDownloadTarget(null)} onVerifiedDownload={handleCoverDownload} />}
-      {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
+      {authOpen && <AuthModal onClose={() => setAuthOpen(false)} onUrgentMode={startUrgentMode} onRegisteredMode={startRegisteredMode} />}
     </main>
   );
 }
