@@ -144,7 +144,7 @@ const downloadCvDocx = async (cv, filename) => {
   saveBlob(blob, filename);
 };
 
-export const buildCvHtml = (cv, theme = { color: "#0f66d0", dark: "#0f172a" }) => `
+export const buildCvHtml = (cv, theme = { color: "#0f66d0", dark: "#0f172a" }, layout = "classic") => `
   <html>
     <head>
       <meta charset="UTF-8" />
@@ -163,9 +163,50 @@ export const buildCvHtml = (cv, theme = { color: "#0f66d0", dark: "#0f172a" }) =
         .round { border-radius: 999px; }
         .square { border-radius: 5px; }
         .section { break-inside: avoid; page-break-inside: avoid; }
+        .sidebar-paper { display: grid; grid-template-columns: 38% 62%; min-height: 970px; padding: 0; }
+        .sidebar { background: ${theme.dark}; color: #ffffff; padding: 20px 24px 28px; }
+        .sidebar-header { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 20px; }
+        .photo-container { width: 100%; display: flex; justify-content: center; margin-bottom: 20px; }
+        .profile-photo { width: 170px; height: 170px; object-fit: cover; display: block; background: rgba(255,255,255,0.14); border: 3px solid rgba(255,255,255,0.22); }
+        .profile-photo.round { border-radius: 50%; }
+        .profile-photo.square { border-radius: 12px; }
+        .profile-photo.placeholder { display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: 900; }
+        .name-block { text-align: center; }
+        .sidebar-name { margin: 0; color: #ffffff; font-size: 24px; line-height: 1.15; }
+        .sidebar-title { margin: 8px 0 0; color: rgba(255,255,255,0.88); font-size: 14px; font-weight: 700; }
+        .sidebar-contact { margin-top: 28px; color: rgba(255,255,255,0.86); font-size: 11px; line-height: 1.8; text-align: left; }
+        .main-content { padding: 28px; }
       </style>
     </head>
     <body>
+      ${layout === "sidebar" ? `
+      <div class="sidebar-paper">
+        <aside class="sidebar">
+          <div class="sidebar-header">
+            <div class="photo-container">
+              ${cv.profilePhoto ? `<img class="profile-photo ${cv.photoShape === "round" ? "round" : "square"}" src="${cv.profilePhoto}" alt="Profile photo" />` : `<div class="profile-photo placeholder ${cv.photoShape === "round" ? "round" : "square"}">${escapeHtml(initialsForPdf(cv.fullName))}</div>`}
+            </div>
+            <div class="name-block">
+              <h1 class="sidebar-name">${escapeHtml(cv.fullName)}</h1>
+              <p class="sidebar-title">${escapeHtml(cv.jobTitle)}</p>
+            </div>
+          </div>
+          <div class="sidebar-contact">
+            <p>${escapeHtml(cv.email)}</p>
+            <p>${escapeHtml(cv.phone)}</p>
+            <p>${escapeHtml(cv.country)}</p>
+          </div>
+        </aside>
+        <main class="main-content">
+          <div class="section"><h2>Professional Summary</h2><p>${escapeHtml(cv.summary)}</p></div>
+          <div class="section"><h2>Skills</h2><p>${escapeHtml(cv.skills)}</p></div>
+          <div class="section"><h2>Work Experience</h2><ul>${joinLines(cv.experience)}</ul></div>
+          <div class="section"><h2>Education</h2><p>${escapeHtml(cv.education)}</p></div>
+          <div class="section"><h2>Certifications</h2><p>${escapeHtml(cv.certifications)}</p></div>
+          <div class="section"><h2>Languages</h2><p>${escapeHtml(cv.languages)}</p></div>
+          <div class="section"><h2>References</h2><p>${escapeHtml(cv.references)}</p></div>
+        </main>
+      </div>` : `
       <div class="header">
         ${cv.profilePhoto ? `<img class="photo ${cv.photoShape === "round" ? "round" : "square"}" src="${cv.profilePhoto}" alt="Profile photo" />` : ""}
         <div>
@@ -181,12 +222,21 @@ export const buildCvHtml = (cv, theme = { color: "#0f66d0", dark: "#0f172a" }) =
       <div class="section"><h2>Certifications</h2><p>${escapeHtml(cv.certifications)}</p></div>
       <div class="section"><h2>Languages</h2><p>${escapeHtml(cv.languages)}</p></div>
       <div class="section"><h2>References</h2><p>${escapeHtml(cv.references)}</p></div>
+      `}
     </body>
   </html>
 `;
 
-export const downloadCvFile = async (cv, type, theme) => {
-  const html = buildCvHtml(cv, theme);
+const initialsForPdf = (name) =>
+  String(name || "")
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+export const downloadCvFile = async (cv, type, theme, layout = "classic") => {
+  const html = buildCvHtml(cv, theme, layout);
   const baseName = fileBaseName(cv.fullName, "CV");
   if (type === "word") {
     await downloadCvDocx(cv, `${baseName}.docx`);

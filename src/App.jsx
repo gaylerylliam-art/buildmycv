@@ -706,32 +706,59 @@ function CVBuilderForm({ cv, onChange }) {
   );
 }
 
-function readCvFile(file) {
-  const textLike = file.type.startsWith("text/") || file.name.toLowerCase().endsWith(".txt");
-  if (!textLike) {
-    return Promise.resolve(
-      `${file.name}\nProfessional Summary\nExisting CV uploaded. Connect a real AI parser to extract PDF or Word content in production.\nSkills\nCustomer service, Teamwork, Time management\nWork Experience\nUploaded CV file ready for AI extraction.`
-    );
+async function readCvFile(file) {
+  const name = file.name.toLowerCase();
+  if (file.type.startsWith("text/") || name.endsWith(".txt")) {
+    return file.text();
   }
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(new Error("Could not read this CV file."));
-    reader.readAsText(file);
-  });
+
+  if (name.endsWith(".docx")) {
+    const mammoth = await import("mammoth/mammoth.browser");
+    const arrayBuffer = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    if (!result.value?.trim()) {
+      throw new Error("Could not find readable text in this DOCX file.");
+    }
+    return result.value;
+  }
+
+  if (name.endsWith(".pdf")) {
+    const pdfjs = await import("pdfjs-dist");
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.mjs", import.meta.url).toString();
+    const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+    const pages = [];
+    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+      const page = await pdf.getPage(pageNumber);
+      const content = await page.getTextContent();
+      pages.push(content.items.map((item) => item.str).join(" "));
+    }
+    const text = pages.join("\n").trim();
+    if (!text) {
+      throw new Error("Could not find readable text in this PDF. If it is a scanned image, please upload a text-based PDF or DOCX.");
+    }
+    return text;
+  }
+
+  if (name.endsWith(".doc")) {
+    throw new Error("Old .doc files cannot be read reliably in the browser. Please save it as .docx, PDF, or TXT and upload again.");
+  }
+
+  throw new Error("Unsupported file type. Please upload a PDF, DOCX, or TXT CV.");
 }
 
 function mockAiExtractCv(text, fileName) {
-  const clean = text.replace(/\r/g, "").trim();
+  const clean = text.replace(/\r/g, "\n").replace(/[ \t]+/g, " ").trim();
   const lines = clean.split("\n").map((line) => line.trim()).filter(Boolean);
   const email = clean.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];
   const phone = clean.match(/(\+?\d[\d\s().-]{7,}\d)/)?.[0];
-  const firstLine = lines.find((line) => !line.includes("@") && !/curriculum|resume|cv/i.test(line));
+  const headingPattern = /summary|profile|objective|skills|experience|employment|work history|education|certification|certificate|language|reference|contact|curriculum|resume|cv/i;
+  const firstLine = lines.find((line) => !line.includes("@") && !headingPattern.test(line) && line.length <= 60 && /[a-z]/i.test(line));
+  const compactText = lines.join("\n");
   const section = (names) => {
-    const index = lines.findIndex((line) => names.some((name) => line.toLowerCase().includes(name)));
+    const index = lines.findIndex((line) => names.some((name) => new RegExp(`^${name}\\b`, "i").test(line) || line.toLowerCase() === name));
     if (index === -1) return "";
-    const nextIndex = lines.findIndex((line, lineIndex) => lineIndex > index && /summary|profile|skills|experience|employment|education|certification|language|reference/i.test(line));
-    return lines.slice(index + 1, nextIndex === -1 ? index + 5 : nextIndex).join("\n");
+    const nextIndex = lines.findIndex((line, lineIndex) => lineIndex > index && /summary|profile|objective|skills|experience|employment|work history|education|certification|certificate|language|reference/i.test(line));
+    return lines.slice(index + 1, nextIndex === -1 ? index + 6 : nextIndex).join("\n").trim();
   };
   const skills = section(["skills"]);
   const experience = section(["experience", "employment", "work history"]);
@@ -739,14 +766,16 @@ function mockAiExtractCv(text, fileName) {
   const certifications = section(["certification", "certificate"]);
   const languages = section(["language"]);
   const summary = section(["summary", "profile", "objective"]);
+  const jobTitle = lines.find((line, index) => index > 0 && index < 8 && !line.includes("@") && !phone?.includes(line) && !headingPattern.test(line) && line.length <= 70);
   return {
     fullName: firstLine || fileName.replace(/\.[^.]+$/, "").replaceAll("-", " "),
+    jobTitle: jobTitle || "",
     email: email || "",
     phone: phone || "",
-    summary: summary || "Professional and reliable worker with experience from the uploaded CV. Please review and improve this summary.",
-    skills: skills || "Teamwork, Communication, Time management",
-    experience: experience || "Experience imported from existing CV. Please review and edit details.",
-    education: education || "Education details imported from existing CV. Please review.",
+    summary: summary || compactText.split("\n").filter((line) => line.length > 40).slice(0, 2).join(" "),
+    skills: skills || "Please review imported CV and add key skills here.",
+    experience: experience || "Please review imported CV and add work experience here.",
+    education: education || "Please review imported CV and add education details here.",
     certifications: certifications || "Add certificates or training here.",
     languages: languages || "English",
   };
@@ -836,11 +865,21 @@ function LiveCVPreview({ cv, theme, layout }) {
   if (layout === "sidebar") {
     return (
       <article className="cv-paper grid grid-cols-[0.38fr_0.62fr] overflow-hidden p-0">
-        <aside className="p-6 text-white" style={{ background: theme.dark }}>
-          {photo() || <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/15 text-xl font-black">{initials(cv.fullName)}</div>}
-          <h2 className="mt-5 text-xl font-black leading-tight">{cv.fullName}</h2>
-          <p className="mt-1 text-sm font-bold text-white/85">{cv.jobTitle}</p>
-          <div className="mt-7 space-y-3 text-[11px] leading-5 text-white/85">
+        <aside className="cv-sidebar text-white" style={{ background: theme.dark }}>
+          <div className="sidebar-header">
+            <div className="photo-container">
+              {cv.profilePhoto ? (
+                <img src={cv.profilePhoto} alt={`${cv.fullName} profile`} className={`profile-photo ${cv.photoShape === "round" ? "round" : "square"}`} />
+              ) : (
+                <div className={`profile-photo placeholder ${cv.photoShape === "round" ? "round" : "square"}`}>{initials(cv.fullName)}</div>
+              )}
+            </div>
+            <div className="name-block">
+              <h2 className="text-xl font-black leading-tight">{cv.fullName}</h2>
+              <p className="mt-1 text-sm font-bold text-white/85">{cv.jobTitle}</p>
+            </div>
+          </div>
+          <div className="sidebar-contact mt-7 space-y-3 text-[11px] leading-5 text-white/85">
             <p>{cv.email}</p><p>{cv.phone}</p><p>{cv.country}</p>
           </div>
         </aside>
@@ -1658,7 +1697,7 @@ function CVBuilderApp({ onHome }) {
     }
   };
   const handleDownload = async (type) => {
-    await downloadCvFile(cv, type, theme);
+    await downloadCvFile(cv, type, theme, layoutId);
     setDownloaded(true);
     setDownloadTarget(null);
   };
