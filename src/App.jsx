@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { categories, layouts, themes } from "./data/categories";
 import {
   coverLetterFonts,
@@ -10,10 +11,10 @@ import {
   regionalFormats,
   sampleCoverLetters,
 } from "./data/coverLetterTemplates";
-import { careerTips, faqs } from "./data/siteContent";
+import { blogArticles } from "./data/blogArticles";
+import { faqs } from "./data/siteContent";
 import { downloadCoverLetterFile, downloadCvFile } from "./utils/downloads";
 import { initAnalytics, trackEvent } from "./utils/analytics";
-import { isEmailJsConfigured, sendContactEmail } from "./utils/email";
 import { getRecaptchaToken, isRecaptchaConfigured } from "./utils/recaptcha";
 import {
   deleteUserCv,
@@ -21,9 +22,10 @@ import {
   isSupabaseConfigured,
   listUserCvs,
   saveCvForUser,
+  submitContactMessage,
   supabase,
   uploadProfilePhoto,
-} from "./utils/supabaseClient";
+} from "./supabaseClient";
 
 const defaultCategory = categories[0];
 
@@ -96,6 +98,7 @@ const coverLetterToText = (letter, cv) => {
 const DRAFT_STORAGE_KEY = "cvforall:draft:v1";
 const AUTH_REDIRECT_URL = import.meta.env.VITE_AUTH_REDIRECT_URL || "https://buildmycvforfree.netlify.app/#builder";
 const GOOGLE_AUTH_ENABLED = import.meta.env.VITE_ENABLE_GOOGLE_AUTH === "true";
+const ADSENSE_CLIENT_ID = "ca-pub-XXXXXXXXXX";
 
 const completenessFields = [
   ["Contact details", (cv) => cv.fullName && cv.email && cv.phone && cv.country],
@@ -144,10 +147,38 @@ function Icon({ name, className = "h-5 w-5" }) {
   return <svg {...common}>{paths[name]}</svg>;
 }
 
-function AdPlaceholder({ label = "Google AdSense Placeholder (728x90)", compact = false }) {
+function Seo({ title, description }) {
+  useEffect(() => {
+    document.title = `${title} | CVforAll`;
+    let meta = document.querySelector("meta[name='description']");
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.setAttribute("name", "description");
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute("content", description);
+  }, [title, description]);
+  return null;
+}
+
+function AdBanner({ label = "Google AdSense ad space", compact = false, slot = "0000000000" }) {
+  useEffect(() => {
+    try {
+      if (window.adsbygoogle) window.adsbygoogle.push({});
+    } catch {
+      // Ad blockers or unapproved AdSense accounts can block this script.
+    }
+  }, []);
   return (
-    <div className={`mx-auto flex w-full max-w-6xl items-center justify-center rounded border border-dashed border-slate-300 bg-white text-slate-500 ${compact ? "min-h-20 text-sm" : "min-h-24"}`}>
-      {label}
+    <div className={`mx-auto w-full max-w-6xl rounded border border-dashed border-slate-300 bg-white p-2 text-center text-slate-500 ${compact ? "min-h-20 text-sm" : "min-h-24"}`}>
+      <ins
+        className="adsbygoogle block"
+        data-ad-client={ADSENSE_CLIENT_ID}
+        data-ad-slot={slot}
+        data-ad-format="auto"
+        data-full-width-responsive="true"
+      />
+      <span className="pointer-events-none inline-flex py-4 text-xs font-bold uppercase tracking-wide">{label}</span>
     </div>
   );
 }
@@ -156,18 +187,18 @@ function Header({ onStart }) {
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
-        <a href="#top" className="flex items-center gap-2 font-bold text-slate-950">
+        <Link to="/" className="flex items-center gap-2 font-bold text-slate-950">
           <span className="flex h-9 w-9 items-center justify-center rounded bg-green-600 text-white">
             <Icon name="file" className="h-5 w-5" />
           </span>
           <span className="text-xl">CV<span className="text-green-600">forAll</span></span>
-        </a>
+        </Link>
         <nav className="hidden items-center gap-6 text-sm font-semibold text-slate-700 md:flex">
-          <a href="#templates">Templates</a>
-          <a href="#about">About</a>
-          <a href="#blog">Career Tips</a>
-          <a href="#faq">FAQ</a>
-          <a href="#contact">Contact</a>
+          <Link to="/#templates">Templates</Link>
+          <Link to="/about">About</Link>
+          <Link to="/blog">Career Tips</Link>
+          <Link to="/#faq">FAQ</Link>
+          <Link to="/contact">Contact</Link>
         </nav>
         <button onClick={onStart} className="rounded bg-green-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-green-700">
           Start your free CV
@@ -186,6 +217,10 @@ function LandingPage({ onStart }) {
   ];
   return (
     <main id="top">
+      <Seo
+        title="Free CV Builder"
+        description="Create a professional CV for free in minutes with beginner-friendly templates for UAE, GCC, and Philippines job seekers."
+      />
       <section className="mx-auto grid max-w-7xl items-center gap-10 px-5 pb-10 pt-14 lg:grid-cols-[1fr_0.9fr] lg:pt-20">
         <div>
           <h1 className="max-w-3xl text-4xl font-black leading-tight text-slate-950 sm:text-5xl lg:text-6xl">
@@ -223,7 +258,7 @@ function LandingPage({ onStart }) {
           </div>
         </div>
       </section>
-      <div className="px-5 py-5"><AdPlaceholder /></div>
+      <div className="px-5 py-5"><AdBanner label="Google AdSense homepage ad" slot="1111111111" /></div>
       <section id="how" className="mx-auto max-w-7xl px-5 py-14">
         <h2 className="text-center text-3xl font-black text-slate-950">Build your CV in 3 easy steps</h2>
         <div className="mt-10 grid gap-6 md:grid-cols-3">
@@ -258,18 +293,23 @@ function LandingPage({ onStart }) {
       <section id="templates" className="mx-auto max-w-7xl px-5 py-14">
         <h2 className="text-center text-3xl font-black text-slate-950">CV templates for every job category</h2>
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {categories.map((category) => (
-            <button key={category.id} onClick={onStart} className="rounded border border-slate-200 bg-white p-5 text-left transition hover:border-green-500 hover:shadow-soft">
-              <Icon name="briefcase" className="h-7 w-7 text-blue-600" />
-              <h3 className="mt-4 font-black text-slate-950">{category.name}</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{category.title}</p>
-            </button>
+          {categories.map((category, index) => (
+            <React.Fragment key={category.id}>
+              <button onClick={onStart} className="rounded border border-slate-200 bg-white p-5 text-left transition hover:border-green-500 hover:shadow-soft">
+                <Icon name="briefcase" className="h-7 w-7 text-blue-600" />
+                <h3 className="mt-4 font-black text-slate-950">{category.name}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{category.title}</p>
+              </button>
+              {(index + 1) % 4 === 0 && index !== categories.length - 1 && (
+                <div className="sm:col-span-2 lg:col-span-4">
+                  <AdBanner compact label="Google AdSense template category ad" slot={`222222222${index}`} />
+                </div>
+              )}
+            </React.Fragment>
           ))}
         </div>
       </section>
-      <div className="px-5 pb-6"><AdPlaceholder /></div>
-      <AboutSection onStart={onStart} />
-      <BlogCareerTips />
+      <div className="px-5 pb-6"><AdBanner label="Google AdSense category section ad" slot="3333333333" /></div>
       <section id="faq" className="mx-auto grid max-w-7xl gap-10 px-5 py-14 lg:grid-cols-[0.8fr_1fr]">
         <div>
           <h2 className="text-3xl font-black text-slate-950">Frequently asked questions</h2>
@@ -294,80 +334,23 @@ function LandingPage({ onStart }) {
   );
 }
 
-function AboutSection({ onStart }) {
-  return (
-    <section id="about" className="border-y border-slate-200 bg-slate-50 px-5 py-14">
-      <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.9fr_1.1fr]">
-        <div>
-          <h2 className="text-3xl font-black text-slate-950">About Us</h2>
-          <p className="mt-5 text-lg leading-8 text-slate-600">
-            CVforAll was created to help people prepare a clear, professional CV without cost or confusion.
-            The builder focuses on practical job categories, simple words, and editable templates that workers can use right away.
-          </p>
-          <button onClick={onStart} className="mt-7 rounded bg-green-600 px-6 py-4 font-bold text-white hover:bg-green-700">
-            Build my CV
-          </button>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {[
-            ["Community-focused", "Made for fresh graduates, skilled workers, domestic workers, helpers, and job seekers."],
-            ["Beginner-friendly", "Every section uses simple form fields and suggested wording."],
-            ["Free access", "The experience is designed for free CV creation with clean ad placements."],
-            ["Ready to grow", "The mock AI, OTP, PDF, and Word flows are structured for real backend services later."],
-          ].map(([title, text]) => (
-            <div key={title} className="rounded bg-white p-5 shadow-sm ring-1 ring-slate-200">
-              <h3 className="font-black text-slate-950">{title}</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{text}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function BlogCareerTips() {
-  return (
-    <section id="blog" className="mx-auto max-w-7xl px-5 py-14">
-      <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
-        <div>
-          <h2 className="text-3xl font-black text-slate-950">Blog and Career Tips</h2>
-          <p className="mt-4 max-w-3xl text-lg leading-8 text-slate-600">
-            Short, practical articles to help job seekers write stronger CVs and prepare for applications.
-          </p>
-        </div>
-        <AdPlaceholder compact label="Career tips ad area" />
-      </div>
-      <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {careerTips.map((article) => (
-          <article key={article.title} className="rounded border border-slate-200 bg-white p-5 transition hover:border-green-500 hover:shadow-soft">
-            <div className="flex items-center justify-between gap-3 text-xs font-black text-slate-500">
-              <span>{article.category}</span>
-              <span>{article.readTime}</span>
-            </div>
-            <h3 className="mt-4 text-lg font-black leading-7 text-slate-950">{article.title}</h3>
-            <p className="mt-3 text-sm leading-6 text-slate-600">{article.summary}</p>
-            <a href="#builder" className="mt-5 inline-flex items-center gap-2 text-sm font-black text-green-700">
-              Use this tip in my CV <Icon name="arrow" className="h-4 w-4" />
-            </a>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 function ContactSection() {
-  const [status, setStatus] = useState(isEmailJsConfigured ? "Ready to send your message." : "EmailJS is not configured yet. Add the EmailJS Vite variables to enable sending.");
+  const [status, setStatus] = useState(isSupabaseConfigured ? "Ready to send your message." : "Supabase is not configured yet. Add the Supabase environment variables to enable contact form submissions.");
   const [sending, setSending] = useState(false);
   const handleSubmit = async (event) => {
     event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
     setSending(true);
     setStatus("Sending your message...");
     try {
-      await sendContactEmail(event.currentTarget);
+      await submitContactMessage({
+        name: formData.get("name"),
+        email: formData.get("email"),
+        message: formData.get("message"),
+      });
       trackEvent("contact_form_sent");
-      event.currentTarget.reset();
+      form.reset();
       setStatus("Message sent successfully. We will reply as soon as possible.");
     } catch (error) {
       trackEvent("contact_form_failed");
@@ -382,7 +365,7 @@ function ContactSection() {
         <div>
           <h2 className="text-3xl font-black text-slate-950">Contact Us</h2>
           <p className="mt-4 text-lg leading-8 text-slate-600">
-            Questions, feedback, and partnership messages are welcome. This form sends email through EmailJS when your service, template, and public key are configured.
+            Questions, feedback, and partnership messages are welcome. This form stores your message securely in Supabase so the CVforAll team can review and reply.
           </p>
           <div className="mt-6 rounded bg-white p-5 text-sm leading-6 text-slate-600 ring-1 ring-slate-200">
             <p><strong className="text-slate-950">Email:</strong> support@cvforall.example</p>
@@ -390,25 +373,19 @@ function ContactSection() {
           </div>
         </div>
         <form onSubmit={handleSubmit} className="grid gap-4 rounded bg-white p-5 shadow-sm ring-1 ring-slate-200">
-          <input type="hidden" name="app_name" value="CVforAll" />
-          <input type="hidden" name="sent_at" value={new Date().toISOString()} />
           <label>
             <span className="form-label">Your name</span>
-            <input className="form-field" name="user_name" placeholder="Enter your name" required />
+            <input className="form-field" name="name" placeholder="Enter your name" required />
           </label>
           <label>
             <span className="form-label">Email address</span>
-            <input className="form-field" name="user_email" type="email" placeholder="Enter your email" required />
-          </label>
-          <label>
-            <span className="form-label">Subject</span>
-            <input className="form-field" name="subject" placeholder="What is your message about?" required />
+            <input className="form-field" name="email" type="email" placeholder="Enter your email" required />
           </label>
           <label>
             <span className="form-label">Message</span>
             <textarea className="form-field" name="message" rows={5} placeholder="How can we help?" required />
           </label>
-          <button disabled={!isEmailJsConfigured || sending} className="rounded bg-green-600 px-6 py-4 font-bold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-slate-300">
+          <button disabled={!isSupabaseConfigured || sending} className="rounded bg-green-600 px-6 py-4 font-bold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-slate-300">
             {sending ? "Sending..." : "Send message"}
           </button>
           <p className="rounded bg-slate-50 p-3 text-sm font-bold leading-6 text-slate-600">{status}</p>
@@ -422,13 +399,13 @@ function PolicySections() {
   return (
     <section className="mx-auto grid max-w-7xl gap-6 px-5 py-14 lg:grid-cols-2">
       <PolicyCard id="privacy" title="Privacy Policy">
-        <p>CVforAll is designed to collect only the information needed to create and download a CV. Form data, uploaded CV text, profile photos, contact details, and OTP information are handled in the browser in this mock frontend.</p>
-        <p>Do not upload sensitive documents unless you trust the final production deployment. A real production version should include secure storage, encryption, clear retention rules, and a way to delete user data.</p>
+        <p>CVforAll is designed to collect only the information needed to create, save, and download a CV, including name, email, CV content, uploaded CV text, profile photos, and contact details.</p>
+        <p>Users who sign in can save CV data with Supabase Auth, database, and storage. Download-only users keep CV data local in the browser and should download their file before closing the page.</p>
         <p>Ad areas are placeholders for Google AdSense. When ads are enabled, Google and partners may use cookies or similar technologies according to their own policies.</p>
       </PolicyCard>
       <PolicyCard id="terms" title="Terms & Conditions">
         <p>CVforAll provides free CV-building tools, templates, and career tips for general guidance. Users remain responsible for checking the accuracy of their CV before sending it to employers.</p>
-        <p>The mock AI import, OTP, PDF, and Word features are demonstration flows until connected to real production services.</p>
+        <p>Users own the CV information they enter and should only add honest work history, education, skills, certificates, and references.</p>
         <p>The service does not guarantee job interviews, job offers, or employer acceptance. Templates and tips should be adapted honestly to each user&apos;s real experience.</p>
       </PolicyCard>
     </section>
@@ -444,6 +421,166 @@ function PolicyCard({ id, title, children }) {
   );
 }
 
+function PageShell({ children, onStart }) {
+  return (
+    <>
+      <Header onStart={onStart} />
+      <main className="bg-white">{children}</main>
+      <SiteFooter onStart={onStart} />
+    </>
+  );
+}
+
+function StaticHero({ title, description }) {
+  return (
+    <section className="border-b border-slate-200 bg-slate-50 px-5 py-14">
+      <div className="mx-auto max-w-7xl">
+        <h1 className="max-w-3xl text-4xl font-black leading-tight text-slate-950 sm:text-5xl">{title}</h1>
+        <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-600">{description}</p>
+      </div>
+    </section>
+  );
+}
+
+function AboutPage({ onStart }) {
+  return (
+    <PageShell onStart={onStart}>
+      <Seo
+        title="About"
+        description="Learn about CVforAll, a free CV builder for UAE, GCC, and Philippines job seekers."
+      />
+      <StaticHero
+        title="About CVforAll"
+        description="CVforAll helps job seekers create clear, professional CVs for free, especially workers applying in the UAE, GCC, and Philippines job markets."
+      />
+      <section className="mx-auto grid max-w-7xl gap-8 px-5 py-14 lg:grid-cols-[0.8fr_1fr]">
+        <div>
+          <h2 className="text-3xl font-black text-slate-950">Our mission</h2>
+          <p className="mt-4 text-lg leading-8 text-slate-600">
+            Our mission is to make professional CV creation simple and accessible for people who need better work opportunities but may not have design tools, writing support, or technical experience.
+          </p>
+          <button onClick={onStart} className="mt-7 rounded bg-green-600 px-6 py-4 font-bold text-white hover:bg-green-700">Create my free CV</button>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {[
+            ["Fresh graduates", "Simple CV wording for first jobs, internships, training, and entry-level applications."],
+            ["Workers and helpers", "Practical templates for hospitality, domestic services, skilled trades, education, and general helper roles."],
+            ["GCC applicants", "Clear structure for UAE, Dubai, Qatar, Saudi Arabia, Kuwait, Oman, and Bahrain job applications."],
+            ["Philippines job seekers", "Beginner-friendly guidance for local and overseas applications."],
+          ].map(([title, text]) => (
+            <article key={title} className="rounded border border-slate-200 bg-white p-5 shadow-sm">
+              <h3 className="font-black text-slate-950">{title}</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+    </PageShell>
+  );
+}
+
+function ContactPage({ onStart }) {
+  return (
+    <PageShell onStart={onStart}>
+      <Seo
+        title="Contact"
+        description="Contact CVforAll with questions, feedback, and support requests through a Supabase-powered contact form."
+      />
+      <StaticHero title="Contact CVforAll" description="Send us your questions, feedback, or partnership message. We keep the form simple and mobile friendly." />
+      <ContactSection />
+    </PageShell>
+  );
+}
+
+function PrivacyPage({ onStart }) {
+  return (
+    <PageShell onStart={onStart}>
+      <Seo
+        title="Privacy Policy"
+        description="CVforAll privacy policy covering CV content, Supabase storage, Google AdSense cookies, and user rights."
+      />
+      <StaticHero title="Privacy Policy" description="This policy explains what CVforAll may collect and how user CV data should be handled." />
+      <section className="mx-auto max-w-4xl px-5 py-14">
+        <PolicyCard title="Privacy Policy">
+          <p>CVforAll may collect information needed to create and manage CVs, including name, email address, phone number, country, CV content, uploaded CV text, profile photos, saved drafts, and download verification details.</p>
+          <p>When users choose cloud saving, CV data and uploaded files can be stored in Supabase under the user's authenticated account. Users who choose download-only mode keep CV data local in the browser and should download their file before closing the page.</p>
+          <p>CVforAll includes Google AdSense advertising areas. Google and its partners may use cookies or similar technologies to serve, measure, and personalize ads according to Google's policies.</p>
+          <p>Users should have the right to request access, correction, or deletion of their stored personal data. For privacy requests, contact CVforAll through the contact page.</p>
+        </PolicyCard>
+      </section>
+    </PageShell>
+  );
+}
+
+function TermsPage({ onStart }) {
+  return (
+    <PageShell onStart={onStart}>
+      <Seo
+        title="Terms of Use"
+        description="CVforAll terms covering user responsibilities, CV ownership, and employment guarantee disclaimers."
+      />
+      <StaticHero title="Terms of Use" description="Please use CVforAll honestly and review your CV carefully before sending it to employers." />
+      <section className="mx-auto max-w-4xl px-5 py-14">
+        <PolicyCard title="Terms of Use">
+          <p>Users are responsible for the accuracy, honesty, and completeness of the information they enter into CVforAll. Do not include false work history, certificates, or references.</p>
+          <p>Users own the CV content they create. CVforAll provides templates, formatting tools, and guidance, but the user's personal information and work history remain their responsibility.</p>
+          <p>CVforAll does not guarantee interviews, job offers, visa approval, agency acceptance, or employer selection. The app is a CV creation and career guidance tool only.</p>
+          <p>Users should download and keep copies of important documents. Download-only mode does not save CVs online.</p>
+        </PolicyCard>
+      </section>
+    </PageShell>
+  );
+}
+
+function BlogIndexPage({ onStart }) {
+  return (
+    <PageShell onStart={onStart}>
+      <Seo
+        title="Blog and Career Tips"
+        description="Read CV writing and job search tips for UAE, GCC, Dubai, and Philippines job seekers."
+      />
+      <StaticHero title="Blog and Career Tips" description="Practical articles to help job seekers write stronger CVs and prepare for applications." />
+      <section className="mx-auto max-w-7xl px-5 py-14">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {blogArticles.map((article) => (
+            <article key={article.slug} className="rounded border border-slate-200 bg-white p-5 shadow-sm transition hover:border-green-500 hover:shadow-soft">
+              <p className="text-xs font-black uppercase text-slate-500">{new Date(article.date).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}</p>
+              <h2 className="mt-3 text-xl font-black leading-7 text-slate-950">{article.title}</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-600">{article.excerpt}</p>
+              <Link to={`/blog/${article.slug}`} className="mt-5 inline-flex items-center gap-2 text-sm font-black text-green-700">
+                Read more <Icon name="arrow" className="h-4 w-4" />
+              </Link>
+            </article>
+          ))}
+        </div>
+      </section>
+    </PageShell>
+  );
+}
+
+function BlogArticlePage({ onStart }) {
+  const { slug } = useParams();
+  const article = blogArticles.find((item) => item.slug === slug);
+  if (!article) return <Navigate to="/blog" replace />;
+  const splitIndex = Math.ceil(article.content.length / 2);
+  return (
+    <PageShell onStart={onStart}>
+      <Seo title={article.title} description={article.excerpt} />
+      <article className="mx-auto max-w-4xl px-5 py-14">
+        <Link to="/blog" className="text-sm font-black text-green-700">Back to blog</Link>
+        <p className="mt-8 text-xs font-black uppercase text-slate-500">{new Date(article.date).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}</p>
+        <h1 className="mt-3 text-4xl font-black leading-tight text-slate-950 sm:text-5xl">{article.title}</h1>
+        <p className="mt-5 text-lg leading-8 text-slate-600">{article.excerpt}</p>
+        <div className="mt-10 space-y-6 text-base leading-8 text-slate-700">
+          {article.content.slice(0, splitIndex).map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+          <AdBanner compact label="Google AdSense blog article ad" slot="5555555555" />
+          {article.content.slice(splitIndex).map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+        </div>
+      </article>
+    </PageShell>
+  );
+}
+
 function SiteFooter({ onStart }) {
   return (
     <footer className="border-t border-slate-200 bg-slate-950 px-5 py-10 text-white">
@@ -453,19 +590,22 @@ function SiteFooter({ onStart }) {
             <span className="flex h-9 w-9 items-center justify-center rounded bg-green-600 text-white"><Icon name="file" className="h-5 w-5" /></span>
             CVforAll
           </div>
-          <p className="mt-3 max-w-sm text-sm leading-6 text-slate-300">Free, simple CV creation for workers and job seekers.</p>
+          <p className="mt-3 max-w-sm text-sm leading-6 text-slate-300">Free CV Builder for UAE, GCC & Philippines Job Seekers</p>
         </div>
         <nav className="grid gap-3 text-sm font-bold text-slate-300 sm:grid-cols-3">
-          <a href="#about">About Us</a>
-          <a href="#contact">Contact Us</a>
-          <a href="#privacy">Privacy Policy</a>
-          <a href="#terms">Terms & Conditions</a>
-          <a href="#faq">FAQ</a>
-          <a href="#blog">Blog/Career Tips</a>
+          <Link to="/about">About</Link>
+          <Link to="/contact">Contact</Link>
+          <Link to="/privacy">Privacy Policy</Link>
+          <Link to="/terms">Terms of Use</Link>
+          <Link to="/#faq">FAQ</Link>
+          <Link to="/blog">Blog</Link>
         </nav>
-        <button onClick={onStart} className="rounded bg-green-600 px-5 py-3 text-sm font-black text-white hover:bg-green-700">
-          Start free CV
-        </button>
+        <div className="space-y-3">
+          <button onClick={onStart} className="rounded bg-green-600 px-5 py-3 text-sm font-black text-white hover:bg-green-700">
+            Start free CV
+          </button>
+          <p className="text-xs font-semibold text-slate-400">© 2025 CVforAll. All rights reserved.</p>
+        </div>
       </div>
     </footer>
   );
@@ -961,7 +1101,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [phoneForm, setPhoneForm] = useState({ phone: "", otp: "" });
   const [phoneOtpSent, setPhoneOtpSent] = useState(false);
-  const [message, setMessage] = useState(isSupabaseConfigured ? "" : "Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env to enable login.");
+  const [message, setMessage] = useState(isSupabaseConfigured ? "" : "Add VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY or REACT_APP_SUPABASE_URL/REACT_APP_SUPABASE_ANON_KEY to .env to enable login.");
   const [loading, setLoading] = useState(false);
   const [lastSignupEmail, setLastSignupEmail] = useState("");
   const startUrgentMode = () => {
@@ -1539,8 +1679,13 @@ function CoverLetterBuilder({
             </div>
           </section>
         )}
-        <AdPlaceholder compact label="Cover letter ad area" />
-        {downloaded && <div className="rounded border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-900">Cover letter download confirmed. You can also download your CV for free.</div>}
+        <AdBanner compact label="Google AdSense cover letter builder ad" slot="6666666666" />
+        {downloaded && (
+          <div className="space-y-3">
+            <div className="rounded border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-900">Cover letter download confirmed. You can also download your CV for free.</div>
+            <AdBanner compact label="Google AdSense post-download ad" slot="7777777777" />
+          </div>
+        )}
       </aside>
     </div>
   );
@@ -1796,6 +1941,7 @@ function CVBuilderApp({ onHome }) {
             {storageMessage && cloudSavingEnabled && <p className="rounded bg-slate-50 p-3 text-xs font-bold leading-5 text-slate-600">{storageMessage}</p>}
             <CategorySelector selected={categoryId} onSelect={handleCategory} />
             <CVBuilderForm cv={cv} onChange={(key, value) => setCv((current) => ({ ...current, [key]: value }))} />
+            <AdBanner compact label="Google AdSense form ad" slot="1010101010" />
           </aside>
           <section className={`builder-panel min-w-0 ${mobileCvView === "edit" ? "hidden lg:block" : ""}`}>
             <div className="mb-3 flex items-center justify-between">
@@ -1827,8 +1973,13 @@ function CVBuilderApp({ onHome }) {
             <button onClick={() => switchBuilder("cover")} className="flex w-full items-center justify-center gap-2 rounded border border-blue-600 px-5 py-4 font-bold text-blue-700 hover:bg-blue-50">
               <Icon name="file" /> Create Cover Letter
             </button>
-            <AdPlaceholder compact label="Builder page ad area" />
-            {downloaded && <div className="rounded border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-900">Download confirmed. Ad area can appear below confirmation.</div>}
+            <AdBanner compact label="Google AdSense CV builder ad" slot="8888888888" />
+            {downloaded && (
+              <div className="space-y-3">
+                <div className="rounded border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-900">Download confirmed. Your CV file is ready.</div>
+                <AdBanner compact label="Google AdSense post-download ad" slot="9999999999" />
+              </div>
+            )}
           </aside>
         </div>
         </>
@@ -1867,23 +2018,44 @@ function initials(name) {
 }
 
 export default function App() {
-  const [view, setView] = useState(() => (["#builder", "#cover-letter"].includes(window.location.hash) ? "builder" : "landing"));
-  const goTo = (nextView) => {
-    window.location.hash = nextView === "builder" ? "builder" : "top";
-    setView(nextView);
-  };
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isBuilderHash = ["#builder", "#cover-letter"].includes(location.hash);
+  const goToBuilder = () => navigate("/builder");
+  const goHome = () => navigate("/");
+
   useEffect(() => {
     initAnalytics();
-    const syncHash = () => setView(["#builder", "#cover-letter"].includes(window.location.hash) ? "builder" : "landing");
-    window.addEventListener("hashchange", syncHash);
-    return () => window.removeEventListener("hashchange", syncHash);
   }, []);
-  return view === "landing" ? (
-    <>
-      <Header onStart={() => goTo("builder")} />
-      <LandingPage onStart={() => goTo("builder")} />
-    </>
-  ) : (
-    <CVBuilderApp onHome={() => goTo("landing")} />
+  useEffect(() => {
+    if (!location.hash || isBuilderHash) return;
+    const element = document.getElementById(location.hash.slice(1));
+    if (element) window.setTimeout(() => element.scrollIntoView({ behavior: "smooth", block: "start" }), 40);
+  }, [location.hash, location.pathname, isBuilderHash]);
+
+  if (isBuilderHash && location.pathname === "/") {
+    return <CVBuilderApp onHome={goHome} />;
+  }
+
+  return (
+    <Routes>
+      <Route
+        path="/"
+        element={
+          <>
+            <Header onStart={goToBuilder} />
+            <LandingPage onStart={goToBuilder} />
+          </>
+        }
+      />
+      <Route path="/builder" element={<CVBuilderApp onHome={goHome} />} />
+      <Route path="/about" element={<AboutPage onStart={goToBuilder} />} />
+      <Route path="/contact" element={<ContactPage onStart={goToBuilder} />} />
+      <Route path="/privacy" element={<PrivacyPage onStart={goToBuilder} />} />
+      <Route path="/terms" element={<TermsPage onStart={goToBuilder} />} />
+      <Route path="/blog" element={<BlogIndexPage onStart={goToBuilder} />} />
+      <Route path="/blog/:slug" element={<BlogArticlePage onStart={goToBuilder} />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }

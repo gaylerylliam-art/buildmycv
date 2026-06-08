@@ -57,6 +57,22 @@ create table if not exists public.cover_letters (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.contact_messages (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  email text not null,
+  message text not null,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.cv_saves (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  cv_data jsonb not null default '{}'::jsonb,
+  template_id text,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.analytics_events (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete set null,
@@ -113,6 +129,8 @@ alter table public.cvs enable row level security;
 alter table public.cv_drafts enable row level security;
 alter table public.cv_history enable row level security;
 alter table public.cover_letters enable row level security;
+alter table public.contact_messages enable row level security;
+alter table public.cv_saves enable row level security;
 alter table public.analytics_events enable row level security;
 alter table public.download_requests enable row level security;
 
@@ -165,6 +183,17 @@ on public.cover_letters for all
 using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
 
+drop policy if exists "Anyone can submit contact messages" on public.contact_messages;
+create policy "Anyone can submit contact messages"
+on public.contact_messages for insert
+with check (true);
+
+drop policy if exists "Users can manage their cv saves" on public.cv_saves;
+create policy "Users can manage their cv saves"
+on public.cv_saves for all
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
 drop policy if exists "Users can add analytics events" on public.analytics_events;
 create policy "Users can add analytics events"
 on public.analytics_events for insert
@@ -209,3 +238,6 @@ drop policy if exists "Users can delete own profile photos" on storage.objects;
 create policy "Users can delete own profile photos"
 on storage.objects for delete
 using (bucket_id = 'profile-photos' and auth.uid()::text = (storage.foldername(name))[1]);
+
+grant insert on public.contact_messages to anon, authenticated;
+grant select, insert, update, delete on public.cv_saves to authenticated;
