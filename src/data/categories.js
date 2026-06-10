@@ -50,6 +50,16 @@ export const categories = [
       "Prepared simple social media content and captions\nAssisted with promotions and customer follow-up\nTracked campaign tasks and deadlines",
   },
   {
+    id: "supply-chain-logistics",
+    name: "Supply Chain & Logistics",
+    title: "Supply Chain / Logistics Assistant",
+    summary:
+      "Organized supply chain and logistics worker with experience supporting inventory, shipments, order processing, and warehouse coordination.",
+    skills: "Inventory control, Shipment coordination, Order processing, Warehouse operations, Documentation",
+    experience:
+      "Monitored inventory records and helped maintain accurate stock counts\nPrepared shipment documents and coordinated dispatch or receiving tasks\nSupported warehouse, supplier, and delivery teams to complete daily operations",
+  },
+  {
     id: "education",
     name: "Education",
     title: "Teaching Assistant / Tutor",
