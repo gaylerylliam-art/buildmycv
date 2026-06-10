@@ -21,7 +21,9 @@ import {
   duplicateUserCv,
   isSupabaseConfigured,
   listUserCvs,
+  loadLatestDraftForUser,
   saveCvForUser,
+  saveDraftForUser,
   submitContactMessage,
   supabase,
   uploadProfilePhoto,
@@ -29,18 +31,66 @@ import {
 
 const defaultCategory = categories[0];
 
+const createExperienceEntry = (category = defaultCategory) => ({
+  id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+  jobTitle: category.title,
+  employer: "Employer name",
+  fromDate: "",
+  toDate: "",
+  isCurrent: false,
+  responsibilities: category.experience,
+});
+
+const formatWorkExperiences = (entries = []) =>
+  entries
+    .map((entry) =>
+      [
+        entry.jobTitle,
+        entry.employer,
+        [entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - "),
+        entry.responsibilities,
+      ]
+        .filter(Boolean)
+        .join("\n")
+    )
+    .filter(Boolean)
+    .join("\n\n");
+
+const normalizeWorkExperiences = (cv) => {
+  if (Array.isArray(cv.workExperiences) && cv.workExperiences.length) {
+    return cv.workExperiences.map((entry) => ({ ...createExperienceEntry(), ...entry }));
+  }
+  if (!cv.experience) return [createExperienceEntry()];
+  return [
+    {
+      ...createExperienceEntry(),
+      jobTitle: cv.jobTitle || "",
+      employer: "",
+      responsibilities: cv.experience,
+    },
+  ];
+};
+
 const initialCv = {
   fullName: "Juan Dela Cruz",
   jobTitle: defaultCategory.title,
   email: "juan.delacruz@email.com",
   phone: "+971 50 123 4567",
   country: "United Arab Emirates",
+  nationality: "Filipino",
+  visaStatus: "Visit visa",
+  linkedIn: "",
+  portfolioUrl: "",
   summary: defaultCategory.summary,
   skills: defaultCategory.skills,
   experience: defaultCategory.experience,
+  workExperiences: [createExperienceEntry(defaultCategory)],
   education: "High School Diploma\nManila High School, 2018",
   certifications: "Basic Food Safety Certificate",
   languages: "English, Filipino",
+  drivingLicense: "No UAE driving license",
+  expectedSalaryEnabled: false,
+  expectedSalary: "",
   references: "Available upon request",
   profilePhoto: "",
   photoShape: "round",
@@ -102,9 +152,10 @@ const ADSENSE_CLIENT_ID = "ca-pub-XXXXXXXXXX";
 
 const completenessFields = [
   ["Contact details", (cv) => cv.fullName && cv.email && cv.phone && cv.country],
+  ["Nationality and visa status", (cv) => cv.nationality && cv.visaStatus],
   ["Professional summary", (cv) => cv.summary && cv.summary.length > 40],
   ["Skills", (cv) => cv.skills && cv.skills.split(",").length >= 3],
-  ["Work experience", (cv) => cv.experience && cv.experience.length > 35],
+  ["Work experience", (cv) => normalizeWorkExperiences(cv).some((entry) => entry.employer && entry.fromDate && (entry.toDate || entry.isCurrent) && entry.responsibilities?.length > 20)],
   ["Education", (cv) => cv.education && cv.education.length > 10],
   ["Certifications", (cv) => cv.certifications && cv.certifications.length > 5],
   ["Languages", (cv) => cv.languages && cv.languages.length > 2],
@@ -120,6 +171,18 @@ const getCompleteness = (cv) => {
     tip: nextMissing ? `Next: add ${nextMissing[0].toLowerCase()}.` : "Ready to download.",
   };
 };
+
+const createDraftPayload = ({ cv, coverLetter, categoryId, themeId, layoutId, coverThemeId, coverFontId, coverLayoutId }) => ({
+  cv,
+  coverLetter,
+  categoryId,
+  themeId,
+  layoutId,
+  coverThemeId,
+  coverFontId,
+  coverLayoutId,
+  updatedAt: new Date().toISOString(),
+});
 
 function Icon({ name, className = "h-5 w-5" }) {
   const common = {
@@ -327,8 +390,6 @@ function LandingPage({ onStart }) {
           ))}
         </div>
       </section>
-      <ContactSection />
-      <PolicySections />
       <SiteFooter onStart={onStart} />
     </main>
   );
@@ -815,6 +876,77 @@ function ProfilePhotoUploader({ cv, onChange }) {
   );
 }
 
+function WorkExperienceEditor({ cv, onChange }) {
+  const entries = normalizeWorkExperiences(cv);
+  const commitEntries = (nextEntries) => {
+    onChange("workExperiences", nextEntries);
+    onChange("experience", formatWorkExperiences(nextEntries));
+  };
+  const updateEntry = (id, key, value) => {
+    commitEntries(entries.map((entry) => (entry.id === id ? { ...entry, [key]: value } : entry)));
+  };
+  const addEntry = () => {
+    commitEntries([{ ...createExperienceEntry(), jobTitle: cv.jobTitle || "" }, ...entries]);
+  };
+  const removeEntry = (id) => {
+    commitEntries(entries.length === 1 ? [{ ...createExperienceEntry(), jobTitle: cv.jobTitle || "" }] : entries.filter((entry) => entry.id !== id));
+  };
+  return (
+    <section className="rounded border border-slate-200 bg-slate-50 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h3 className="panel-title">Work experience</h3>
+          <p className="mt-1 text-xs font-bold leading-5 text-slate-500">Add one entry for each employer. The preview updates instantly.</p>
+        </div>
+        <button type="button" onClick={addEntry} className="rounded bg-blue-600 px-3 py-2 text-xs font-black text-white">
+          Add job
+        </button>
+      </div>
+      <div className="mt-4 space-y-4">
+        {entries.map((entry, index) => (
+          <article key={entry.id} className="rounded border border-slate-200 bg-white p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h4 className="text-sm font-black text-slate-950">Experience {index + 1}</h4>
+              <button type="button" onClick={() => removeEntry(entry.id)} className="rounded border border-red-200 px-3 py-2 text-xs font-black text-red-700">
+                Remove
+              </button>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label>
+                <span className="form-label">Job title / position</span>
+                <input className="form-field" value={entry.jobTitle || ""} onChange={(event) => updateEntry(entry.id, "jobTitle", event.target.value)} placeholder="Example: Warehouse Assistant" />
+              </label>
+              <label>
+                <span className="form-label">Employer name</span>
+                <input className="form-field" value={entry.employer || ""} onChange={(event) => updateEntry(entry.id, "employer", event.target.value)} placeholder="Example: Amazon" />
+              </label>
+              <label>
+                <span className="form-label">Date employed from</span>
+                <input className="form-field" type="month" value={entry.fromDate || ""} onChange={(event) => updateEntry(entry.id, "fromDate", event.target.value)} />
+              </label>
+              <label>
+                <span className="form-label">Date employed to</span>
+                <input className="form-field" type="month" value={entry.toDate || ""} disabled={entry.isCurrent} onChange={(event) => updateEntry(entry.id, "toDate", event.target.value)} />
+              </label>
+            </div>
+            <label className="mt-3 flex items-center gap-2 text-xs font-bold text-slate-600">
+              <input type="checkbox" checked={Boolean(entry.isCurrent)} onChange={(event) => updateEntry(entry.id, "isCurrent", event.target.checked)} />
+              I currently work here
+            </label>
+            <label className="mt-3 block">
+              <span className="form-label">Responsibilities / achievements</span>
+              <textarea className="form-field resize-y" rows={5} value={entry.responsibilities || ""} onChange={(event) => updateEntry(entry.id, "responsibilities", event.target.value)} placeholder="Write duties and achievements, one per line." />
+            </label>
+          </article>
+        ))}
+      </div>
+      <button type="button" onClick={addEntry} className="mt-4 flex w-full items-center justify-center rounded border border-blue-600 bg-white px-4 py-3 text-sm font-black text-blue-700 hover:bg-blue-50">
+        Add another work experience
+      </button>
+    </section>
+  );
+}
+
 function CVBuilderForm({ cv, onChange }) {
   const fields = [
     ["fullName", "Full name", "text"],
@@ -822,26 +954,55 @@ function CVBuilderForm({ cv, onChange }) {
     ["email", "Contact email", "email"],
     ["phone", "Contact number", "tel"],
     ["country", "Country", "text"],
-    ["summary", "Professional summary", "textarea"],
+    ["nationality", "Nationality", "text"],
+    ["visaStatus", "Visa status", "text"],
+    ["linkedIn", "LinkedIn URL", "url"],
+    ["portfolioUrl", "Portfolio URL", "url"],
+    ["summary", "Professional summary / objective", "textarea"],
     ["skills", "Skills", "textarea"],
-    ["experience", "Work experience", "textarea"],
+    ["workExperiences", "Work experience", "custom"],
     ["education", "Education", "textarea"],
-    ["certifications", "Certifications", "textarea"],
-    ["languages", "Languages", "textarea"],
+    ["certifications", "Certifications & licenses", "textarea"],
+    ["languages", "Languages spoken", "textarea"],
+    ["drivingLicense", "Driving license", "text"],
     ["references", "References", "textarea"],
   ];
   return (
     <div className="space-y-4">
       {fields.map(([key, label, type]) => (
-        <label key={key} className="block">
-          <span className="form-label">{label}</span>
-          {type === "textarea" ? (
-            <textarea value={cv[key]} onChange={(event) => onChange(key, event.target.value)} rows={key === "experience" ? 5 : 3} className="form-field resize-y" />
-          ) : (
-            <input type={type} value={cv[key]} onChange={(event) => onChange(key, event.target.value)} className="form-field" />
-          )}
-        </label>
+        type === "custom" ? (
+          <WorkExperienceEditor key={key} cv={cv} onChange={onChange} />
+        ) : (
+          <label key={key} className="block">
+            <span className="form-label">{label}</span>
+            {type === "textarea" ? (
+              <textarea value={cv[key] || ""} onChange={(event) => onChange(key, event.target.value)} rows={3} className="form-field resize-y" />
+            ) : (
+              <input type={type} value={cv[key] || ""} onChange={(event) => onChange(key, event.target.value)} className="form-field" />
+            )}
+          </label>
+        )
       ))}
+      <section className="rounded border border-slate-200 bg-slate-50 p-4">
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={Boolean(cv.expectedSalaryEnabled)}
+            onChange={(event) => onChange("expectedSalaryEnabled", event.target.checked)}
+            className="mt-1 h-4 w-4 rounded border-slate-300 text-green-600"
+          />
+          <span>
+            <span className="block text-sm font-black text-slate-950">Include expected salary</span>
+            <span className="mt-1 block text-xs font-bold leading-5 text-slate-500">Optional. Show only if the employer asks for salary expectation.</span>
+          </span>
+        </label>
+        {cv.expectedSalaryEnabled && (
+          <label className="mt-4 block">
+            <span className="form-label">Expected salary</span>
+            <input value={cv.expectedSalary || ""} onChange={(event) => onChange("expectedSalary", event.target.value)} className="form-field" placeholder="Example: AED 2,500 per month, negotiable" />
+          </label>
+        )}
+      </section>
     </div>
   );
 }
@@ -891,7 +1052,13 @@ function mockAiExtractCv(text, fileName) {
   const lines = clean.split("\n").map((line) => line.trim()).filter(Boolean);
   const email = clean.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];
   const phone = clean.match(/(\+?\d[\d\s().-]{7,}\d)/)?.[0];
-  const headingPattern = /summary|profile|objective|skills|experience|employment|work history|education|certification|certificate|language|reference|contact|curriculum|resume|cv/i;
+  const linkedIn = clean.match(/https?:\/\/(?:www\.)?linkedin\.com\/[^\s)]+/i)?.[0] || clean.match(/linkedin\.com\/[^\s)]+/i)?.[0];
+  const urlMatches = clean.match(/https?:\/\/[^\s)]+/gi) || [];
+  const portfolioUrl = urlMatches.find((url) => !/linkedin\.com/i.test(url)) || "";
+  const nationality = clean.match(/nationality\s*[:\-]\s*([^\n]+)/i)?.[1]?.trim();
+  const visaStatus = clean.match(/visa\s*(?:status)?\s*[:\-]\s*([^\n]+)/i)?.[1]?.trim();
+  const drivingLicense = clean.match(/(?:driving|driver'?s?)\s+licen[cs]e\s*[:\-]?\s*([^\n]*)/i)?.[0]?.trim();
+  const headingPattern = /summary|profile|objective|skills|experience|employment|work history|education|certification|certificate|language|reference|contact|nationality|visa|driving|linkedin|portfolio|curriculum|resume|cv/i;
   const firstLine = lines.find((line) => !line.includes("@") && !headingPattern.test(line) && line.length <= 60 && /[a-z]/i.test(line));
   const compactText = lines.join("\n");
   const section = (names) => {
@@ -912,12 +1079,29 @@ function mockAiExtractCv(text, fileName) {
     jobTitle: jobTitle || "",
     email: email || "",
     phone: phone || "",
+    nationality: nationality || "",
+    visaStatus: visaStatus || "",
+    linkedIn: linkedIn || "",
+    portfolioUrl,
+    drivingLicense: drivingLicense || "Add driving license status here.",
     summary: summary || compactText.split("\n").filter((line) => line.length > 40).slice(0, 2).join(" "),
     skills: skills || "Please review imported CV and add key skills here.",
     experience: experience || "Please review imported CV and add work experience here.",
+    workExperiences: [
+      {
+        ...createExperienceEntry(),
+        jobTitle: jobTitle || "",
+        employer: "",
+        fromDate: "",
+        toDate: "",
+        isCurrent: false,
+        responsibilities: experience || "Please review imported CV and add work experience here.",
+      },
+    ],
     education: education || "Please review imported CV and add education details here.",
     certifications: certifications || "Add certificates or training here.",
     languages: languages || "English",
+    references: section(["reference"]) || "Available upon request",
   };
 }
 
@@ -980,7 +1164,20 @@ function LayoutSelector({ selected, onSelect }) {
 }
 
 function LiveCVPreview({ cv, theme, layout }) {
-  const lines = (value) => value.split("\n").filter(Boolean);
+  const lines = (value) => String(value || "").split("\n").filter(Boolean);
+  const contactLines = [
+    cv.email,
+    cv.phone,
+    cv.country,
+    cv.linkedIn && `LinkedIn: ${cv.linkedIn}`,
+    cv.portfolioUrl && `Portfolio: ${cv.portfolioUrl}`,
+  ].filter(Boolean);
+  const personalDetails = [
+    cv.nationality && `Nationality: ${cv.nationality}`,
+    cv.visaStatus && `Visa Status: ${cv.visaStatus}`,
+    cv.drivingLicense && `Driving License: ${cv.drivingLicense}`,
+    cv.expectedSalaryEnabled && cv.expectedSalary && `Expected Salary: ${cv.expectedSalary}`,
+  ].filter(Boolean);
   const photo = (size = "h-16 w-16") =>
     cv.profilePhoto ? (
       <img src={cv.profilePhoto} alt={`${cv.fullName} profile`} className={`${size} object-cover ${cv.photoShape === "round" ? "rounded-full" : "rounded"}`} />
@@ -991,11 +1188,36 @@ function LiveCVPreview({ cv, theme, layout }) {
       {list ? <ul className="mt-2 list-disc space-y-1 pl-5 text-[12px] leading-5 text-slate-700">{lines(content).map((line) => <li key={line}>{line}</li>)}</ul> : <p className="mt-2 whitespace-pre-line text-[12px] leading-5 text-slate-700">{content}</p>}
     </section>
   );
+  const workEntries = normalizeWorkExperiences(cv);
+  const workExperienceSection = (
+    <section className="break-inside-avoid">
+      <h3 className="cv-section-title" style={{ color: theme.dark, borderColor: theme.color }}>Work Experience</h3>
+      <div className="mt-3 space-y-4">
+        {workEntries.map((entry) => (
+          <article key={entry.id} className="text-[12px] leading-5 text-slate-700">
+            <div className="flex flex-col justify-between gap-1 sm:flex-row">
+              <div>
+                <p className="font-black text-slate-900">{entry.jobTitle || "Job title"}</p>
+                <p className="font-bold text-slate-700">{entry.employer || "Employer name"}</p>
+              </div>
+              <p className="font-bold text-slate-500">{[entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - ")}</p>
+            </div>
+            {entry.responsibilities && (
+              <ul className="mt-2 list-disc space-y-1 pl-5">
+                {lines(entry.responsibilities).map((line) => <li key={line}>{line}</li>)}
+              </ul>
+            )}
+          </article>
+        ))}
+      </div>
+    </section>
+  );
   const content = (
     <div className={layout === "compact" ? "space-y-3" : "space-y-5"}>
       {section("Professional Summary", cv.summary)}
+      {personalDetails.length > 0 && section("Personal Details", personalDetails.join("\n"))}
       {section("Skills", cv.skills)}
-      {section("Work Experience", cv.experience, true)}
+      {workExperienceSection}
       {section("Education", cv.education)}
       {section("Certifications", cv.certifications)}
       {section("Languages", cv.languages)}
@@ -1020,7 +1242,7 @@ function LiveCVPreview({ cv, theme, layout }) {
             </div>
           </div>
           <div className="sidebar-contact mt-7 space-y-3 text-[11px] leading-5 text-white/85">
-            <p>{cv.email}</p><p>{cv.phone}</p><p>{cv.country}</p>
+            {contactLines.map((line) => <p key={line}>{line}</p>)}
           </div>
         </aside>
         <div className="p-7">{content}</div>
@@ -1034,7 +1256,7 @@ function LiveCVPreview({ cv, theme, layout }) {
         <div>
           <h2 className="text-2xl font-black leading-tight">{cv.fullName}</h2>
           <p className={`mt-1 text-sm font-bold ${layout === "header" ? "text-white/90" : "text-blue-700"}`} style={layout === "header" ? {} : { color: theme.color }}>{cv.jobTitle}</p>
-          <p className={`mt-3 text-[11px] ${layout === "header" ? "text-white/80" : "text-slate-500"}`}>{cv.email} | {cv.phone} | {cv.country}</p>
+          <p className={`mt-3 text-[11px] ${layout === "header" ? "text-white/80" : "text-slate-500"}`}>{contactLines.join(" | ")}</p>
         </div>
       </header>
       <div className="mt-6">{content}</div>
@@ -1321,7 +1543,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
   );
 }
 
-function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad }) {
+function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDraft, onLoadDraft, draftStatus }) {
   const [items, setItems] = useState([]);
   const [message, setMessage] = useState(user ? "Load your saved CVs." : "Login to save and manage up to 5 CVs.");
   const refresh = async () => {
@@ -1368,15 +1590,33 @@ function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad }) {
   return (
     <section className="rounded border border-slate-200 bg-white p-4">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="panel-title">My CVs</h3>
+        <div>
+          <h3 className="panel-title">My CVs dashboard</h3>
+          <p className="mt-1 text-[11px] font-bold text-slate-500">{items.length} saved version{items.length === 1 ? "" : "s"} of 5</p>
+        </div>
         <button onClick={saveCurrent} className="rounded bg-green-600 px-3 py-2 text-xs font-black text-white">Save</button>
+      </div>
+      <div className="mt-3 rounded border border-blue-100 bg-blue-50 p-3">
+        <p className="text-xs font-black text-blue-950">Save progress and come back later</p>
+        <p className="mt-1 text-xs font-bold leading-5 text-blue-800">{draftStatus || "Cloud draft sync is ready."}</p>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button onClick={onSaveDraft} className="rounded bg-blue-600 px-3 py-2 text-xs font-black text-white">Save draft</button>
+          <button onClick={onLoadDraft} className="rounded bg-white px-3 py-2 text-xs font-black text-blue-700 ring-1 ring-blue-200">Restore draft</button>
+        </div>
       </div>
       <p className="mt-2 text-xs font-bold leading-5 text-slate-500">{message}</p>
       <div className="mt-3 space-y-2">
+        {items.length === 0 && (
+          <div className="rounded border border-dashed border-slate-300 bg-slate-50 p-3 text-xs font-bold leading-5 text-slate-500">
+            No saved CV versions yet. Use Save to store this CV online, then duplicate versions for different job applications.
+          </div>
+        )}
         {items.map((item) => (
           <div key={item.id} className="rounded border border-slate-200 p-3">
             <p className="text-sm font-black text-slate-900">{item.title}</p>
-            <p className="text-xs text-slate-500">{new Date(item.updated_at || item.created_at).toLocaleDateString()}</p>
+            <p className="text-xs text-slate-500">
+              {item.category_id || "CV version"} - Last updated {new Date(item.updated_at || item.created_at).toLocaleString()}
+            </p>
             <div className="mt-2 flex flex-wrap gap-2">
               <button onClick={() => onLoad(item)} className="rounded bg-blue-50 px-3 py-2 text-xs font-black text-blue-700">Edit</button>
               <button onClick={() => duplicate(item)} className="rounded bg-slate-100 px-3 py-2 text-xs font-black text-slate-700">Duplicate</button>
@@ -1705,6 +1945,7 @@ function CVBuilderApp({ onHome }) {
   const [downloaded, setDownloaded] = useState(false);
   const [coverDownloaded, setCoverDownloaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState("Auto-save ready");
+  const [draftStatus, setDraftStatus] = useState("Cloud draft sync is ready.");
   const [mobileCvView, setMobileCvView] = useState("edit");
   const [session, setSession] = useState(null);
   const [authOpen, setAuthOpen] = useState(false);
@@ -1730,6 +1971,69 @@ function CVBuilderApp({ onHome }) {
       setUserMode("registered");
     }
   }, [user?.id, noCloudMode]);
+  const applyDraftPayload = (draftData) => {
+    if (!draftData?.cv) return false;
+    setCv({ ...initialCv, ...draftData.cv });
+    setCoverLetter(draftData.coverLetter || createCoverLetterFromCv({ ...initialCv, ...draftData.cv }, draftData.categoryId || defaultCategory.id));
+    setCategoryId(draftData.categoryId || defaultCategory.id);
+    setThemeId(draftData.themeId || "blue");
+    setLayoutId(draftData.layoutId || "sidebar");
+    setCoverThemeId(draftData.coverThemeId || "blue");
+    setCoverFontId(draftData.coverFontId || "sans");
+    setCoverLayoutId(draftData.coverLayoutId || "classic");
+    return true;
+  };
+  const draftPayload = () => createDraftPayload({ cv, coverLetter, categoryId, themeId, layoutId, coverThemeId, coverFontId, coverLayoutId });
+  const saveCloudDraft = async (statusMessage = "Saving cloud draft...") => {
+    if (!cloudSavingEnabled) {
+      setDraftStatus("Sign in or create an account to save drafts online.");
+      return;
+    }
+    try {
+      setDraftStatus(statusMessage);
+      await saveDraftForUser({ userId: user.id, draftData: draftPayload() });
+      setDraftStatus(`Cloud draft saved at ${new Date().toLocaleTimeString()}.`);
+    } catch (error) {
+      setDraftStatus(error.message || "Cloud draft could not be saved.");
+    }
+  };
+  const restoreCloudDraft = async () => {
+    if (!cloudSavingEnabled) {
+      setDraftStatus("Sign in or create an account to restore cloud drafts.");
+      return;
+    }
+    try {
+      setDraftStatus("Loading latest cloud draft...");
+      const draft = await loadLatestDraftForUser(user.id);
+      if (!draft?.draft_data || !applyDraftPayload(draft.draft_data)) {
+        setDraftStatus("No saved cloud draft found yet.");
+        return;
+      }
+      setDraftStatus(`Restored cloud draft from ${new Date(draft.updated_at || draft.created_at).toLocaleString()}.`);
+      trackEvent("restore_cloud_draft");
+    } catch (error) {
+      setDraftStatus(error.message || "Could not restore cloud draft.");
+    }
+  };
+  useEffect(() => {
+    if (!cloudSavingEnabled) return;
+    let ignore = false;
+    const restoreInitialDraft = async () => {
+      try {
+        const draft = await loadLatestDraftForUser(user.id);
+        if (ignore || !draft?.draft_data) return;
+        if (applyDraftPayload(draft.draft_data)) {
+          setDraftStatus(`Latest cloud draft restored from ${new Date(draft.updated_at || draft.created_at).toLocaleString()}.`);
+        }
+      } catch (error) {
+        if (!ignore) setDraftStatus(error.message || "Could not load cloud draft.");
+      }
+    };
+    restoreInitialDraft();
+    return () => {
+      ignore = true;
+    };
+  }, [cloudSavingEnabled, user?.id]);
   useEffect(() => {
     if (!noCloudMode || downloaded || coverDownloaded) return;
     const warnBeforeLeave = (event) => {
@@ -1740,27 +2044,23 @@ function CVBuilderApp({ onHome }) {
     return () => window.removeEventListener("beforeunload", warnBeforeLeave);
   }, [noCloudMode, downloaded, coverDownloaded]);
   useEffect(() => {
-    const saveDraft = () => {
-      localStorage.setItem(
-        DRAFT_STORAGE_KEY,
-        JSON.stringify({
-          cv,
-          coverLetter,
-          categoryId,
-          themeId,
-          layoutId,
-          coverThemeId,
-          coverFontId,
-          coverLayoutId,
-          updatedAt: new Date().toISOString(),
-        })
-      );
+    const saveDraft = async () => {
+      const payload = draftPayload();
+      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payload));
       setSaveStatus("Saved locally");
+      if (cloudSavingEnabled) {
+        try {
+          await saveDraftForUser({ userId: user.id, draftData: payload });
+          setDraftStatus(`Cloud draft auto-saved at ${new Date().toLocaleTimeString()}.`);
+        } catch (error) {
+          setDraftStatus(error.message || "Cloud draft auto-save failed.");
+        }
+      }
       window.setTimeout(() => setSaveStatus("Auto-save ready"), 2200);
     };
     const timer = window.setInterval(saveDraft, 30000);
     return () => window.clearInterval(timer);
-  }, [cv, coverLetter, categoryId, themeId, layoutId, coverThemeId, coverFontId, coverLayoutId]);
+  }, [cv, coverLetter, categoryId, themeId, layoutId, coverThemeId, coverFontId, coverLayoutId, cloudSavingEnabled, user?.id]);
   const handleCategory = (id) => {
     const category = categories.find((item) => item.id === id);
     setCategoryId(id);
@@ -1771,6 +2071,7 @@ function CVBuilderApp({ onHome }) {
         summary: category.summary,
         skills: category.skills,
         experience: category.experience,
+        workExperiences: [createExperienceEntry(category)],
       };
       setCoverLetter(createCoverLetterFromCv(nextCv, id));
       return nextCv;
@@ -1953,7 +2254,17 @@ function CVBuilderApp({ onHome }) {
           <aside className={`builder-panel min-w-0 space-y-6 rounded bg-white p-5 shadow-sm ring-1 ring-slate-200 ${mobileCvView === "preview" ? "hidden lg:block" : ""}`}>
             <CVCompletenessPanel cv={cv} />
             {cloudSavingEnabled ? (
-              <MyCvsPanel user={user} cv={cv} categoryId={categoryId} themeId={themeId} layoutId={layoutId} onLoad={loadSavedCv} />
+              <MyCvsPanel
+                user={user}
+                cv={cv}
+                categoryId={categoryId}
+                themeId={themeId}
+                layoutId={layoutId}
+                onLoad={loadSavedCv}
+                onSaveDraft={() => saveCloudDraft()}
+                onLoadDraft={restoreCloudDraft}
+                draftStatus={draftStatus}
+              />
             ) : (
               <section className="rounded border border-amber-200 bg-amber-50 p-4">
                 <h3 className="panel-title text-amber-950">Download-only mode</h3>

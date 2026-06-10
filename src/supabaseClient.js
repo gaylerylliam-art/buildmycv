@@ -60,6 +60,48 @@ export async function saveCvForUser({ userId, cv, categoryId, themeId, layoutId 
   return data;
 }
 
+export async function saveDraftForUser({ userId, draftData }) {
+  if (!supabase || !userId) throw new Error("Supabase is not configured.");
+  const { data: existing, error: findError } = await supabase
+    .from("cv_drafts")
+    .select("id")
+    .eq("user_id", userId)
+    .order("updated_at", { ascending: false })
+    .limit(1);
+  if (findError) throw findError;
+
+  if (existing?.[0]?.id) {
+    const { data, error } = await supabase
+      .from("cv_drafts")
+      .update({ draft_data: draftData })
+      .eq("id", existing[0].id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
+  const { data, error } = await supabase
+    .from("cv_drafts")
+    .insert({ user_id: userId, draft_data: draftData })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function loadLatestDraftForUser(userId) {
+  if (!supabase || !userId) return null;
+  const { data, error } = await supabase
+    .from("cv_drafts")
+    .select("*")
+    .eq("user_id", userId)
+    .order("updated_at", { ascending: false })
+    .limit(1);
+  if (error) throw error;
+  return data?.[0] || null;
+}
+
 export async function listUserCvs(userId) {
   if (!supabase || !userId) return [];
   const { data, error } = await supabase

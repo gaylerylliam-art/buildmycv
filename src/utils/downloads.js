@@ -21,6 +21,54 @@ const fileBaseName = (fullName, suffix) => {
   return `${firstName}_${lastName}_${suffix}`.replace(/[^\w-]+/g, "_");
 };
 
+const cvContactLines = (cv) =>
+  [
+    cv.email,
+    cv.phone,
+    cv.country,
+    cv.linkedIn ? `LinkedIn: ${cv.linkedIn}` : "",
+    cv.portfolioUrl ? `Portfolio: ${cv.portfolioUrl}` : "",
+  ].filter(Boolean);
+
+const cvPersonalDetails = (cv) =>
+  [
+    cv.nationality ? `Nationality: ${cv.nationality}` : "",
+    cv.visaStatus ? `Visa Status: ${cv.visaStatus}` : "",
+    cv.drivingLicense ? `Driving License: ${cv.drivingLicense}` : "",
+    cv.expectedSalaryEnabled && cv.expectedSalary ? `Expected Salary: ${cv.expectedSalary}` : "",
+  ].filter(Boolean);
+
+const normalizeCvWorkExperiences = (cv) => {
+  if (Array.isArray(cv.workExperiences) && cv.workExperiences.length) {
+    return cv.workExperiences;
+  }
+  return [
+    {
+      id: "legacy",
+      jobTitle: cv.jobTitle || "",
+      employer: "",
+      fromDate: "",
+      toDate: "",
+      isCurrent: false,
+      responsibilities: cv.experience || "",
+    },
+  ];
+};
+
+const workExperienceHtml = (cv) =>
+  normalizeCvWorkExperiences(cv)
+    .map((entry) => {
+      const dates = [entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - ");
+      return `
+        <div class="experience-item">
+          <p><strong>${escapeHtml(entry.jobTitle || "Job title")}</strong></p>
+          <p>${escapeHtml(entry.employer || "Employer name")}${dates ? ` | ${escapeHtml(dates)}` : ""}</p>
+          <ul>${joinLines(entry.responsibilities || "")}</ul>
+        </div>
+      `;
+    })
+    .join("");
+
 const saveBlob = (blob, filename) => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -114,6 +162,8 @@ const downloadCvDocx = async (cv, filename) => {
       children: [new TextRun({ text: String(text || ""), bold: options.bold, size: options.size || 22 })],
     });
   const sectionHeading = (text) => paragraph(text, { bold: true, size: 24, after: 100 });
+  const personalDetails = cvPersonalDetails(cv);
+  const workExperiences = normalizeCvWorkExperiences(cv);
   const doc = new Document({
     sections: [
       {
@@ -121,13 +171,18 @@ const downloadCvDocx = async (cv, filename) => {
         children: [
           paragraph(cv.fullName, { bold: true, size: 34, after: 80 }),
           paragraph(cv.jobTitle, { bold: true, size: 24, after: 80 }),
-          paragraph(`${cv.email} | ${cv.phone} | ${cv.country}`, { size: 18 }),
+          paragraph(cvContactLines(cv).join(" | "), { size: 18 }),
           sectionHeading("Professional Summary"),
           paragraph(cv.summary),
+          ...(personalDetails.length ? [sectionHeading("Personal Details"), ...personalDetails.map((line) => paragraph(line))] : []),
           sectionHeading("Skills"),
           paragraph(cv.skills),
           sectionHeading("Work Experience"),
-          ...String(cv.experience || "").split("\n").filter(Boolean).map((line) => paragraph(`• ${line}`)),
+          ...workExperiences.flatMap((entry) => [
+            paragraph(entry.jobTitle || "Job title", { bold: true, after: 60 }),
+            paragraph([entry.employer, [entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - ")].filter(Boolean).join(" | "), { size: 20, after: 60 }),
+            ...String(entry.responsibilities || "").split("\n").filter(Boolean).map((line) => paragraph(`- ${line}`)),
+          ]),
           sectionHeading("Education"),
           paragraph(cv.education),
           sectionHeading("Certifications"),
@@ -163,6 +218,7 @@ export const buildCvHtml = (cv, theme = { color: "#0f66d0", dark: "#0f172a" }, l
         .round { border-radius: 999px; }
         .square { border-radius: 5px; }
         .section { break-inside: avoid; page-break-inside: avoid; }
+        .experience-item { margin-bottom: 12px; break-inside: avoid; page-break-inside: avoid; }
         .sidebar-paper { display: grid; grid-template-columns: 38% 62%; min-height: 970px; padding: 0; }
         .sidebar { background: ${theme.dark}; color: #ffffff; padding: 20px 24px 28px; }
         .sidebar-header { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 20px; }
@@ -192,15 +248,14 @@ export const buildCvHtml = (cv, theme = { color: "#0f66d0", dark: "#0f172a" }, l
             </div>
           </div>
           <div class="sidebar-contact">
-            <p>${escapeHtml(cv.email)}</p>
-            <p>${escapeHtml(cv.phone)}</p>
-            <p>${escapeHtml(cv.country)}</p>
+            ${cvContactLines(cv).map((line) => `<p>${escapeHtml(line)}</p>`).join("")}
           </div>
         </aside>
         <main class="main-content">
           <div class="section"><h2>Professional Summary</h2><p>${escapeHtml(cv.summary)}</p></div>
+          ${cvPersonalDetails(cv).length ? `<div class="section"><h2>Personal Details</h2><p>${escapeHtml(cvPersonalDetails(cv).join("\n"))}</p></div>` : ""}
           <div class="section"><h2>Skills</h2><p>${escapeHtml(cv.skills)}</p></div>
-          <div class="section"><h2>Work Experience</h2><ul>${joinLines(cv.experience)}</ul></div>
+          <div class="section"><h2>Work Experience</h2>${workExperienceHtml(cv)}</div>
           <div class="section"><h2>Education</h2><p>${escapeHtml(cv.education)}</p></div>
           <div class="section"><h2>Certifications</h2><p>${escapeHtml(cv.certifications)}</p></div>
           <div class="section"><h2>Languages</h2><p>${escapeHtml(cv.languages)}</p></div>
@@ -212,12 +267,13 @@ export const buildCvHtml = (cv, theme = { color: "#0f66d0", dark: "#0f172a" }, l
         <div>
           <h1>${escapeHtml(cv.fullName)}</h1>
           <p class="title">${escapeHtml(cv.jobTitle)}</p>
-          <p class="contact">${escapeHtml(cv.email)} | ${escapeHtml(cv.phone)} | ${escapeHtml(cv.country)}</p>
+          <p class="contact">${escapeHtml(cvContactLines(cv).join(" | "))}</p>
         </div>
       </div>
       <div class="section"><h2>Professional Summary</h2><p>${escapeHtml(cv.summary)}</p></div>
+      ${cvPersonalDetails(cv).length ? `<div class="section"><h2>Personal Details</h2><p>${escapeHtml(cvPersonalDetails(cv).join("\n"))}</p></div>` : ""}
       <div class="section"><h2>Skills</h2><p>${escapeHtml(cv.skills)}</p></div>
-      <div class="section"><h2>Work Experience</h2><ul>${joinLines(cv.experience)}</ul></div>
+      <div class="section"><h2>Work Experience</h2>${workExperienceHtml(cv)}</div>
       <div class="section"><h2>Education</h2><p>${escapeHtml(cv.education)}</p></div>
       <div class="section"><h2>Certifications</h2><p>${escapeHtml(cv.certifications)}</p></div>
       <div class="section"><h2>Languages</h2><p>${escapeHtml(cv.languages)}</p></div>
