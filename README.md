@@ -1,4 +1,4 @@
-# CVforAll - Free CV Builder
+# BuildMyCVNow - Free CV Builder
 
 Modern React + Tailwind frontend for a free CV/resume builder focused on fresh graduates, rank-and-file workers, skilled workers, domestic service workers, and job seekers.
 
@@ -92,7 +92,10 @@ Cover letter templates, role categories, sample letters, experience levels, regi
 - Urgent CV mode lets users continue without cloud saving or verify by mobile OTP for download-only use.
 - Registered account mode enables cloud saving, My CVs, profile photo storage, and online CV management.
 - The Cover Letter Builder now works as a full cover letter generator with 60+ predefined roles, experience levels, UAE/GCC, UK, US, Canada, Australia, and international formats, copy-to-clipboard, saved templates, light/dark preview mode, sample generated letters, and the same OTP download flow.
-- Google AdSense areas use a reusable `AdBanner` component and do not block the CV creation flow.
+- Google AdSense areas use a reusable `AdBanner` component. AdSense loads only when `VITE_ADSENSE_CLIENT_ID` is set to a real `ca-pub-` ID.
+- Builder-page ads are disabled by default so ads do not sit beside form actions or download buttons. Set `VITE_ENABLE_BUILDER_ADS=true` only after approval if you intentionally want those slots.
+- The Blog section includes 25 original career-tip articles for UAE, GCC, Philippines, and job-category-specific CV searches.
+- A cookie notice explains browser storage, analytics, reCAPTCHA, and ad cookies.
 - About, Contact, Privacy Policy, Terms of Use, Blog index, and Blog article pages are routed with React Router v6.
 - The Contact page submits messages to Supabase `contact_messages`.
 - Supabase schema/RLS scaffolding is in `supabase/schema.sql`.
@@ -112,10 +115,12 @@ VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
 REACT_APP_SUPABASE_URL=
 REACT_APP_SUPABASE_ANON_KEY=
-VITE_AUTH_REDIRECT_URL=https://buildmycvforfree.netlify.app/#builder
+VITE_AUTH_REDIRECT_URL=https://buildmycvnow.com/#builder
 VITE_ENABLE_GOOGLE_AUTH=false
 VITE_GA_MEASUREMENT_ID=
 VITE_RECAPTCHA_SITE_KEY=
+VITE_ADSENSE_CLIENT_ID=
+VITE_ENABLE_BUILDER_ADS=false
 ```
 
 Do not expose `OPENAI_API_KEY`, `RECAPTCHA_SECRET_KEY`, or `SUPABASE_SERVICE_ROLE_KEY` in frontend `VITE_` variables.
@@ -127,9 +132,9 @@ This Vite app supports both `VITE_SUPABASE_*` and `REACT_APP_SUPABASE_*` browser
 2. Run `supabase/schema.sql` in the SQL editor.
 3. Enable Email/Password in Supabase Auth. Google is optional.
 4. Enable Phone Auth in Supabase if you want mobile OTP. Configure an SMS provider such as Twilio in Supabase Auth settings.
-5. In Supabase Auth URL Configuration, set the Site URL to `https://buildmycvforfree.netlify.app`.
+5. In Supabase Auth URL Configuration, set the Site URL to `https://buildmycvnow.com`.
 6. Add redirect URLs:
-   - `https://buildmycvforfree.netlify.app/**`
+   - `https://buildmycvnow.com/**`
    - `http://127.0.0.1:5173/**`
    - `http://localhost:5173/**`
 7. If your email template uses `{{ .SiteURL }}`, change the confirmation link to use `{{ .RedirectTo }}` so `VITE_AUTH_REDIRECT_URL` is honored.

@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://buildmycvforfree.netlify.app/sitemap.xml
+Sitemap: https://buildmycvnow.com/sitemap.xml

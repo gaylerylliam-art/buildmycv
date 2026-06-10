@@ -146,9 +146,11 @@ const coverLetterToText = (letter, cv) => {
 };
 
 const DRAFT_STORAGE_KEY = "cvforall:draft:v1";
-const AUTH_REDIRECT_URL = import.meta.env.VITE_AUTH_REDIRECT_URL || "https://buildmycvforfree.netlify.app/#builder";
+const AUTH_REDIRECT_URL = import.meta.env.VITE_AUTH_REDIRECT_URL || "https://buildmycvnow.com/#builder";
 const GOOGLE_AUTH_ENABLED = import.meta.env.VITE_ENABLE_GOOGLE_AUTH === "true";
-const ADSENSE_CLIENT_ID = "ca-pub-XXXXXXXXXX";
+const ADSENSE_CLIENT_ID = import.meta.env.VITE_ADSENSE_CLIENT_ID || "";
+const ADSENSE_ENABLED = /^ca-pub-\d+$/.test(ADSENSE_CLIENT_ID);
+const BUILDER_ADS_ENABLED = import.meta.env.VITE_ENABLE_BUILDER_ADS === "true";
 
 const completenessFields = [
   ["Contact details", (cv) => cv.fullName && cv.email && cv.phone && cv.country],
@@ -212,7 +214,7 @@ function Icon({ name, className = "h-5 w-5" }) {
 
 function Seo({ title, description }) {
   useEffect(() => {
-    document.title = `${title} | CVforAll`;
+    document.title = `${title} | BuildMyCVNow`;
     let meta = document.querySelector("meta[name='description']");
     if (!meta) {
       meta = document.createElement("meta");
@@ -224,8 +226,22 @@ function Seo({ title, description }) {
   return null;
 }
 
+function AdSenseScript() {
+  useEffect(() => {
+    if (!ADSENSE_ENABLED || document.querySelector("script[data-cvforall-adsense]")) return;
+    const script = document.createElement("script");
+    script.async = true;
+    script.crossOrigin = "anonymous";
+    script.dataset.cvforallAdsense = "true";
+    script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT_ID}`;
+    document.head.appendChild(script);
+  }, []);
+  return null;
+}
+
 function AdBanner({ label = "Google AdSense ad space", compact = false, slot = "0000000000" }) {
   useEffect(() => {
+    if (!ADSENSE_ENABLED) return;
     try {
       if (window.adsbygoogle) window.adsbygoogle.push({});
     } catch {
@@ -246,6 +262,32 @@ function AdBanner({ label = "Google AdSense ad space", compact = false, slot = "
   );
 }
 
+function CookieNotice() {
+  const [visible, setVisible] = useState(() => localStorage.getItem("cvforall:cookie-notice") !== "accepted");
+  if (!visible) return null;
+  return (
+    <div className="fixed inset-x-3 bottom-3 z-50 mx-auto max-w-4xl rounded border border-slate-200 bg-white p-4 shadow-2xl">
+      <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
+        <p className="text-sm font-semibold leading-6 text-slate-700">
+          BuildMyCVNow uses essential browser storage for drafts and may use Google Analytics, reCAPTCHA, and AdSense cookies when those services are enabled. Read the Privacy Policy for details.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Link to="/privacy" className="rounded border border-slate-300 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">Privacy</Link>
+          <button
+            onClick={() => {
+              localStorage.setItem("cvforall:cookie-notice", "accepted");
+              setVisible(false);
+            }}
+            className="rounded bg-green-600 px-4 py-2 text-sm font-black text-white hover:bg-green-700"
+          >
+            I understand
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Header({ onStart }) {
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
@@ -254,7 +296,7 @@ function Header({ onStart }) {
           <span className="flex h-9 w-9 items-center justify-center rounded bg-green-600 text-white">
             <Icon name="file" className="h-5 w-5" />
           </span>
-          <span className="text-xl">CV<span className="text-green-600">forAll</span></span>
+          <span className="text-xl">BuildMyCV<span className="text-green-600">Now</span></span>
         </Link>
         <nav className="hidden items-center gap-6 text-sm font-semibold text-slate-700 md:flex">
           <Link to="/#templates">Templates</Link>
@@ -290,7 +332,7 @@ function LandingPage({ onStart }) {
             Create a professional CV for free in minutes.
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-            Easy to use for first-time CV creators, fresh graduates, skilled workers, domestic service workers, and job seekers who want better opportunities.
+            BuildMyCVNow is easy to use for first-time CV creators, fresh graduates, skilled workers, domestic service workers, and job seekers who want better opportunities.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <button onClick={onStart} className="inline-flex items-center justify-center gap-3 rounded bg-green-600 px-7 py-4 font-bold text-white shadow-soft transition hover:bg-green-700">
@@ -341,7 +383,7 @@ function LandingPage({ onStart }) {
       <IPhonePortraitDisplay onStart={onStart} />
       <section className="border-y border-slate-200 bg-slate-50 px-5 py-14">
         <div className="mx-auto max-w-7xl">
-          <h2 className="text-center text-3xl font-black text-slate-950">Why job seekers trust CVforAll</h2>
+          <h2 className="text-center text-3xl font-black text-slate-950">Why job seekers trust BuildMyCVNow</h2>
           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {benefits.map(([icon, title, text]) => (
               <div key={title} className="rounded bg-white p-6 shadow-sm ring-1 ring-slate-200">
@@ -377,7 +419,7 @@ function LandingPage({ onStart }) {
         <div>
           <h2 className="text-3xl font-black text-slate-950">Frequently asked questions</h2>
           <p className="mt-4 text-lg leading-8 text-slate-600">
-            Simple answers for first-time CV creators, workers, and job seekers using CVforAll.
+            Simple answers for first-time CV creators, workers, and job seekers using BuildMyCVNow.
           </p>
           <button onClick={onStart} className="mt-7 rounded bg-green-600 px-6 py-4 font-bold text-white hover:bg-green-700">Start your free CV</button>
         </div>
@@ -426,10 +468,10 @@ function ContactSection() {
         <div>
           <h2 className="text-3xl font-black text-slate-950">Contact Us</h2>
           <p className="mt-4 text-lg leading-8 text-slate-600">
-            Questions, feedback, and partnership messages are welcome. This form stores your message securely in Supabase so the CVforAll team can review and reply.
+            Questions, feedback, and partnership messages are welcome. This form stores your message securely in Supabase so the BuildMyCVNow team can review and reply.
           </p>
           <div className="mt-6 rounded bg-white p-5 text-sm leading-6 text-slate-600 ring-1 ring-slate-200">
-            <p><strong className="text-slate-950">Email:</strong> support@cvforall.example</p>
+            <p><strong className="text-slate-950">Email:</strong> support@buildmycvnow.com</p>
             <p><strong className="text-slate-950">Response time:</strong> 1-2 business days</p>
           </div>
         </div>
@@ -460,12 +502,12 @@ function PolicySections() {
   return (
     <section className="mx-auto grid max-w-7xl gap-6 px-5 py-14 lg:grid-cols-2">
       <PolicyCard id="privacy" title="Privacy Policy">
-        <p>CVforAll is designed to collect only the information needed to create, save, and download a CV, including name, email, CV content, uploaded CV text, profile photos, and contact details.</p>
+        <p>BuildMyCVNow is designed to collect only the information needed to create, save, and download a CV, including name, email, CV content, uploaded CV text, profile photos, and contact details.</p>
         <p>Users who sign in can save CV data with Supabase Auth, database, and storage. Download-only users keep CV data local in the browser and should download their file before closing the page.</p>
         <p>Ad areas are placeholders for Google AdSense. When ads are enabled, Google and partners may use cookies or similar technologies according to their own policies.</p>
       </PolicyCard>
       <PolicyCard id="terms" title="Terms & Conditions">
-        <p>CVforAll provides free CV-building tools, templates, and career tips for general guidance. Users remain responsible for checking the accuracy of their CV before sending it to employers.</p>
+        <p>BuildMyCVNow provides free CV-building tools, templates, and career tips for general guidance. Users remain responsible for checking the accuracy of their CV before sending it to employers.</p>
         <p>Users own the CV information they enter and should only add honest work history, education, skills, certificates, and references.</p>
         <p>The service does not guarantee job interviews, job offers, or employer acceptance. Templates and tips should be adapted honestly to each user&apos;s real experience.</p>
       </PolicyCard>
@@ -508,11 +550,11 @@ function AboutPage({ onStart }) {
     <PageShell onStart={onStart}>
       <Seo
         title="About"
-        description="Learn about CVforAll, a free CV builder for UAE, GCC, and Philippines job seekers."
+        description="Learn about BuildMyCVNow, a free CV builder for UAE, GCC, and Philippines job seekers."
       />
       <StaticHero
-        title="About CVforAll"
-        description="CVforAll helps job seekers create clear, professional CVs for free, especially workers applying in the UAE, GCC, and Philippines job markets."
+        title="About BuildMyCVNow"
+        description="BuildMyCVNow helps job seekers create clear, professional CVs for free, especially workers applying in the UAE, GCC, and Philippines job markets."
       />
       <section className="mx-auto grid max-w-7xl gap-8 px-5 py-14 lg:grid-cols-[0.8fr_1fr]">
         <div>
@@ -545,9 +587,9 @@ function ContactPage({ onStart }) {
     <PageShell onStart={onStart}>
       <Seo
         title="Contact"
-        description="Contact CVforAll with questions, feedback, and support requests through a Supabase-powered contact form."
+        description="Contact BuildMyCVNow with questions, feedback, and support requests through a Supabase-powered contact form."
       />
-      <StaticHero title="Contact CVforAll" description="Send us your questions, feedback, or partnership message. We keep the form simple and mobile friendly." />
+      <StaticHero title="Contact BuildMyCVNow" description="Send us your questions, feedback, or partnership message. We keep the form simple and mobile friendly." />
       <ContactSection />
     </PageShell>
   );
@@ -558,15 +600,16 @@ function PrivacyPage({ onStart }) {
     <PageShell onStart={onStart}>
       <Seo
         title="Privacy Policy"
-        description="CVforAll privacy policy covering CV content, Supabase storage, Google AdSense cookies, and user rights."
+        description="BuildMyCVNow privacy policy covering CV content, Supabase storage, Google AdSense cookies, and user rights."
       />
-      <StaticHero title="Privacy Policy" description="This policy explains what CVforAll may collect and how user CV data should be handled." />
+      <StaticHero title="Privacy Policy" description="This policy explains what BuildMyCVNow may collect and how user CV data should be handled." />
       <section className="mx-auto max-w-4xl px-5 py-14">
         <PolicyCard title="Privacy Policy">
-          <p>CVforAll may collect information needed to create and manage CVs, including name, email address, phone number, country, CV content, uploaded CV text, profile photos, saved drafts, and download verification details.</p>
-          <p>When users choose cloud saving, CV data and uploaded files can be stored in Supabase under the user's authenticated account. Users who choose download-only mode keep CV data local in the browser and should download their file before closing the page.</p>
-          <p>CVforAll includes Google AdSense advertising areas. Google and its partners may use cookies or similar technologies to serve, measure, and personalize ads according to Google's policies.</p>
-          <p>Users should have the right to request access, correction, or deletion of their stored personal data. For privacy requests, contact CVforAll through the contact page.</p>
+          <p>BuildMyCVNow may collect the information needed to create, save, and download CVs, including name, email address, phone number, country, nationality, visa status, job history, education, skills, uploaded CV text, profile photos, saved drafts, and download verification details.</p>
+          <p>Download-only users keep CV data in browser state or localStorage so they can finish their CV quickly. This information is not intentionally saved to Supabase unless the user signs in and chooses cloud saving. Download-only users should download their file before closing the browser.</p>
+          <p>Registered users can save CV drafts, uploaded files, profile photos, and CV versions with Supabase Auth, Supabase Database, and Supabase Storage under their authenticated account. Row Level Security should be used so users can only access their own records.</p>
+          <p>BuildMyCVNow may use Google Analytics to understand page usage, Google reCAPTCHA to reduce spam, and Google AdSense to display advertising. These services may use cookies or similar technologies to measure traffic, protect forms, serve ads, and personalize ads where allowed.</p>
+          <p>Users can request access, correction, export, or deletion of stored personal data by using the Contact page. Users should avoid uploading or entering sensitive document numbers unless a trusted employer or agency specifically requires them outside BuildMyCVNow.</p>
         </PolicyCard>
       </section>
     </PageShell>
@@ -578,15 +621,17 @@ function TermsPage({ onStart }) {
     <PageShell onStart={onStart}>
       <Seo
         title="Terms of Use"
-        description="CVforAll terms covering user responsibilities, CV ownership, and employment guarantee disclaimers."
+        description="BuildMyCVNow terms covering user responsibilities, CV ownership, and employment guarantee disclaimers."
       />
-      <StaticHero title="Terms of Use" description="Please use CVforAll honestly and review your CV carefully before sending it to employers." />
+      <StaticHero title="Terms of Use" description="Please use BuildMyCVNow honestly and review your CV carefully before sending it to employers." />
       <section className="mx-auto max-w-4xl px-5 py-14">
         <PolicyCard title="Terms of Use">
-          <p>Users are responsible for the accuracy, honesty, and completeness of the information they enter into CVforAll. Do not include false work history, certificates, or references.</p>
-          <p>Users own the CV content they create. CVforAll provides templates, formatting tools, and guidance, but the user's personal information and work history remain their responsibility.</p>
-          <p>CVforAll does not guarantee interviews, job offers, visa approval, agency acceptance, or employer selection. The app is a CV creation and career guidance tool only.</p>
-          <p>Users should download and keep copies of important documents. Download-only mode does not save CVs online.</p>
+          <p>Users are responsible for the accuracy, honesty, and completeness of the information they enter into BuildMyCVNow. Do not include false work history, certificates, or references.</p>
+          <p>Users own the CV content they create. BuildMyCVNow provides templates, formatting tools, and guidance, but the user's personal information and work history remain their responsibility.</p>
+          <p>BuildMyCVNow does not guarantee interviews, job offers, visa approval, agency acceptance, or employer selection. The app is a CV creation and career guidance tool only.</p>
+          <p>Users should review all generated CVs and cover letters before sending them to employers. Suggested wording is general guidance and may need to be edited for the user's real experience, country, and job application.</p>
+          <p>Users should download and keep copies of important documents. Download-only mode does not save CVs online, and browser data can be lost if cache or localStorage is cleared.</p>
+          <p>Users must not misuse forms, upload harmful files, attempt to access another user's records, or use the service for spam, fraud, or misleading job applications.</p>
         </PolicyCard>
       </section>
     </PageShell>
@@ -605,9 +650,14 @@ function BlogIndexPage({ onStart }) {
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {blogArticles.map((article) => (
             <article key={article.slug} className="rounded border border-slate-200 bg-white p-5 shadow-sm transition hover:border-green-500 hover:shadow-soft">
-              <p className="text-xs font-black uppercase text-slate-500">{new Date(article.date).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}</p>
+              <p className="flex flex-wrap gap-2 text-xs font-black uppercase text-slate-500">
+                <span>{article.category}</span>
+                <span>-</span>
+                <span>{article.readTime}</span>
+              </p>
               <h2 className="mt-3 text-xl font-black leading-7 text-slate-950">{article.title}</h2>
               <p className="mt-3 text-sm leading-6 text-slate-600">{article.excerpt}</p>
+              <p className="mt-4 text-xs font-black uppercase text-slate-400">{new Date(article.date).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}</p>
               <Link to={`/blog/${article.slug}`} className="mt-5 inline-flex items-center gap-2 text-sm font-black text-green-700">
                 Read more <Icon name="arrow" className="h-4 w-4" />
               </Link>
@@ -623,13 +673,20 @@ function BlogArticlePage({ onStart }) {
   const { slug } = useParams();
   const article = blogArticles.find((item) => item.slug === slug);
   if (!article) return <Navigate to="/blog" replace />;
+  const related = blogArticles.filter((item) => item.slug !== article.slug && item.category === article.category).slice(0, 3);
   const splitIndex = Math.ceil(article.content.length / 2);
   return (
     <PageShell onStart={onStart}>
       <Seo title={article.title} description={article.excerpt} />
       <article className="mx-auto max-w-4xl px-5 py-14">
         <Link to="/blog" className="text-sm font-black text-green-700">Back to blog</Link>
-        <p className="mt-8 text-xs font-black uppercase text-slate-500">{new Date(article.date).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}</p>
+        <p className="mt-8 flex flex-wrap gap-2 text-xs font-black uppercase text-slate-500">
+          <span>{article.category}</span>
+          <span>-</span>
+          <span>{article.readTime}</span>
+          <span>-</span>
+          <span>{new Date(article.date).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}</span>
+        </p>
         <h1 className="mt-3 text-4xl font-black leading-tight text-slate-950 sm:text-5xl">{article.title}</h1>
         <p className="mt-5 text-lg leading-8 text-slate-600">{article.excerpt}</p>
         <div className="mt-10 space-y-6 text-base leading-8 text-slate-700">
@@ -637,6 +694,18 @@ function BlogArticlePage({ onStart }) {
           <AdBanner compact label="Google AdSense blog article ad" slot="5555555555" />
           {article.content.slice(splitIndex).map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
         </div>
+        {related.length > 0 && (
+          <section className="mt-12 border-t border-slate-200 pt-8">
+            <h2 className="text-2xl font-black text-slate-950">Related career tips</h2>
+            <div className="mt-5 grid gap-4 sm:grid-cols-3">
+              {related.map((item) => (
+                <Link key={item.slug} to={`/blog/${item.slug}`} className="rounded border border-slate-200 p-4 text-sm font-bold leading-6 text-slate-700 hover:border-green-500 hover:bg-green-50">
+                  {item.title}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
       </article>
     </PageShell>
   );
@@ -649,7 +718,7 @@ function SiteFooter({ onStart }) {
         <div>
           <div className="flex items-center gap-2 font-black">
             <span className="flex h-9 w-9 items-center justify-center rounded bg-green-600 text-white"><Icon name="file" className="h-5 w-5" /></span>
-            CVforAll
+            BuildMyCVNow
           </div>
           <p className="mt-3 max-w-sm text-sm leading-6 text-slate-300">Free CV Builder for UAE, GCC & Philippines Job Seekers</p>
         </div>
@@ -665,7 +734,7 @@ function SiteFooter({ onStart }) {
           <button onClick={onStart} className="rounded bg-green-600 px-5 py-3 text-sm font-black text-white hover:bg-green-700">
             Start free CV
           </button>
-          <p className="text-xs font-semibold text-slate-400">© 2025 CVforAll. All rights reserved.</p>
+          <p className="text-xs font-semibold text-slate-400">Copyright 2025 BuildMyCVNow. All rights reserved.</p>
         </div>
       </div>
     </footer>
@@ -685,7 +754,7 @@ function IPhonePortraitDisplay({ onStart }) {
                   <span className="flex h-7 w-7 items-center justify-center rounded bg-green-600 text-white">
                     <Icon name="file" className="h-4 w-4" />
                   </span>
-                  CV<span className="text-green-600">forAll</span>
+                  BuildMyCV<span className="text-green-600">Now</span>
                 </span>
                 <span className="rounded bg-green-600 px-3 py-2 text-xs font-black text-white">Download</span>
               </div>
@@ -1919,12 +1988,9 @@ function CoverLetterBuilder({
             </div>
           </section>
         )}
-        <AdBanner compact label="Google AdSense cover letter builder ad" slot="6666666666" />
+        {BUILDER_ADS_ENABLED && <AdBanner compact label="Google AdSense cover letter builder ad" slot="6666666666" />}
         {downloaded && (
-          <div className="space-y-3">
-            <div className="rounded border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-900">Cover letter download confirmed. You can also download your CV for free.</div>
-            <AdBanner compact label="Google AdSense post-download ad" slot="7777777777" />
-          </div>
+          <div className="rounded border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-900">Cover letter download confirmed. You can also download your CV for free.</div>
         )}
       </aside>
     </div>
@@ -2174,7 +2240,7 @@ function CVBuilderApp({ onHome }) {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
           <button onClick={onHome} className="flex items-center gap-2 font-bold text-slate-950">
             <span className="flex h-9 w-9 items-center justify-center rounded bg-green-600 text-white"><Icon name="file" className="h-5 w-5" /></span>
-            CV<span className="text-green-600">forAll</span>
+            BuildMyCV<span className="text-green-600">Now</span>
           </button>
           <div className="hidden items-center gap-5 text-sm font-bold text-slate-500 md:flex">
             <span className="text-green-700">1 Category</span><span>2 Details</span><span>3 Customize</span><span>4 Download</span>
@@ -2242,7 +2308,7 @@ function CVBuilderApp({ onHome }) {
             {storageMessage && cloudSavingEnabled && <p className="rounded bg-slate-50 p-3 text-xs font-bold leading-5 text-slate-600">{storageMessage}</p>}
             <CategorySelector selected={categoryId} onSelect={handleCategory} />
             <CVBuilderForm cv={cv} onChange={(key, value) => setCv((current) => ({ ...current, [key]: value }))} />
-            <AdBanner compact label="Google AdSense form ad" slot="1010101010" />
+            {BUILDER_ADS_ENABLED && <AdBanner compact label="Google AdSense form ad" slot="1010101010" />}
           </aside>
           <section className={`builder-panel min-w-0 ${mobileCvView === "edit" ? "hidden lg:block" : ""}`}>
             <div className="mb-3 flex items-center justify-between">
@@ -2284,12 +2350,9 @@ function CVBuilderApp({ onHome }) {
             <button onClick={() => switchBuilder("cover")} className="flex w-full items-center justify-center gap-2 rounded border border-blue-600 px-5 py-4 font-bold text-blue-700 hover:bg-blue-50">
               <Icon name="file" /> Create Cover Letter
             </button>
-            <AdBanner compact label="Google AdSense CV builder ad" slot="8888888888" />
+            {BUILDER_ADS_ENABLED && <AdBanner compact label="Google AdSense CV builder ad" slot="8888888888" />}
             {downloaded && (
-              <div className="space-y-3">
-                <div className="rounded border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-900">Download confirmed. Your CV file is ready.</div>
-                <AdBanner compact label="Google AdSense post-download ad" slot="9999999999" />
-              </div>
+              <div className="rounded border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-900">Download confirmed. Your CV file is ready.</div>
             )}
           </aside>
         </div>
@@ -2345,28 +2408,38 @@ export default function App() {
   }, [location.hash, location.pathname, isBuilderHash]);
 
   if (isBuilderHash && location.pathname === "/") {
-    return <CVBuilderApp onHome={goHome} />;
+    return (
+      <>
+        <AdSenseScript />
+        <CVBuilderApp onHome={goHome} />
+        <CookieNotice />
+      </>
+    );
   }
 
   return (
-    <Routes>
-      <Route
-        path="/"
-        element={
-          <>
-            <Header onStart={goToBuilder} />
-            <LandingPage onStart={goToBuilder} />
-          </>
-        }
-      />
-      <Route path="/builder" element={<CVBuilderApp onHome={goHome} />} />
-      <Route path="/about" element={<AboutPage onStart={goToBuilder} />} />
-      <Route path="/contact" element={<ContactPage onStart={goToBuilder} />} />
-      <Route path="/privacy" element={<PrivacyPage onStart={goToBuilder} />} />
-      <Route path="/terms" element={<TermsPage onStart={goToBuilder} />} />
-      <Route path="/blog" element={<BlogIndexPage onStart={goToBuilder} />} />
-      <Route path="/blog/:slug" element={<BlogArticlePage onStart={goToBuilder} />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      <AdSenseScript />
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <>
+              <Header onStart={goToBuilder} />
+              <LandingPage onStart={goToBuilder} />
+            </>
+          }
+        />
+        <Route path="/builder" element={<CVBuilderApp onHome={goHome} />} />
+        <Route path="/about" element={<AboutPage onStart={goToBuilder} />} />
+        <Route path="/contact" element={<ContactPage onStart={goToBuilder} />} />
+        <Route path="/privacy" element={<PrivacyPage onStart={goToBuilder} />} />
+        <Route path="/terms" element={<TermsPage onStart={goToBuilder} />} />
+        <Route path="/blog" element={<BlogIndexPage onStart={goToBuilder} />} />
+        <Route path="/blog/:slug" element={<BlogArticlePage onStart={goToBuilder} />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      <CookieNotice />
+    </>
   );
 }
