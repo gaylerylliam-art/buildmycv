@@ -1115,6 +1115,47 @@ function WorkExperienceEditor({ cv, onChange }) {
     updateEntry(id, "responsibilities", improved);
     setAiStatus("AI checked grammar and improved the wording. Please review and edit anything that does not match your real experience.");
   };
+  const spellingCorrections = [
+    [/\bfroward\b/gi, "forwarded"],
+    [/\bforwrd\b/gi, "forwarded"],
+    [/\bfrward\b/gi, "forwarded"],
+    [/\bconced\b/gi, "concerned"],
+    [/\bconcern\b(?=\s+(person|department|team|manager|staff))/gi, "concerned"],
+    [/\bconcered\b/gi, "concerned"],
+    [/\bcomunication\b/gi, "communication"],
+    [/\bcommunciation\b/gi, "communication"],
+    [/\brecieve\b/gi, "receive"],
+    [/\brecieved\b/gi, "received"],
+    [/\bmanagment\b/gi, "management"],
+    [/\bmaintainance\b/gi, "maintenance"],
+    [/\bacheivement\b/gi, "achievement"],
+    [/\bachievments\b/gi, "achievements"],
+    [/\bresponsibilites\b/gi, "responsibilities"],
+    [/\bcostumer\b/gi, "customer"],
+    [/\bcostumers\b/gi, "customers"],
+    [/\bguets\b/gi, "guests"],
+    [/\bservce\b/gi, "service"],
+    [/\bsuperviser\b/gi, "supervisor"],
+    [/\bcalmy\b/gi, "calmly"],
+  ];
+  const applyAiSpellingAndGrammar = (line) => {
+    let corrected = line;
+    spellingCorrections.forEach(([pattern, replacement]) => {
+      corrected = corrected.replace(pattern, replacement);
+    });
+    return corrected
+      .replace(/\bAccepted calls\b/gi, "Answered calls")
+      .replace(/\baccept calls\b/gi, "answer calls")
+      .replace(/\baccepted call\b/gi, "answered call")
+      .replace(/\bforwarded to concerned person\b/gi, "forwarded them to the concerned person")
+      .replace(/\bforwarded to the concerned person\b/gi, "forwarded them to the concerned person")
+      .replace(/\band report to\b/gi, "and reported to")
+      .replace(/\breport to management\b/gi, "reported to management")
+      .replace(/\breport to manager\b/gi, "reported to manager")
+      .replace(/\bprovide\b(?=\s)/gi, "provided")
+      .replace(/\bprepare\b(?=\s)/gi, "prepared")
+      .replace(/\bhandle\b(?=\s)/gi, "handled");
+  };
   const createReviewSuggestion = (text) =>
     text
       .split("\n")
@@ -1122,7 +1163,7 @@ function WorkExperienceEditor({ cv, onChange }) {
       .filter(Boolean)
       .slice(0, 5)
       .map((line) => {
-        const cleaned = line
+        const cleaned = applyAiSpellingAndGrammar(line)
           .replace(/\s+/g, " ")
           .replace(/\bi\b/g, "I")
           .replace(/\bw\/\b/gi, "with")
@@ -1216,7 +1257,7 @@ function WorkExperienceEditor({ cv, onChange }) {
             </label>
             <div className="ai-assist-row">
               <button type="button" onClick={() => reviewEntryWithAi(entry.id)} className="btn-ai btn-ai-work"><Icon name="sparkle" className="h-3 w-3" /> Check with AI</button>
-              <span className="ai-hint">Check grammar and make this sound more professional</span>
+              <span className="ai-hint">Check spelling, grammar, and make this sound more professional</span>
             </div>
             {aiSuggestions[entry.id] && (
               <div className="ai-suggestion-card">
