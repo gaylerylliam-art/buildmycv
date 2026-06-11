@@ -568,6 +568,43 @@ summary {
   background: #ffffff;
 }
 
+.landing-video-card {
+  overflow: hidden;
+  border-radius: 1rem;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  padding: 0.85rem;
+  box-shadow: 0 26px 80px rgba(15, 23, 42, 0.12);
+}
+
+.landing-video-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0.35rem 0.35rem 0.85rem;
+}
+
+.landing-video-frame {
+  position: relative;
+  margin-top: 0.85rem;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 0.8rem;
+  background:
+    linear-gradient(135deg, rgba(24, 95, 165, 0.18), rgba(22, 163, 74, 0.12)),
+    #0f172a;
+}
+
+.landing-video-frame iframe {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  border: 0;
+}
+
 .profile-photo-preview {
   display: flex;
   height: 5.5rem;

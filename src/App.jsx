@@ -746,60 +746,44 @@ function SiteFooter({ onStart }) {
   );
 }
 
+const HEYGEN_DEMO_VIDEO_URL = "https://app.heygen.com/videos/how-to-create-and-download-your-cv-for-free-e5593fd9616e4b199b5c8fbf0213df25";
+
 function IPhonePortraitDisplay({ onStart }) {
   return (
     <section id="mobile-preview" className="border-y border-slate-200 bg-white px-5 py-16">
-      <div className="mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-[0.85fr_1fr]">
-        <div className="mx-auto w-full max-w-sm">
-          <div className="iphone-frame mx-auto">
-            <div className="iphone-notch" />
-            <div className="iphone-screen">
-              <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-                <span className="flex items-center gap-2 text-sm font-black text-slate-950">
-                  <span className="flex h-7 w-7 items-center justify-center rounded bg-green-600 text-white">
-                    <Icon name="file" className="h-4 w-4" />
-                  </span>
-                  BuildMyCV<span className="text-green-600">Now</span>
-                </span>
-                <span className="rounded bg-green-600 px-3 py-2 text-xs font-black text-white">Download</span>
-              </div>
-              <div className="space-y-3 bg-slate-50 p-4">
-                <div className="rounded bg-white p-3 shadow-sm ring-1 ring-slate-200">
-                  <p className="text-[11px] font-black text-slate-700">Job category template</p>
-                  <div className="mt-2 rounded border border-slate-200 px-3 py-2 text-sm">Skilled Workers</div>
-                </div>
-                <div className="rounded bg-white p-3 shadow-sm ring-1 ring-slate-200">
-                  <p className="text-[11px] font-black text-slate-700">Live CV preview</p>
-                  <div className="mt-3 rounded-sm bg-white p-4 ring-1 ring-slate-200">
-                    <div className="border-b border-blue-600 pb-2">
-                      <h3 className="text-lg font-black leading-tight text-slate-950">RAVI KUMAR</h3>
-                      <p className="text-xs font-bold text-blue-700">AC Technician</p>
-                    </div>
-                    <div className="mt-3 space-y-3">
-                      <div>
-                        <p className="text-[10px] font-black uppercase text-blue-800">Summary</p>
-                        <p className="mt-1 text-[11px] leading-5 text-slate-600">Hardworking technician with repair and maintenance experience.</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-black uppercase text-blue-800">Skills</p>
-                        <p className="mt-1 text-[11px] leading-5 text-slate-600">Installation, repair, safety, tools handling</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <button onClick={onStart} className="w-full rounded bg-green-600 py-3 text-sm font-black text-white">
-                  Create CV on mobile
-                </button>
-              </div>
-            </div>
+      <div className="mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="landing-video-card">
+          <div className="landing-video-topbar">
+            <span className="flex items-center gap-2 text-sm font-black text-slate-950">
+              <span className="flex h-8 w-8 items-center justify-center rounded bg-green-600 text-white">
+                <Icon name="file" className="h-4 w-4" />
+              </span>
+              BuildMyCV<span className="text-green-600">Now</span>
+            </span>
+            <a href={HEYGEN_DEMO_VIDEO_URL} target="_blank" rel="noreferrer" className="rounded bg-green-600 px-3 py-2 text-xs font-black text-white">
+              Open video
+            </a>
           </div>
+          <div className="landing-video-frame">
+            <iframe
+              title="How to create and download your CV for free"
+              src={HEYGEN_DEMO_VIDEO_URL}
+              allow="autoplay; fullscreen; picture-in-picture"
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="strict-origin-when-cross-origin"
+            />
+          </div>
+          <p className="mt-3 text-xs font-bold leading-5 text-slate-500">
+            If the HeyGen player does not load, open the video in a new tab. Make sure the HeyGen video is set to public or shareable.
+          </p>
         </div>
         <div>
           <h2 className="max-w-2xl text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
-            Easy to use on iPhone and small screens.
+            Watch how to create and download your CV for free.
           </h2>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
-            Workers can choose a template, type their details, check the preview, and unlock downloads from a portrait phone screen.
+            This quick video shows job seekers how to choose a template, fill in their details, check the live preview, and download a professional CV.
           </p>
           <div className="mt-7 grid gap-3 text-sm font-bold text-slate-700 sm:grid-cols-2">
             <span className="flex items-center gap-2"><Icon name="check" className="h-5 w-5 text-green-600" /> Large form fields</span>
@@ -807,9 +791,14 @@ function IPhonePortraitDisplay({ onStart }) {
             <span className="flex items-center gap-2"><Icon name="lock" className="h-5 w-5 text-green-600" /> OTP download flow</span>
             <span className="flex items-center gap-2"><Icon name="download" className="h-5 w-5 text-blue-600" /> PDF or Word</span>
           </div>
-          <button onClick={onStart} className="mt-8 rounded bg-green-600 px-6 py-4 font-bold text-white hover:bg-green-700">
-            Try the mobile builder
-          </button>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <button onClick={onStart} className="rounded bg-green-600 px-6 py-4 font-bold text-white hover:bg-green-700">
+              Try the CV builder
+            </button>
+            <a href={HEYGEN_DEMO_VIDEO_URL} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded border border-blue-600 px-6 py-4 font-bold text-blue-700 hover:bg-blue-50">
+              Open video
+            </a>
+          </div>
         </div>
       </div>
     </section>
