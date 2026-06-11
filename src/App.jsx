@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { categories, layouts, themes } from "./data/categories";
 import {
@@ -294,145 +294,266 @@ function CookieNotice() {
 }
 
 function Header({ onStart }) {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 10);
+    onScroll();
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
-        <Link to="/" className="flex items-center gap-2 font-bold text-slate-950">
-          <span className="flex h-9 w-9 items-center justify-center rounded bg-green-600 text-white">
+    <header className={`landing-nav ${scrolled ? "scrolled" : ""}`}>
+      <Link to="/" className="nav-logo" aria-label="BuildMyCVNow home">
+        <span className="nav-logo-mark">
             <Icon name="file" className="h-5 w-5" />
           </span>
-          <span className="text-xl">BuildMyCV<span className="text-green-600">Now</span></span>
+        <span>BuildMyCV<span>Now</span></span>
         </Link>
-        <nav className="hidden items-center gap-6 text-sm font-semibold text-slate-700 md:flex">
-          <Link to="/#templates">Templates</Link>
-          <Link to="/about">About</Link>
-          <Link to="/blog">Career Tips</Link>
-          <Link to="/#faq">FAQ</Link>
-          <Link to="/contact">Contact</Link>
+      <div className="nav-right">
+        <nav className="nav-links" aria-label="Landing page navigation">
+          <Link to="/#templates" className="nav-link">Templates</Link>
+          <Link to="/#how-it-works" className="nav-link">How it works</Link>
+          <Link to="/blog" className="nav-link">Blog</Link>
         </nav>
-        <button onClick={onStart} className="rounded bg-green-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-green-700">
-          Start your free CV
+        <button onClick={onStart} className="nav-cta">
+          Build my CV - it's free
         </button>
       </div>
+      <button onClick={onStart} className="nav-mobile-cta" aria-label="Build my CV">
+        CV
+      </button>
     </header>
   );
 }
 
 function LandingPage({ onStart }) {
-  const benefits = [
-    ["check", "100% Free", "Create and download without hidden charges."],
-    ["file", "Professional templates", "Simple wording that fits real job categories."],
-    ["lock", "Private and secure", "Mock verification flow today, ready for real security later."],
-    ["download", "PDF and Word", "Download in the format employers commonly request."],
+  const videoRef = useRef(null);
+  const [playing, setPlaying] = useState(false);
+  const [activeChapter, setActiveChapter] = useState(0);
+  const chapters = [
+    { label: "1. Pick a template", short: "Choose template", time: 0, ts: "0:00" },
+    { label: "2. Fill details", short: "Fill details", time: 28, ts: "0:28" },
+    { label: "3. AI polishes", short: "AI improve", time: 70, ts: "1:10" },
+    { label: "4. Download", short: "Download", time: 105, ts: "1:45" },
   ];
+  const templates = [
+    { name: "Modern Blue", tag: "All industries - ATS", accent: "#185FA5", badge: "Most popular", bg: "#E6F1FB", color: "#0C447C" },
+    { name: "Hospitality Pro", tag: "Hotels - F&B - Tourism", accent: "#0F6E56", badge: "UAE favourite", bg: "#E1F5EE", color: "#085041" },
+    { name: "IT & Tech", tag: "Dev - QA - IT Support", accent: "#534AB7", badge: "ATS optimised", bg: "#EEEDFE", color: "#3C3489" },
+    { name: "Engineering", tag: "Civil - Structural - MEP", accent: "#854F0B", badge: "GCC standard", bg: "#FAEEDA", color: "#633806" },
+    { name: "Finance & Banking", tag: "UAE banks - accounting", accent: "#185FA5", badge: "ATS optimised", bg: "#E6F1FB", color: "#0C447C" },
+    { name: "General / OFW", tag: "Any role - Philippines", accent: "#0F6E56", badge: "Beginner friendly", bg: "#E1F5EE", color: "#085041" },
+  ];
+  const features = [
+    ["sparkle", "AI writing assist", "One click improves your job descriptions into clear, recruiter-friendly bullet points."],
+    ["eye", "Live preview", "See your CV update as you type, with no switching tabs and no guessing."],
+    ["share", "Share via link or QR", "Send your CV over WhatsApp or email instantly when sharing is enabled."],
+    ["briefcase", "UAE-ready fields", "Includes visa status, nationality, expected salary, and driving licence fields."],
+  ];
+  const testimonials = [
+    ["Maria G.", "F&B Supervisor - Dubai", "MG", "#E6F1FB", "#0C447C", "Got a callback from a Dubai hotel within 3 days of sending my new CV. The hospitality template was exactly what I needed."],
+    ["Raj S.", "IT Support - Abu Dhabi", "RS", "#E1F5EE", "#085041", "Super easy. The AI fixed my job descriptions in one click. Downloaded my CV in under 10 minutes."],
+    ["Ana N.", "Admin Assistant - Sharjah", "AN", "#EEEDFE", "#3C3489", "Finally a free CV builder that does not ask for my credit card. The PDF looks clean and professional."],
+  ];
+  const videoUrl = HEYGEN_DEMO_VIDEO_URL;
+
+  const toggleVideo = async () => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (video.paused) {
+      video.muted = false;
+      await video.play();
+      setPlaying(true);
+    } else {
+      video.pause();
+      setPlaying(false);
+    }
+  };
+
+  const seekTo = async (time, index) => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.currentTime = time;
+    video.muted = false;
+    await video.play();
+    setActiveChapter(index);
+    setPlaying(true);
+  };
+
   return (
-    <main id="top">
+    <main id="top" className="landing-page-redesign">
       <Seo
-        title="Free CV Builder"
-        description="Create a professional CV for free in minutes with beginner-friendly templates for UAE, GCC, and Philippines job seekers."
+        title="Free CV Builder for UAE & GCC Jobs"
+        description="Build a professional, ATS-friendly CV in 5 minutes. Free templates for hospitality, IT, engineering and finance jobs in Dubai, Abu Dhabi and across the Gulf."
       />
-      <section className="mx-auto grid max-w-7xl items-center gap-10 px-5 pb-10 pt-14 lg:grid-cols-[1fr_0.9fr] lg:pt-20">
-        <div>
-          <h1 className="max-w-3xl text-4xl font-black leading-tight text-slate-950 sm:text-5xl lg:text-6xl">
-            Create a professional CV for free in minutes.
-          </h1>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-            BuildMyCVNow is easy to use for first-time CV creators, fresh graduates, skilled workers, domestic service workers, and job seekers who want better opportunities.
+      <section className="hero-section">
+        <div className="hero-inner">
+          <div className="hero-badge">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+            Designed for UAE & GCC job seekers
+          </div>
+          <h1 className="hero-h1">Build a professional CV in <span>5 minutes</span> - free, forever</h1>
+          <p className="hero-sub">
+            ATS-friendly templates for hospitality, IT, engineering, finance and more. Made for job seekers in Dubai, Abu Dhabi, the GCC, and the Philippines.
           </p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <button onClick={onStart} className="inline-flex items-center justify-center gap-3 rounded bg-green-600 px-7 py-4 font-bold text-white shadow-soft transition hover:bg-green-700">
-              Start your free CV <Icon name="arrow" className="h-5 w-5" />
-            </button>
-            <a href="#templates" className="inline-flex items-center justify-center rounded border border-blue-600 px-7 py-4 font-bold text-blue-700 transition hover:bg-blue-50">
-              See templates
-            </a>
+          <div className="hero-btns">
+            <button onClick={onStart} className="btn-primary">Start building now <Icon name="arrow" className="h-4 w-4" /></button>
+            <a href="#templates" className="btn-ghost">See templates</a>
           </div>
-          <div className="mt-8 grid gap-3 text-sm font-semibold text-slate-700 sm:grid-cols-3">
-            <span className="flex items-center gap-2"><Icon name="check" className="h-5 w-5 text-green-600" /> 100% free</span>
-            <span className="flex items-center gap-2"><Icon name="lock" className="h-5 w-5 text-blue-600" /> Beginner-friendly</span>
-            <span className="flex items-center gap-2"><Icon name="download" className="h-5 w-5 text-red-500" /> PDF or Word</span>
-          </div>
-        </div>
-        <div className="relative mx-auto w-full max-w-lg">
-          <div className="absolute right-0 top-4 z-10 rounded-full bg-amber-300 px-5 py-5 text-center text-sm font-black text-slate-950 shadow-soft">FREE<br />FOREVER</div>
-          <div className="rotate-2 rounded-sm bg-white p-8 shadow-soft ring-1 ring-slate-200">
-            <div className="border-b border-slate-200 pb-5">
-              <h2 className="text-2xl font-black text-slate-950">MARIA SANTOS</h2>
-              <p className="text-sm font-bold text-blue-700">Hospitality Assistant</p>
-            </div>
-            <div className="mt-6 space-y-5 text-sm text-slate-700">
-              <CVLine title="Professional Summary" text="Reliable worker with a friendly attitude and strong customer service experience." />
-              <CVLine title="Work Experience" text="Assisted guests, prepared service areas, and followed daily team duties." />
-              <CVLine title="Skills" text="Customer service, teamwork, cleaning, time management" />
-            </div>
-          </div>
+          <ul className="hero-trust">
+            {["No sign-up needed", "Download as PDF", "100% free", "AI writing help"].map((item) => (
+              <li key={item}><Icon name="check" className="h-4 w-4" /> {item}</li>
+            ))}
+          </ul>
         </div>
       </section>
-      <div className="px-5 py-5"><AdBanner label="Google AdSense homepage ad" slot="1111111111" /></div>
-      <section id="how" className="mx-auto max-w-7xl px-5 py-14">
-        <h2 className="text-center text-3xl font-black text-slate-950">Build your CV in 3 easy steps</h2>
-        <div className="mt-10 grid gap-6 md:grid-cols-3">
-          {["Choose your job category", "Fill in your details", "Preview, verify, and download"].map((step, index) => (
-            <div key={step} className="text-center">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-50 text-green-700">
-                <span className="font-black">{index + 1}</span>
-              </div>
-              <h3 className="mt-4 font-black text-slate-950">{step}</h3>
-              <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-slate-600">
-                {index === 0 ? "Pick the template that best matches your work." : index === 1 ? "Answer simple questions and add your experience." : "Check your CV and download it for free."}
-              </p>
+
+      <section className="video-section" id="how-it-works">
+        <div className="section-eyebrow">See it in action</div>
+        <h2 className="section-title">From blank page to polished CV in minutes</h2>
+        <p className="section-sub">Watch how easy it is - no design skills needed</p>
+        <div className="video-wrapper">
+          <div className="browser-chrome">
+            <div className="browser-bar">
+              <div className="browser-dots" aria-hidden="true"><span /><span /><span /></div>
+              <div className="browser-url">buildmycvnow.com/builder</div>
             </div>
+            <div className="video-screen">
+              <video
+                ref={videoRef}
+                className="demo-video"
+                src={videoUrl}
+                preload="metadata"
+                playsInline
+                loop
+                onPlay={() => setPlaying(true)}
+                onPause={() => setPlaying(false)}
+                controls={playing}
+              />
+              {!playing && (
+                <button type="button" className="play-overlay" onClick={toggleVideo} aria-label="Play CV builder demo">
+                  <span className="play-btn"><svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3" /></svg></span>
+                  <span className="video-badge">2 min demo - no audio needed</span>
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="chapter-pills" aria-label="Demo steps">
+            {chapters.map((chapter, index) => (
+              <button key={chapter.label} type="button" className={`chapter-pill ${activeChapter === index ? "active" : ""}`} onClick={() => seekTo(chapter.time, index)}>
+                {chapter.label}
+              </button>
+            ))}
+          </div>
+          <div className="chapter-timestamps">
+            {chapters.map((chapter, index) => (
+              <button key={chapter.ts} type="button" className="ts-link" onClick={() => seekTo(chapter.time, index)}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                {chapter.ts} - {chapter.short}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="stats-row">
+          {[
+            ["5 min", "avg. time to finish"],
+            ["8+", "job-specific templates"],
+            ["100%", "free to download"],
+          ].map(([num, label]) => (
+            <div key={num} className="stat-card"><div className="stat-num">{num}</div><div className="stat-label">{label}</div></div>
           ))}
         </div>
       </section>
-      <IPhonePortraitDisplay onStart={onStart} />
-      <section className="border-y border-slate-200 bg-slate-50 px-5 py-14">
-        <div className="mx-auto max-w-7xl">
-          <h2 className="text-center text-3xl font-black text-slate-950">Why job seekers trust BuildMyCVNow</h2>
-          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {benefits.map(([icon, title, text]) => (
-              <div key={title} className="rounded bg-white p-6 shadow-sm ring-1 ring-slate-200">
-                <Icon name={icon} className="h-8 w-8 text-green-600" />
-                <h3 className="mt-5 font-black text-slate-950">{title}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600">{text}</p>
+
+      <section className="templates-section" id="templates">
+        <div className="section-inner">
+          <div className="section-eyebrow">Templates</div>
+          <h2 className="section-title">Built for your industry</h2>
+          <p className="section-sub">Each template is ATS-tested and tailored for Gulf employers</p>
+          <div className="template-grid">
+            {templates.map((template) => (
+              <button key={template.name} type="button" onClick={onStart} className="template-card">
+                <div className="template-thumb">
+                  <div className="mini-cv">
+                    <div className="mini-accent" style={{ background: template.accent }} />
+                    <div className="mini-name-line" />
+                    <div className="mini-role-line" />
+                    <div className="mini-section">
+                      <span style={{ width: "82%" }} />
+                      <span style={{ width: "64%" }} />
+                      <span style={{ width: "74%" }} />
+                    </div>
+                  </div>
+                </div>
+                <div className="template-info">
+                  <div className="template-name">{template.name}</div>
+                  <div className="template-tag">{template.tag}</div>
+                  <span className="template-badge" style={{ background: template.bg, color: template.color }}>{template.badge}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+          <div className="template-more"><button type="button" onClick={onStart}>View all templates <Icon name="arrow" className="h-4 w-4" /></button></div>
+        </div>
+      </section>
+
+      <section className="features-section">
+        <div className="section-inner">
+          <div className="section-eyebrow">Why BuildMyCVNow</div>
+          <h2 className="section-title">Everything you need, nothing you don't</h2>
+          <div className="features-grid">
+            {features.map(([icon, title, desc], index) => (
+              <div key={title} className="feature-card">
+                <div className={`feature-icon feature-icon-${index}`}><Icon name={icon} className="h-5 w-5" /></div>
+                <div className="feature-title">{title}</div>
+                <p className="feature-desc">{desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
-      <section id="templates" className="mx-auto max-w-7xl px-5 py-14">
-        <h2 className="text-center text-3xl font-black text-slate-950">CV templates for every job category</h2>
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {categories.map((category, index) => (
-            <React.Fragment key={category.id}>
-              <button onClick={onStart} className="rounded border border-slate-200 bg-white p-5 text-left transition hover:border-green-500 hover:shadow-soft">
-                <Icon name="briefcase" className="h-7 w-7 text-blue-600" />
-                <h3 className="mt-4 font-black text-slate-950">{category.name}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600">{category.title}</p>
-              </button>
-              {(index + 1) % 4 === 0 && index !== categories.length - 1 && (
-                <div className="sm:col-span-2 lg:col-span-4">
-                  <AdBanner compact label="Google AdSense template category ad" slot={`222222222${index}`} />
+
+      <section className="testimonials-section">
+        <div className="section-inner">
+          <div className="section-eyebrow">Real stories</div>
+          <h2 className="section-title">Job seekers who got hired</h2>
+          <div className="testi-grid">
+            {testimonials.map(([name, role, initialsText, bg, color, quote]) => (
+              <div key={name} className="testi-card">
+                <div className="testi-stars" aria-label="5 star rating">*****</div>
+                <p className="testi-quote">"{quote}"</p>
+                <div className="testi-person">
+                  <div className="testi-avatar" style={{ background: bg, color }}>{initialsText}</div>
+                  <div><div className="testi-name">{name}</div><div className="testi-role">{role}</div></div>
                 </div>
-              )}
-            </React.Fragment>
-          ))}
+              </div>
+            ))}
+          </div>
         </div>
       </section>
-      <div className="px-5 pb-6"><AdBanner label="Google AdSense category section ad" slot="3333333333" /></div>
-      <section id="faq" className="mx-auto grid max-w-7xl gap-10 px-5 py-14 lg:grid-cols-[0.8fr_1fr]">
+
+      <section className="cta-section">
+        <div className="cta-box">
+          <h2 className="cta-h2">Ready to build your CV?</h2>
+          <p className="cta-sub">Free forever. No sign-up. Download as PDF in minutes.</p>
+          <button type="button" onClick={onStart} className="btn-cta-white">Start building now <Icon name="arrow" className="h-4 w-4" /></button>
+          <p className="cta-note">No account required - works on mobile and desktop</p>
+        </div>
+      </section>
+
+      <section id="faq" className="landing-faq">
         <div>
-          <h2 className="text-3xl font-black text-slate-950">Frequently asked questions</h2>
-          <p className="mt-4 text-lg leading-8 text-slate-600">
+          <h2>Frequently asked questions</h2>
+          <p>
             Simple answers for first-time CV creators, workers, and job seekers using BuildMyCVNow.
           </p>
-          <button onClick={onStart} className="mt-7 rounded bg-green-600 px-6 py-4 font-bold text-white hover:bg-green-700">Start your free CV</button>
         </div>
-        <div className="space-y-3">
+        <div className="faq-list">
           {faqs.map(([q, a]) => (
-            <details key={q} className="rounded border border-slate-200 bg-white p-5">
-              <summary className="cursor-pointer font-bold text-slate-950">{q}</summary>
-              <p className="mt-3 text-sm leading-6 text-slate-600">{a}</p>
+            <details key={q}>
+              <summary>{q}</summary>
+              <p>{a}</p>
             </details>
           ))}
         </div>
@@ -718,30 +839,23 @@ function BlogArticlePage({ onStart }) {
 
 function SiteFooter({ onStart }) {
   return (
-    <footer className="border-t border-slate-200 bg-slate-950 px-5 py-10 text-white">
-      <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-[1fr_1.4fr_auto]">
-        <div>
-          <div className="flex items-center gap-2 font-black">
-            <span className="flex h-9 w-9 items-center justify-center rounded bg-green-600 text-white"><Icon name="file" className="h-5 w-5" /></span>
-            BuildMyCVNow
-          </div>
-          <p className="mt-3 max-w-sm text-sm leading-6 text-slate-300">Free CV Builder for UAE, GCC & Philippines Job Seekers</p>
-        </div>
-        <nav className="grid gap-3 text-sm font-bold text-slate-300 sm:grid-cols-3">
+    <footer className="landing-footer">
+      <div className="footer-logo">
+        <span className="footer-logo-mark"><Icon name="file" className="h-4 w-4" /></span>
+        BuildMyCVNow
+      </div>
+      <nav className="footer-links" aria-label="Footer navigation">
           <Link to="/about">About</Link>
           <Link to="/contact">Contact</Link>
-          <Link to="/privacy">Privacy Policy</Link>
-          <Link to="/terms">Terms of Use</Link>
-          <Link to="/#faq">FAQ</Link>
+        <Link to="/privacy">Privacy</Link>
+        <Link to="/terms">Terms</Link>
           <Link to="/blog">Blog</Link>
         </nav>
-        <div className="space-y-3">
-          <button onClick={onStart} className="rounded bg-green-600 px-5 py-3 text-sm font-black text-white hover:bg-green-700">
-            Start free CV
-          </button>
-          <p className="text-xs font-semibold text-slate-400">Copyright 2025 BuildMyCVNow. All rights reserved.</p>
+      <div className="footer-action">
+        <button onClick={onStart}>Start free CV</button>
+        <p>Copyright 2025 BuildMyCVNow. All rights reserved.</p>
+        <span>Free CV Builder for UAE, GCC & Philippines Job Seekers</span>
         </div>
-      </div>
     </footer>
   );
 }
