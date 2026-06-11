@@ -1117,13 +1117,22 @@ function WorkExperienceEditor({ cv, onChange }) {
   };
   const spellingCorrections = [
     [/\bfroward\b/gi, "forwarded"],
+    [/\bfrowrd\b/gi, "forwarded"],
+    [/\bfrowrded\b/gi, "forwarded"],
     [/\bforwrd\b/gi, "forwarded"],
+    [/\bforword\b/gi, "forwarded"],
+    [/\bforworded\b/gi, "forwarded"],
     [/\bfrward\b/gi, "forwarded"],
     [/\bconced\b/gi, "concerned"],
+    [/\bconcernrd\b/gi, "concerned"],
+    [/\bconcernd\b/gi, "concerned"],
+    [/\bconcernedrd\b/gi, "concerned"],
     [/\bconcern\b(?=\s+(person|department|team|manager|staff))/gi, "concerned"],
     [/\bconcered\b/gi, "concerned"],
     [/\bcomunication\b/gi, "communication"],
     [/\bcommunciation\b/gi, "communication"],
+    [/\brecive\b/gi, "receive"],
+    [/\brecived\b/gi, "received"],
     [/\brecieve\b/gi, "receive"],
     [/\brecieved\b/gi, "received"],
     [/\bmanagment\b/gi, "management"],
@@ -1133,6 +1142,10 @@ function WorkExperienceEditor({ cv, onChange }) {
     [/\bresponsibilites\b/gi, "responsibilities"],
     [/\bcostumer\b/gi, "customer"],
     [/\bcostumers\b/gi, "customers"],
+    [/\bcpstumer\b/gi, "customer"],
+    [/\bcpstumers\b/gi, "customers"],
+    [/\bcstumer\b/gi, "customer"],
+    [/\bcstumers\b/gi, "customers"],
     [/\bguets\b/gi, "guests"],
     [/\bservce\b/gi, "service"],
     [/\bsuperviser\b/gi, "supervisor"],
@@ -1147,8 +1160,18 @@ function WorkExperienceEditor({ cv, onChange }) {
       .replace(/\bAccepted calls\b/gi, "Answered calls")
       .replace(/\baccept calls\b/gi, "answer calls")
       .replace(/\baccepted call\b/gi, "answered call")
+      .replace(/\bReceive calls\b/gi, "Answered calls")
+      .replace(/\breceive calls\b/gi, "answer calls")
+      .replace(/\breceived calls\b/gi, "answered calls")
+      .replace(/\bAnswered calls and forwarded? (?:to )?(?:the )?concerned person\b/gi, "Answered calls and forwarded them to the concerned person")
+      .replace(/\bAnswer calls and forward(?:ed)? (?:to )?(?:the )?concerned person\b/gi, "Answer calls and forward them to the concerned person")
       .replace(/\bforwarded to concerned person\b/gi, "forwarded them to the concerned person")
       .replace(/\bforwarded to the concerned person\b/gi, "forwarded them to the concerned person")
+      .replace(/\bforwarded? (?:to )?(?:the )?concerned person\b/gi, "forwarded them to the concerned person")
+      .replace(/\bGreet customer in polite manner\b/gi, "Greeted customers in a polite manner")
+      .replace(/\bgreet customer in polite manner\b/gi, "greeted customers in a polite manner")
+      .replace(/\bGreet customers in polite manner\b/gi, "Greeted customers in a polite manner")
+      .replace(/\bgreet customers in polite manner\b/gi, "greeted customers in a polite manner")
       .replace(/\band report to\b/gi, "and reported to")
       .replace(/\breport to management\b/gi, "reported to management")
       .replace(/\breport to manager\b/gi, "reported to manager")
