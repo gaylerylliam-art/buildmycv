@@ -208,6 +208,11 @@ function Icon({ name, className = "h-5 w-5" }) {
     menu: <><path d="M4 6h16" /><path d="M4 12h16" /><path d="M4 18h16" /></>,
     upload: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M17 8l-5-5-5 5" /><path d="M12 3v12" /></>,
     camera: <><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z" /><circle cx="12" cy="13" r="3" /></>,
+    plus: <><path d="M12 5v14" /><path d="M5 12h14" /></>,
+    sparkle: <><path d="M12 3l1.7 5.1L19 10l-5.3 1.9L12 17l-1.7-5.1L5 10l5.3-1.9L12 3z" /><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z" /></>,
+    share: <><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.6 10.7l6.8-4.4" /><path d="M8.6 13.3l6.8 4.4" /></>,
+    qr: <><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 14h2v2h-2z" /><path d="M19 14h2v2h-2z" /><path d="M14 19h2v2h-2z" /><path d="M19 19h2v2h-2z" /></>,
+    chevron: <path d="m6 9 6 6 6-6" />,
   };
   return <svg {...common}>{paths[name]}</svg>;
 }
@@ -822,14 +827,20 @@ function CVLine({ title, text }) {
 
 function CategorySelector({ selected, onSelect }) {
   return (
-    <label className="block">
-      <span className="form-label">Job category template</span>
-      <select value={selected} onChange={(event) => onSelect(event.target.value)} className="form-field">
-        {categories.map((category) => (
-          <option value={category.id} key={category.id}>{category.name}</option>
-        ))}
-      </select>
-    </label>
+    <div className="template-card-grid">
+      {categories.map((category) => (
+        <button
+          type="button"
+          value={category.id}
+          key={category.id}
+          onClick={() => onSelect(category.id)}
+          className={`template-card-button ${selected === category.id ? "selected" : ""}`}
+        >
+          <span className="template-card-name">{category.name}</span>
+          <span className="template-card-sub">{category.title}</span>
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -947,6 +958,8 @@ function ProfilePhotoUploader({ cv, onChange }) {
 
 function WorkExperienceEditor({ cv, onChange }) {
   const entries = normalizeWorkExperiences(cv);
+  const [openId, setOpenId] = useState(entries[0]?.id || "");
+  const [aiStatus, setAiStatus] = useState("");
   const commitEntries = (nextEntries) => {
     onChange("workExperiences", nextEntries);
     onChange("experience", formatWorkExperiences(nextEntries));
@@ -955,32 +968,49 @@ function WorkExperienceEditor({ cv, onChange }) {
     commitEntries(entries.map((entry) => (entry.id === id ? { ...entry, [key]: value } : entry)));
   };
   const addEntry = () => {
-    commitEntries([{ ...createExperienceEntry(), jobTitle: cv.jobTitle || "" }, ...entries]);
+    const nextEntry = { ...createExperienceEntry(), jobTitle: cv.jobTitle || "", employer: "" };
+    commitEntries([...entries, nextEntry]);
+    setOpenId(nextEntry.id);
   };
   const removeEntry = (id) => {
     commitEntries(entries.length === 1 ? [{ ...createExperienceEntry(), jobTitle: cv.jobTitle || "" }] : entries.filter((entry) => entry.id !== id));
   };
+  const improveEntry = (id) => {
+    const target = entries.find((entry) => entry.id === id);
+    if (!target?.responsibilities?.trim()) {
+      setAiStatus("Add responsibilities first, then AI can improve them.");
+      return;
+    }
+    const improved = target.responsibilities
+      .split("\n")
+      .map((line) => line.trim().replace(/^[-*]\s*/, ""))
+      .filter(Boolean)
+      .slice(0, 5)
+      .map((line) => {
+        const first = line.charAt(0).toLowerCase() + line.slice(1);
+        return /^(managed|coordinated|prepared|supported|handled|improved|maintained|assisted|recorded|inspected|served|installed|repaired)/i.test(line)
+          ? line
+          : `Improved daily operations by ${first}`;
+      })
+      .join("\n");
+    updateEntry(id, "responsibilities", improved);
+    setAiStatus("Responsibilities improved. Review and adjust before download.");
+  };
   return (
-    <section className="rounded border border-slate-200 bg-slate-50 p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h3 className="panel-title">Work experience</h3>
-          <p className="mt-1 text-xs font-bold leading-5 text-slate-500">Add one entry for each employer. The preview updates instantly.</p>
-        </div>
-        <button type="button" onClick={addEntry} className="rounded bg-blue-600 px-3 py-2 text-xs font-black text-white">
-          Add job
-        </button>
-      </div>
-      <div className="mt-4 space-y-4">
+    <section className="space-y-3">
+      <p className="text-xs font-bold leading-5 text-slate-500">Add one card for each employer. The preview updates instantly.</p>
+      <div className="space-y-3">
         {entries.map((entry, index) => (
-          <article key={entry.id} className="rounded border border-slate-200 bg-white p-4">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h4 className="text-sm font-black text-slate-950">Experience {index + 1}</h4>
-              <button type="button" onClick={() => removeEntry(entry.id)} className="rounded border border-red-200 px-3 py-2 text-xs font-black text-red-700">
-                Remove
-              </button>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+          <article key={entry.id} className={`entry-card ${openId === entry.id ? "open" : ""}`}>
+            <button type="button" className="entry-card-header" onClick={() => setOpenId(openId === entry.id ? "" : entry.id)}>
+              <Icon name="briefcase" className="h-4 w-4 text-blue-700" />
+              <span className="entry-card-title">{entry.employer || `New role ${index + 1}`}</span>
+              {entry.isCurrent && <span className="entry-current-badge">Current</span>}
+              <Icon name="chevron" className={`h-4 w-4 text-slate-400 transition ${openId === entry.id ? "rotate-180" : ""}`} />
+            </button>
+            {openId === entry.id && (
+            <div className="entry-card-body">
+            <div className="field-pair">
               <label>
                 <span className="form-label">Job title / position</span>
                 <input className="form-field" value={entry.jobTitle || ""} onChange={(event) => updateEntry(entry.id, "jobTitle", event.target.value)} placeholder="Example: Warehouse Assistant" />
@@ -989,6 +1019,8 @@ function WorkExperienceEditor({ cv, onChange }) {
                 <span className="form-label">Employer name</span>
                 <input className="form-field" value={entry.employer || ""} onChange={(event) => updateEntry(entry.id, "employer", event.target.value)} placeholder="Example: Amazon" />
               </label>
+            </div>
+            <div className="field-pair">
               <label>
                 <span className="form-label">Date employed from</span>
                 <input className="form-field" type="month" value={entry.fromDate || ""} onChange={(event) => updateEntry(entry.id, "fromDate", event.target.value)} />
@@ -1002,57 +1034,95 @@ function WorkExperienceEditor({ cv, onChange }) {
               <input type="checkbox" checked={Boolean(entry.isCurrent)} onChange={(event) => updateEntry(entry.id, "isCurrent", event.target.checked)} />
               I currently work here
             </label>
-            <label className="mt-3 block">
+            <label className="block">
               <span className="form-label">Responsibilities / achievements</span>
-              <textarea className="form-field resize-y" rows={5} value={entry.responsibilities || ""} onChange={(event) => updateEntry(entry.id, "responsibilities", event.target.value)} placeholder="Write duties and achievements, one per line." />
+              <textarea className="form-field resize-y" rows={5} value={entry.responsibilities || ""} onChange={(event) => updateEntry(entry.id, "responsibilities", event.target.value)} placeholder="Example: Managed inventory records, prepared daily dispatch documents, and coordinated deliveries across UAE sites." />
             </label>
+            <div className="ai-assist-row">
+              <button type="button" onClick={() => improveEntry(entry.id)} className="btn-ai"><Icon name="sparkle" className="h-3 w-3" /> Improve with AI</button>
+              <span className="ai-hint">Rewrite and strengthen your bullet points</span>
+            </div>
+            <button type="button" onClick={() => removeEntry(entry.id)} className="self-start rounded border border-red-200 px-3 py-2 text-xs font-black text-red-700">
+              Remove role
+            </button>
+            </div>
+            )}
           </article>
         ))}
       </div>
-      <button type="button" onClick={addEntry} className="mt-4 flex w-full items-center justify-center rounded border border-blue-600 bg-white px-4 py-3 text-sm font-black text-blue-700 hover:bg-blue-50">
-        Add another work experience
+      {aiStatus && <p className="text-xs font-bold text-blue-700">{aiStatus}</p>}
+      <button type="button" onClick={addEntry} className="btn-add-more">
+        <Icon name="plus" className="h-4 w-4" /> Add another role
       </button>
     </section>
   );
 }
 
-function CVBuilderForm({ cv, onChange }) {
-  const fields = [
-    ["fullName", "Full name", "text"],
-    ["jobTitle", "Job title", "text"],
-    ["email", "Contact email", "email"],
-    ["phone", "Contact number", "tel"],
-    ["country", "Country", "text"],
-    ["nationality", "Nationality", "text"],
-    ["visaStatus", "Visa status", "text"],
-    ["linkedIn", "LinkedIn URL", "url"],
-    ["portfolioUrl", "Portfolio URL", "url"],
-    ["summary", "Professional summary / objective", "textarea"],
-    ["skills", "Skills", "textarea"],
-    ["workExperiences", "Work experience", "custom"],
-    ["education", "Education", "textarea"],
-    ["certifications", "Certifications & licenses", "textarea"],
-    ["languages", "Languages spoken", "textarea"],
-    ["drivingLicense", "Driving license", "text"],
-    ["references", "References", "textarea"],
-  ];
+function CollapsibleFormSection({ id, title, icon = "file", defaultOpen = false, badge, children }) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="space-y-4">
-      {fields.map(([key, label, type]) => (
-        type === "custom" ? (
-          <WorkExperienceEditor key={key} cv={cv} onChange={onChange} />
-        ) : (
-          <label key={key} className="block">
-            <span className="form-label">{label}</span>
-            {type === "textarea" ? (
-              <textarea value={cv[key] || ""} onChange={(event) => onChange(key, event.target.value)} rows={3} className="form-field resize-y" />
-            ) : (
-              <input type={type} value={cv[key] || ""} onChange={(event) => onChange(key, event.target.value)} className="form-field" />
-            )}
-          </label>
-        )
-      ))}
-      <section className="rounded border border-slate-200 bg-slate-50 p-4">
+    <section id={`builder-section-${id}`} className={`form-section-card ${open ? "open" : ""}`}>
+      <button type="button" className="form-section-head" onClick={() => setOpen(!open)}>
+        <Icon name={icon} className="h-4 w-4 text-blue-700" />
+        <span className="form-section-title">{title}</span>
+        {badge && <span className="entry-current-badge">{badge}</span>}
+        <Icon name="chevron" className={`h-4 w-4 text-slate-400 transition ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && <div className="form-section-body">{children}</div>}
+    </section>
+  );
+}
+
+function FormField({ label, value, onChange, type = "text", rows = 3, placeholder = "" }) {
+  return (
+    <label className="block">
+      <span className="form-label">{label}</span>
+      {type === "textarea" ? (
+        <textarea value={value || ""} onChange={(event) => onChange(event.target.value)} rows={rows} className="form-field resize-y" placeholder={placeholder} />
+      ) : (
+        <input type={type} value={value || ""} onChange={(event) => onChange(event.target.value)} className="form-field" placeholder={placeholder} />
+      )}
+    </label>
+  );
+}
+
+function CVBuilderForm({ cv, onChange }) {
+  const improveText = (key) => {
+    const value = String(cv[key] || "").trim();
+    if (!value) return;
+    const improved = key === "summary"
+      ? `${value.replace(/\.$/, "")}. Experienced in UAE/GCC job requirements, clear communication, and reliable daily performance.`
+      : value
+          .split(/[,\n]/)
+          .map((item) => item.trim())
+          .filter(Boolean)
+          .slice(0, 10)
+          .join(", ");
+    onChange(key, improved);
+  };
+  return (
+    <div className="space-y-3">
+      <CollapsibleFormSection id="personal" title="Personal info" icon="file" defaultOpen badge={cv.fullName ? "Done" : ""}>
+        <div className="field-pair">
+          <FormField label="Full name" value={cv.fullName} onChange={(value) => onChange("fullName", value)} placeholder="Example: Juan Dela Cruz" />
+          <FormField label="Job title" value={cv.jobTitle} onChange={(value) => onChange("jobTitle", value)} placeholder="Example: Logistics Assistant" />
+        </div>
+        <div className="field-pair">
+          <FormField label="Contact email" type="email" value={cv.email} onChange={(value) => onChange("email", value)} placeholder="name@email.com" />
+          <FormField label="Contact number" type="tel" value={cv.phone} onChange={(value) => onChange("phone", value)} placeholder="+971 50 123 4567" />
+        </div>
+        <div className="field-pair">
+          <FormField label="Country" value={cv.country} onChange={(value) => onChange("country", value)} placeholder="United Arab Emirates" />
+          <FormField label="Nationality" value={cv.nationality} onChange={(value) => onChange("nationality", value)} placeholder="Filipino" />
+        </div>
+        <div className="field-pair">
+          <FormField label="Visa status" value={cv.visaStatus} onChange={(value) => onChange("visaStatus", value)} placeholder="Visit visa / Own visa / Employment visa" />
+          <FormField label="Driving license" value={cv.drivingLicense} onChange={(value) => onChange("drivingLicense", value)} placeholder="UAE driving license / No UAE license" />
+        </div>
+        <div className="field-pair">
+          <FormField label="LinkedIn URL" type="url" value={cv.linkedIn} onChange={(value) => onChange("linkedIn", value)} placeholder="https://linkedin.com/in/yourname" />
+          <FormField label="Portfolio URL" type="url" value={cv.portfolioUrl} onChange={(value) => onChange("portfolioUrl", value)} placeholder="Portfolio, GitHub, or work sample link" />
+        </div>
         <label className="flex items-start gap-3">
           <input
             type="checkbox"
@@ -1071,7 +1141,34 @@ function CVBuilderForm({ cv, onChange }) {
             <input value={cv.expectedSalary || ""} onChange={(event) => onChange("expectedSalary", event.target.value)} className="form-field" placeholder="Example: AED 2,500 per month, negotiable" />
           </label>
         )}
-      </section>
+      </CollapsibleFormSection>
+
+      <CollapsibleFormSection id="experience" title="Work experience" icon="briefcase" defaultOpen badge={normalizeWorkExperiences(cv).some((entry) => entry.employer) ? "Done" : ""}>
+        <WorkExperienceEditor cv={cv} onChange={onChange} />
+      </CollapsibleFormSection>
+
+      <CollapsibleFormSection id="education" title="Education and certifications" icon="file" badge={cv.education ? "Done" : ""}>
+        <FormField label="Education" type="textarea" rows={4} value={cv.education} onChange={(value) => onChange("education", value)} placeholder="Example: High School Diploma, Manila High School, 2018" />
+        <FormField label="Certifications & licenses" type="textarea" rows={3} value={cv.certifications} onChange={(value) => onChange("certifications", value)} placeholder="Example: Basic Food Safety Certificate, TESDA NC II, UAE driving license" />
+      </CollapsibleFormSection>
+
+      <CollapsibleFormSection id="skills" title="Skills, languages, and references" icon="check" badge={cv.skills ? "Done" : ""}>
+        <FormField label="Skills" type="textarea" rows={4} value={cv.skills} onChange={(value) => onChange("skills", value)} placeholder="Example: Inventory control, customer service, Excel, dispatch coordination" />
+        <div className="ai-assist-row">
+          <button type="button" onClick={() => improveText("skills")} className="btn-ai"><Icon name="sparkle" className="h-3 w-3" /> Improve with AI</button>
+          <span className="ai-hint">Clean and strengthen your skills list</span>
+        </div>
+        <FormField label="Languages spoken" type="textarea" rows={3} value={cv.languages} onChange={(value) => onChange("languages", value)} placeholder="Example: English - Good, Filipino - Native, Arabic - Basic" />
+        <FormField label="References" type="textarea" rows={3} value={cv.references} onChange={(value) => onChange("references", value)} placeholder="Available upon request" />
+      </CollapsibleFormSection>
+
+      <CollapsibleFormSection id="summary" title="Professional summary" icon="file" badge={cv.summary?.length > 40 ? "Done" : ""}>
+        <FormField label="Professional summary / objective" type="textarea" rows={5} value={cv.summary} onChange={(value) => onChange("summary", value)} placeholder="Example: Reliable logistics assistant with UAE warehouse experience, strong inventory skills, and careful documentation habits." />
+        <div className="ai-assist-row">
+          <button type="button" onClick={() => improveText("summary")} className="btn-ai"><Icon name="sparkle" className="h-3 w-3" /> Improve with AI</button>
+          <span className="ai-hint">Make your summary clearer for UAE/GCC employers</span>
+        </div>
+      </CollapsibleFormSection>
     </div>
   );
 }
@@ -1878,6 +1975,140 @@ function CoverLetterDownloadModal({ cv, onClose, onVerifiedDownload }) {
   );
 }
 
+const builderSteps = [
+  { id: "personal", label: "Personal info" },
+  { id: "experience", label: "Experience" },
+  { id: "education", label: "Education" },
+  { id: "skills", label: "Skills" },
+  { id: "summary", label: "Summary" },
+];
+
+function getBuilderStepState(cv) {
+  return {
+    personal: Boolean(cv.fullName && cv.email && cv.phone && cv.country),
+    experience: normalizeWorkExperiences(cv).some((entry) => entry.employer && entry.responsibilities),
+    education: Boolean(cv.education),
+    skills: Boolean(cv.skills && cv.languages),
+    summary: Boolean(cv.summary && cv.summary.length > 40),
+  };
+}
+
+function BuilderTopBar({ onHome, onDownload, saveStatus }) {
+  const isSaving = /saving/i.test(saveStatus);
+  return (
+    <header className="builder-topbar">
+      <button onClick={onHome} className="builder-logo">
+        <span className="builder-logo-icon"><Icon name="file" className="h-5 w-5" /></span>
+        BuildMyCV<span>Now</span>
+      </button>
+      <div className="builder-topbar-actions">
+        <span className={isSaving ? "builder-save-badge saving" : "builder-save-badge saved"}>
+          <Icon name={isSaving ? "sparkle" : "check"} className="h-3 w-3" />
+          {isSaving ? "Saving..." : "Saved"}
+        </span>
+        <button onClick={onDownload} className="builder-download-button">
+          <Icon name="download" className="h-4 w-4" /> Download PDF
+        </button>
+      </div>
+    </header>
+  );
+}
+
+function BuilderSidebar({ currentStep, onStep, completedSteps, categoryId, onCategory, themeId, onTheme }) {
+  const prominent = ["hospitality", "it", "supply-chain-logistics", "finance", "engineering", "domestic", "skilled", "education"];
+  const sortedCategories = [...categories].sort((a, b) => prominent.indexOf(a.id) - prominent.indexOf(b.id));
+  return (
+    <aside className="builder-sidebar-v2">
+      <p className="sidebar-label-v2">Sections</p>
+      <nav className="builder-step-list">
+        {builderSteps.map((step, index) => {
+          const done = completedSteps[step.id];
+          const active = currentStep === step.id;
+          return (
+            <React.Fragment key={step.id}>
+              <button type="button" onClick={() => onStep(step.id)} className={`builder-step ${active ? "active" : ""} ${done ? "done" : ""}`}>
+                <span className="builder-step-dot">{done ? <Icon name="check" className="h-3 w-3" /> : index + 1}</span>
+                <span>{step.label}</span>
+              </button>
+              {index < builderSteps.length - 1 && <span className="builder-step-connector" />}
+            </React.Fragment>
+          );
+        })}
+      </nav>
+      <p className="sidebar-label-v2 mt-5">Template</p>
+      <CategorySelector selected={categoryId} onSelect={onCategory} />
+      <p className="sidebar-label-v2 mt-4">Accent colour</p>
+      <div className="sidebar-swatch-row">
+        {themes.slice(0, 8).map((theme) => (
+          <button
+            key={theme.id}
+            type="button"
+            title={theme.name}
+            aria-label={`Set accent to ${theme.name}`}
+            onClick={() => onTheme(theme.id)}
+            className={`sidebar-swatch ${themeId === theme.id ? "selected" : ""}`}
+            style={{ background: theme.color }}
+          />
+        ))}
+      </div>
+      {sortedCategories.length > 0 && null}
+    </aside>
+  );
+}
+
+function BuilderPreviewPanel({ cv, theme, layout, onDownload }) {
+  const [message, setMessage] = useState("");
+  const [qrOpen, setQrOpen] = useState(false);
+  const completeness = getCompleteness(cv);
+  const shareUrl = "https://buildmycvnow.com/builder";
+  const copyShare = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setMessage("Share link copied.");
+    } catch {
+      setMessage("Share link ready: buildmycvnow.com/builder");
+    }
+  };
+  return (
+    <aside className="builder-preview-panel-v2">
+      <div className="preview-topbar-v2">
+        <span className="preview-live-label"><span className="live-dot" /> Live preview</span>
+        <div className="preview-actions-v2">
+          <button type="button" onClick={copyShare} className="preview-action-button"><Icon name="share" className="h-3.5 w-3.5" /> Share</button>
+          <button type="button" onClick={() => setQrOpen(true)} className="preview-action-button"><Icon name="qr" className="h-3.5 w-3.5" /> QR</button>
+        </div>
+      </div>
+      <div className="preview-strength">
+        <div className="preview-strength-label">
+          <span>CV strength</span>
+          <span style={{ color: theme.color }}>{completeness.score}%</span>
+        </div>
+        <div className="preview-strength-track">
+          <div className="preview-strength-fill" style={{ width: `${completeness.score}%`, background: theme.color }} />
+        </div>
+        {message && <p className="mt-2 text-xs font-bold text-blue-700">{message}</p>}
+      </div>
+      <div className="preview-sheet-scroll">
+        <LiveCVPreview cv={cv} theme={theme} layout={layout} />
+        <button type="button" onClick={onDownload} className="mt-4 flex w-full items-center justify-center gap-2 rounded bg-green-600 px-4 py-3 text-sm font-black text-white hover:bg-green-700">
+          <Icon name="download" className="h-4 w-4" /> Download CV
+        </button>
+      </div>
+      {qrOpen && (
+        <div className="qr-modal-backdrop" onClick={() => setQrOpen(false)}>
+          <div className="qr-modal" onClick={(event) => event.stopPropagation()}>
+            <h3 className="text-lg font-black text-slate-950">QR export</h3>
+            <div className="mt-4 grid h-44 w-44 place-items-center rounded border border-slate-200 bg-white text-center text-xs font-bold leading-5 text-slate-500">
+              QR placeholder<br />{shareUrl}
+            </div>
+            <button type="button" onClick={() => setQrOpen(false)} className="mt-4 w-full rounded bg-slate-950 px-4 py-3 text-sm font-black text-white">Close</button>
+          </div>
+        </div>
+      )}
+    </aside>
+  );
+}
+
 function CoverLetterBuilder({
   cv,
   letter,
@@ -2013,6 +2244,7 @@ function CVBuilderApp({ onHome }) {
   const [saveStatus, setSaveStatus] = useState("Auto-save ready");
   const [draftStatus, setDraftStatus] = useState("Cloud draft sync is ready.");
   const [mobileCvView, setMobileCvView] = useState("edit");
+  const [currentStep, setCurrentStep] = useState("personal");
   const [session, setSession] = useState(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [storageMessage, setStorageMessage] = useState("");
@@ -2022,6 +2254,15 @@ function CVBuilderApp({ onHome }) {
   const user = session?.user || null;
   const cloudSavingEnabled = Boolean(user && userMode === "registered");
   const noCloudMode = userMode === "urgent-local" || userMode === "urgent-phone";
+  const completedSteps = useMemo(() => getBuilderStepState(cv), [cv]);
+  const jumpToStep = (id) => {
+    setCurrentStep(id);
+    const target = document.getElementById(`builder-section-${id}`);
+    if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  useEffect(() => {
+    if (theme?.color) document.documentElement.style.setProperty("--cv-accent", theme.color);
+  }, [theme?.color]);
   useEffect(() => {
     initAnalytics();
     if (!supabase) return;
@@ -2235,30 +2476,10 @@ function CVBuilderApp({ onHome }) {
     setUserMode("registered");
   };
   return (
-    <main className="min-h-screen bg-slate-100">
-      <div className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
-          <button onClick={onHome} className="flex items-center gap-2 font-bold text-slate-950">
-            <span className="flex h-9 w-9 items-center justify-center rounded bg-green-600 text-white"><Icon name="file" className="h-5 w-5" /></span>
-            BuildMyCV<span className="text-green-600">Now</span>
-          </button>
-          <div className="hidden items-center gap-5 text-sm font-bold text-slate-500 md:flex">
-            <span className="text-green-700">1 Category</span><span>2 Details</span><span>3 Customize</span><span>4 Download</span>
-          </div>
-          <div className="flex items-center gap-2">
-            {cloudSavingEnabled ? (
-              <button onClick={signOut} className="rounded border border-slate-300 px-3 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50">
-                Logout
-              </button>
-            ) : (
-              <button onClick={() => setAuthOpen(true)} className="rounded border border-blue-600 px-3 py-3 text-sm font-bold text-blue-700 hover:bg-blue-50">
-                Access
-              </button>
-            )}
-            <button onClick={() => setDownloadTarget(activeBuilder === "cv" ? "cv" : "cover")} className="inline-flex items-center gap-2 rounded bg-green-600 px-3 py-3 text-sm font-bold text-white hover:bg-green-700 sm:px-5"><Icon name="download" className="h-4 w-4" /> <span className="hidden sm:inline">Download</span></button>
-          </div>
-        </div>
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 pb-4 md:flex-row md:items-center md:justify-between">
+    <main className="builder-app-shell">
+      <BuilderTopBar onHome={onHome} saveStatus={saveStatus} onDownload={() => setDownloadTarget(activeBuilder === "cv" ? "cv" : "cover")} />
+      <div className="builder-tabbar">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between">
           <div className="flex gap-2">
             {[
               ["cv", "CV Builder"],
@@ -2273,8 +2494,13 @@ function CVBuilderApp({ onHome }) {
               </button>
             ))}
           </div>
-          <div className="text-xs font-bold text-slate-500">
-            {saveStatus} - {cloudSavingEnabled ? `Cloud saving as ${user.email}` : noCloudMode ? "Download-only mode. No cloud saving." : "Choose download-only or sign in to save online."}
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+            <span>{cloudSavingEnabled ? `Cloud saving as ${user.email}` : noCloudMode ? "Download-only mode. No cloud saving." : "Choose download-only or sign in to save online."}</span>
+            {cloudSavingEnabled ? (
+              <button onClick={signOut} className="rounded border border-slate-300 px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50">Logout</button>
+            ) : (
+              <button onClick={() => setAuthOpen(true)} className="rounded border border-blue-600 px-3 py-2 text-xs font-black text-blue-700 hover:bg-blue-50">Access</button>
+            )}
           </div>
         </div>
       </div>
@@ -2287,75 +2513,76 @@ function CVBuilderApp({ onHome }) {
       )}
       {activeBuilder === "cv" ? (
         <>
-        <div className="mx-auto flex max-w-7xl gap-2 px-5 pt-5 lg:hidden">
-          {[
-            ["edit", "Edit"],
-            ["preview", "Preview"],
-          ].map(([id, label]) => (
-            <button
-              key={id}
-              onClick={() => setMobileCvView(id)}
-              className={`flex-1 rounded px-4 py-3 text-sm font-black ${mobileCvView === id ? "bg-green-600 text-white" : "bg-white text-slate-700 ring-1 ring-slate-200"}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <div className="builder-shell mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)] gap-5 px-5 py-6 lg:grid-cols-[0.9fr_1.1fr_0.65fr]">
-          <aside className={`builder-panel min-w-0 space-y-5 rounded bg-white p-5 shadow-sm ring-1 ring-slate-200 ${mobileCvView === "preview" ? "hidden lg:block" : ""}`}>
-            <ExistingCVImporter onImport={handleImport} />
-            <ProfilePhotoUploader cv={cv} onChange={handleProfilePhotoChange} />
-            {storageMessage && cloudSavingEnabled && <p className="rounded bg-slate-50 p-3 text-xs font-bold leading-5 text-slate-600">{storageMessage}</p>}
-            <CategorySelector selected={categoryId} onSelect={handleCategory} />
-            <CVBuilderForm cv={cv} onChange={(key, value) => setCv((current) => ({ ...current, [key]: value }))} />
-            {BUILDER_ADS_ENABLED && <AdBanner compact label="Google AdSense form ad" slot="1010101010" />}
-          </aside>
-          <section className={`builder-panel min-w-0 ${mobileCvView === "edit" ? "hidden lg:block" : ""}`}>
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="font-black text-slate-950">Live CV preview</h2>
-              <span className="flex items-center gap-2 text-sm font-bold text-slate-500"><Icon name="eye" className="h-4 w-4" /> Updates instantly</span>
-            </div>
-            <LiveCVPreview cv={cv} theme={theme} layout={layoutId} />
-          </section>
-          <aside className={`builder-panel min-w-0 space-y-6 rounded bg-white p-5 shadow-sm ring-1 ring-slate-200 ${mobileCvView === "preview" ? "hidden lg:block" : ""}`}>
-            <CVCompletenessPanel cv={cv} />
-            {cloudSavingEnabled ? (
-              <MyCvsPanel
-                user={user}
-                cv={cv}
-                categoryId={categoryId}
-                themeId={themeId}
-                layoutId={layoutId}
-                onLoad={loadSavedCv}
-                onSaveDraft={() => saveCloudDraft()}
-                onLoadDraft={restoreCloudDraft}
-                draftStatus={draftStatus}
-              />
-            ) : (
-              <section className="rounded border border-amber-200 bg-amber-50 p-4">
-                <h3 className="panel-title text-amber-950">Download-only mode</h3>
-                <p className="mt-2 text-xs font-bold leading-5 text-amber-900">
-                  Cloud saving is off. Your CV stays in this browser only and will not be saved to Supabase.
-                </p>
-                <button onClick={() => setAuthOpen(true)} className="mt-3 w-full rounded border border-amber-300 bg-white px-4 py-3 text-sm font-black text-amber-900 hover:bg-amber-100">
-                  Sign in to save online
-                </button>
+        <div className="builder-layout-v2">
+          <BuilderSidebar
+            currentStep={currentStep}
+            onStep={jumpToStep}
+            completedSteps={completedSteps}
+            categoryId={categoryId}
+            onCategory={handleCategory}
+            themeId={themeId}
+            onTheme={setThemeId}
+          />
+          <section className="builder-form-panel-v2">
+            <div className="builder-form-inner">
+              <ExistingCVImporter onImport={handleImport} />
+              <ProfilePhotoUploader cv={cv} onChange={handleProfilePhotoChange} />
+              {storageMessage && cloudSavingEnabled && <p className="rounded bg-slate-50 p-3 text-xs font-bold leading-5 text-slate-600">{storageMessage}</p>}
+              <CVBuilderForm cv={cv} onChange={(key, value) => setCv((current) => ({ ...current, [key]: value }))} />
+              <section className="rounded border border-slate-200 bg-white p-4">
+                <h3 className="panel-title">Save and layout</h3>
+                <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                  <LayoutSelector selected={layoutId} onSelect={setLayoutId} />
+                  <div>
+                    {cloudSavingEnabled ? (
+                      <MyCvsPanel
+                        user={user}
+                        cv={cv}
+                        categoryId={categoryId}
+                        themeId={themeId}
+                        layoutId={layoutId}
+                        onLoad={loadSavedCv}
+                        onSaveDraft={() => saveCloudDraft()}
+                        onLoadDraft={restoreCloudDraft}
+                        draftStatus={draftStatus}
+                      />
+                    ) : (
+                      <section className="rounded border border-amber-200 bg-amber-50 p-4">
+                        <h3 className="panel-title text-amber-950">Download-only mode</h3>
+                        <p className="mt-2 text-xs font-bold leading-5 text-amber-900">
+                          Cloud saving is off. Your CV stays in this browser only and will not be saved to Supabase.
+                        </p>
+                        <button onClick={() => setAuthOpen(true)} className="mt-3 w-full rounded border border-amber-300 bg-white px-4 py-3 text-sm font-black text-amber-900 hover:bg-amber-100">
+                          Sign in to save online
+                        </button>
+                      </section>
+                    )}
+                  </div>
+                </div>
               </section>
-            )}
-            <ThemeSelector selected={themeId} onSelect={setThemeId} />
-            <LayoutSelector selected={layoutId} onSelect={setLayoutId} />
-            <button onClick={() => setDownloadTarget("cv")} className="flex w-full items-center justify-center gap-2 rounded bg-green-600 px-5 py-4 font-bold text-white hover:bg-green-700">
-              <Icon name="download" /> Download CV
-            </button>
-            <button onClick={() => switchBuilder("cover")} className="flex w-full items-center justify-center gap-2 rounded border border-blue-600 px-5 py-4 font-bold text-blue-700 hover:bg-blue-50">
-              <Icon name="file" /> Create Cover Letter
-            </button>
-            {BUILDER_ADS_ENABLED && <AdBanner compact label="Google AdSense CV builder ad" slot="8888888888" />}
-            {downloaded && (
-              <div className="rounded border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-900">Download confirmed. Your CV file is ready.</div>
-            )}
-          </aside>
+              {BUILDER_ADS_ENABLED && <AdBanner compact label="Google AdSense form ad" slot="1010101010" />}
+            </div>
+          </section>
+          <BuilderPreviewPanel cv={cv} theme={theme} layout={layoutId} onDownload={() => setDownloadTarget("cv")} />
         </div>
+        <button type="button" onClick={() => setMobileCvView("preview")} className="btn-preview-float">
+          <Icon name="eye" className="h-4 w-4" /> Preview CV
+        </button>
+        {mobileCvView === "preview" && (
+          <div className="mobile-sheet-backdrop" onClick={() => setMobileCvView("edit")}>
+            <div className="mobile-sheet" onClick={(event) => event.stopPropagation()}>
+              <div className="mobile-sheet-handle" />
+              <div className="mb-3 flex items-center justify-between">
+                <span className="preview-live-label"><span className="live-dot" /> Live preview</span>
+                <button type="button" onClick={() => setMobileCvView("edit")} className="rounded border border-slate-300 px-3 py-2 text-xs font-black text-slate-700">Close</button>
+              </div>
+              <LiveCVPreview cv={cv} theme={theme} layout={layoutId} />
+            </div>
+          </div>
+        )}
+        {downloaded && (
+          <div className="fixed bottom-20 right-5 z-40 rounded border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-900 shadow-lg">Download confirmed. Your CV file is ready.</div>
+        )}
         </>
       ) : (
         <CoverLetterBuilder
