@@ -1466,16 +1466,30 @@ summary {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
+  border: 1px solid transparent;
   border-radius: 0.45rem;
   background: #eeedfe;
   padding: 0.45rem 0.75rem;
   color: #534ab7;
   font-size: 0.74rem;
   font-weight: 900;
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+
+.btn-ai:hover {
+  border-color: #b8b2ff;
+  box-shadow: 0 8px 20px rgba(83, 74, 183, 0.14);
+  transform: translateY(-1px);
+}
+
+.btn-ai-work {
+  background: #e6f1fb;
+  color: #0c447c;
+  padding: 0.55rem 0.85rem;
 }
 
 .ai-hint {
-  color: #94a3b8;
+  color: #64748b;
   font-size: 0.74rem;
   font-weight: 700;
 }
