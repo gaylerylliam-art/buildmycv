@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { categories, layouts, themes } from "./data/categories";
+import TemplatesSectionV3 from "./components/TemplatesSectionV3";
 import {
   coverLetterFonts,
   coverLetterLayouts,
@@ -337,14 +338,6 @@ function LandingPage({ onStart }) {
     { label: "3. AI polishes", short: "AI improve", time: 70, ts: "1:10" },
     { label: "4. Download", short: "Download", time: 105, ts: "1:45" },
   ];
-  const templates = [
-    { name: "Modern Blue", tag: "All industries - ATS", accent: "#185FA5", badge: "Most popular", bg: "#E6F1FB", color: "#0C447C" },
-    { name: "Hospitality Pro", tag: "Hotels - F&B - Tourism", accent: "#0F6E56", badge: "UAE favourite", bg: "#E1F5EE", color: "#085041" },
-    { name: "IT & Tech", tag: "Dev - QA - IT Support", accent: "#534AB7", badge: "ATS optimised", bg: "#EEEDFE", color: "#3C3489" },
-    { name: "Engineering", tag: "Civil - Structural - MEP", accent: "#854F0B", badge: "GCC standard", bg: "#FAEEDA", color: "#633806" },
-    { name: "Finance & Banking", tag: "UAE banks - accounting", accent: "#185FA5", badge: "ATS optimised", bg: "#E6F1FB", color: "#0C447C" },
-    { name: "General / OFW", tag: "Any role - Philippines", accent: "#0F6E56", badge: "Beginner friendly", bg: "#E1F5EE", color: "#085041" },
-  ];
   const features = [
     ["sparkle", "AI writing assist", "One click improves your job descriptions into clear, recruiter-friendly bullet points."],
     ["eye", "Live preview", "See your CV update as you type, with no switching tabs and no guessing."],
@@ -561,37 +554,7 @@ function LandingPage({ onStart }) {
         </div>
       </section>
 
-      <section className="templates-section" id="templates">
-        <div className="section-inner">
-          <div className="section-eyebrow">Templates</div>
-          <h2 className="section-title">Built for your industry</h2>
-          <p className="section-sub">Each template is ATS-tested and tailored for Gulf employers</p>
-          <div className="template-grid">
-            {templates.map((template) => (
-              <button key={template.name} type="button" onClick={onStart} className="template-card">
-                <div className="template-thumb">
-                  <div className="mini-cv">
-                    <div className="mini-accent" style={{ background: template.accent }} />
-                    <div className="mini-name-line" />
-                    <div className="mini-role-line" />
-                    <div className="mini-section">
-                      <span style={{ width: "82%" }} />
-                      <span style={{ width: "64%" }} />
-                      <span style={{ width: "74%" }} />
-                    </div>
-                  </div>
-                </div>
-                <div className="template-info">
-                  <div className="template-name">{template.name}</div>
-                  <div className="template-tag">{template.tag}</div>
-                  <span className="template-badge" style={{ background: template.bg, color: template.color }}>{template.badge}</span>
-                </div>
-              </button>
-            ))}
-          </div>
-          <div className="template-more"><button type="button" onClick={onStart}>View all templates <Icon name="arrow" className="h-4 w-4" /></button></div>
-        </div>
-      </section>
+      <TemplatesSectionV3 onStart={onStart} />
 
       <section className="features-section">
         <div className="section-inner">
@@ -2986,8 +2949,18 @@ export default function App() {
   }, []);
   useEffect(() => {
     if (!location.hash || isBuilderHash) return;
-    const element = document.getElementById(location.hash.slice(1));
-    if (element) window.setTimeout(() => element.scrollIntoView({ behavior: "smooth", block: "start" }), 40);
+    const targetId = location.hash.slice(1);
+    let attempts = 0;
+    const scrollToHash = () => {
+      const element = document.getElementById(targetId);
+      if (element) {
+        element.scrollIntoView({ behavior: attempts > 0 ? "smooth" : "auto", block: "start" });
+        return;
+      }
+      attempts += 1;
+      if (attempts < 10) window.setTimeout(scrollToHash, 80);
+    };
+    window.setTimeout(scrollToHash, 40);
   }, [location.hash, location.pathname, isBuilderHash]);
 
   if (isBuilderHash && location.pathname === "/") {
