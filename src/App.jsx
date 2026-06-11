@@ -424,6 +424,7 @@ function LandingPage({ onStart }) {
                 ref={videoRef}
                 className="demo-video"
                 src={videoUrl}
+                poster="/assets/cv-video-thumb.jpg"
                 preload="metadata"
                 playsInline
                 loop
