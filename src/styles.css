@@ -597,12 +597,14 @@ summary {
     #0f172a;
 }
 
-.landing-video-frame iframe {
+.landing-video-frame video {
   position: absolute;
   inset: 0;
   height: 100%;
   width: 100%;
   border: 0;
+  background: #020617;
+  object-fit: contain;
 }
 
 .profile-photo-preview {

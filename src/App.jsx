@@ -746,7 +746,8 @@ function SiteFooter({ onStart }) {
   );
 }
 
-const HEYGEN_DEMO_VIDEO_URL = "https://app.heygen.com/videos/how-to-create-and-download-your-cv-for-free-e5593fd9616e4b199b5c8fbf0213df25";
+const HEYGEN_DEMO_PAGE_URL = "https://app.heygen.com/videos/e5593fd9616e4b199b5c8fbf0213df25";
+const HEYGEN_DEMO_VIDEO_URL = "https://resource2.heygen.ai/aws_pacific/avatar_tmp/021c62749e9c473098175a3fcc2354c1/vb98fd2ee761b498498b60a6c07c76242/caption_e5593fd9616e4b199b5c8fbf0213df25.mp4";
 
 function IPhonePortraitDisplay({ onStart }) {
   return (
@@ -760,22 +761,18 @@ function IPhonePortraitDisplay({ onStart }) {
               </span>
               BuildMyCV<span className="text-green-600">Now</span>
             </span>
-            <a href={HEYGEN_DEMO_VIDEO_URL} target="_blank" rel="noreferrer" className="rounded bg-green-600 px-3 py-2 text-xs font-black text-white">
+            <a href={HEYGEN_DEMO_PAGE_URL} target="_blank" rel="noreferrer" className="rounded bg-green-600 px-3 py-2 text-xs font-black text-white">
               Open video
             </a>
           </div>
           <div className="landing-video-frame">
-            <iframe
-              title="How to create and download your CV for free"
-              src={HEYGEN_DEMO_VIDEO_URL}
-              allow="autoplay; fullscreen; picture-in-picture"
-              allowFullScreen
-              loading="lazy"
-              referrerPolicy="strict-origin-when-cross-origin"
-            />
+            <video controls playsInline preload="metadata" aria-label="How to create and download your CV for free">
+              <source src={HEYGEN_DEMO_VIDEO_URL} type="video/mp4" />
+              Your browser cannot play this video. Please open the video in a new tab.
+            </video>
           </div>
           <p className="mt-3 text-xs font-bold leading-5 text-slate-500">
-            If the HeyGen player does not load, open the video in a new tab. Make sure the HeyGen video is set to public or shareable.
+            Watch the short guide here or open it in a new tab if your browser blocks playback.
           </p>
         </div>
         <div>
@@ -795,7 +792,7 @@ function IPhonePortraitDisplay({ onStart }) {
             <button onClick={onStart} className="rounded bg-green-600 px-6 py-4 font-bold text-white hover:bg-green-700">
               Try the CV builder
             </button>
-            <a href={HEYGEN_DEMO_VIDEO_URL} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded border border-blue-600 px-6 py-4 font-bold text-blue-700 hover:bg-blue-50">
+            <a href={HEYGEN_DEMO_PAGE_URL} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded border border-blue-600 px-6 py-4 font-bold text-blue-700 hover:bg-blue-50">
               Open video
             </a>
           </div>
