@@ -271,9 +271,9 @@ function CookieNotice() {
   const [visible, setVisible] = useState(() => localStorage.getItem("cvforall:cookie-notice") !== "accepted");
   if (!visible) return null;
   return (
-    <div className="fixed inset-x-3 bottom-3 z-50 mx-auto max-w-4xl rounded border border-slate-200 bg-white p-4 shadow-2xl">
+    <div className="fixed inset-x-3 bottom-3 z-50 mx-auto max-w-[calc(100vw-1.5rem)] rounded border border-slate-200 bg-white p-4 shadow-2xl md:max-w-4xl">
       <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
-        <p className="text-sm font-semibold leading-6 text-slate-700">
+        <p className="max-w-full break-words text-sm font-semibold leading-6 text-slate-700">
           BuildMyCVNow uses essential browser storage for drafts and may use Google Analytics, reCAPTCHA, and AdSense cookies when those services are enabled. Read the Privacy Policy for details.
         </p>
         <div className="flex flex-wrap gap-2">
@@ -356,6 +356,54 @@ function LandingPage({ onStart }) {
     ["Raj S.", "IT Support - Abu Dhabi", "RS", "#E1F5EE", "#085041", "Super easy. The AI fixed my job descriptions in one click. Downloaded my CV in under 10 minutes."],
     ["Ana N.", "Admin Assistant - Sharjah", "AN", "#EEEDFE", "#3C3489", "Finally a free CV builder that does not ask for my credit card. The PDF looks clean and professional."],
   ];
+  const heroCards = [
+    {
+      initials: "RK",
+      name: "Rahul Kumar",
+      role: "Software Engineer",
+      location: "Bengaluru, India",
+      accentColor: "#1e40af",
+      accentLight: "#dbeafe",
+      accentMid: "#2563eb",
+      textLight: "#bfdbfe",
+      textMuted: "#93c5fd",
+      skillBg: "#eff6ff",
+      skillText: "#1d4ed8",
+      skills: ["React", "Node.js", "AWS"],
+      className: "global-cv-card-left",
+    },
+    {
+      initials: "AN",
+      name: "Amina Nwosu",
+      role: "Marketing Lead",
+      location: "Lagos, Nigeria",
+      accentColor: "#059669",
+      accentLight: "#d1fae5",
+      accentMid: "#10b981",
+      textLight: "#d1fae5",
+      textMuted: "#a7f3d0",
+      skillBg: "#ecfdf5",
+      skillText: "#065f46",
+      skills: ["SEO", "Copywriting", "Meta Ads"],
+      featured: true,
+      className: "global-cv-card-center",
+    },
+    {
+      initials: "SC",
+      name: "Sarah Chen",
+      role: "Finance Analyst",
+      location: "London, UK",
+      accentColor: "#7c3aed",
+      accentLight: "#ede9fe",
+      accentMid: "#8b5cf6",
+      textLight: "#ede9fe",
+      textMuted: "#ddd6fe",
+      skillBg: "#f5f3ff",
+      skillText: "#5b21b6",
+      skills: ["Excel", "SQL", "CFA"],
+      className: "global-cv-card-right",
+    },
+  ];
   const videoUrl = HEYGEN_DEMO_VIDEO_URL;
 
   const toggleVideo = async () => {
@@ -387,25 +435,71 @@ function LandingPage({ onStart }) {
         title="Free CV Builder for UAE & GCC Jobs"
         description="Build a professional, ATS-friendly CV in 5 minutes. Free templates for hospitality, IT, engineering and finance jobs in Dubai, Abu Dhabi and across the Gulf."
       />
-      <section className="hero-section">
-        <div className="hero-inner">
-          <div className="hero-badge">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-            Designed for UAE & GCC job seekers
+      <section className="global-hero-section">
+        <div className="global-hero-arc" aria-hidden="true" />
+        <div className="global-hero-arc-inner" aria-hidden="true" />
+        <div className="global-hero-blob" aria-hidden="true" />
+        <div className="global-hero-inner">
+          <div className="global-hero-copy">
+            <span className="global-hero-eyebrow">Free CV Builder - Works Worldwide</span>
+            <h1 className="global-hero-headline">
+              Every career.
+              <span>Every country.</span>
+            </h1>
+            <p className="global-hero-subhead">
+              Build a professional, ATS-friendly CV in under 5 minutes. Free templates trusted by job seekers in the UAE, UK, US, Canada, Australia, and 60+ more countries.
+            </p>
+            <div className="global-hero-cta-row">
+              <button type="button" onClick={onStart} className="global-hero-primary">
+                <Icon name="file" className="h-4 w-4" />
+                Build my CV - it's free
+              </button>
+              <a href="#templates" className="global-hero-secondary">Browse templates <Icon name="arrow" className="h-4 w-4" /></a>
+            </div>
+            <div className="global-hero-trust" role="list">
+              {["No sign-up needed", "ATS-optimized", "5-minute build", "60+ countries"].map((item) => (
+                <span key={item} role="listitem"><i aria-hidden="true" /> {item}</span>
+              ))}
+            </div>
           </div>
-          <h1 className="hero-h1">Build a professional CV in <span>5 minutes</span> - free, forever</h1>
-          <p className="hero-sub">
-            ATS-friendly templates for hospitality, IT, engineering, finance and more. Made for job seekers in Dubai, Abu Dhabi, the GCC, and the Philippines.
-          </p>
-          <div className="hero-btns">
-            <button onClick={onStart} className="btn-primary">Start building now <Icon name="arrow" className="h-4 w-4" /></button>
-            <a href="#templates" className="btn-ghost">See templates</a>
-          </div>
-          <ul className="hero-trust">
-            {["No sign-up needed", "Download as PDF", "100% free", "AI writing help"].map((item) => (
-              <li key={item}><Icon name="check" className="h-4 w-4" /> {item}</li>
+          <div className="global-hero-cards" aria-hidden="true">
+            {heroCards.map((card) => (
+              <div key={card.name} className={`global-cv-card ${card.className} ${card.featured ? "featured" : ""}`}>
+                <div className="global-cv-card-header" style={{ background: card.accentColor }}>
+                  <div className="global-cv-avatar" style={{ background: card.accentMid }}>{card.initials}</div>
+                  <div>
+                    <div className="global-cv-name" style={{ color: card.textLight }}>{card.name}</div>
+                    <div className="global-cv-role" style={{ color: card.textMuted }}>{card.role} - {card.location}</div>
+                  </div>
+                </div>
+                <div className="global-cv-card-body">
+                  <div className="global-cv-lines">
+                    <span style={{ width: "82%", background: card.accentLight }} />
+                    <span style={{ width: "64%" }} />
+                    <span style={{ width: "72%" }} />
+                  </div>
+                  <div className="global-cv-label" style={{ color: card.accentColor }}>Experience</div>
+                  <div className="global-cv-divider" />
+                  <div className="global-cv-lines">
+                    <span style={{ width: "88%" }} />
+                    <span style={{ width: "72%" }} />
+                    <span style={{ width: "80%" }} />
+                  </div>
+                  <div className="global-cv-label" style={{ color: card.accentColor }}>Skills</div>
+                  <div className="global-cv-divider" />
+                  <div className="global-cv-skills">
+                    {card.skills.map((skill) => (
+                      <span key={skill} style={{ background: card.skillBg, color: card.skillText }}>{skill}</span>
+                    ))}
+                  </div>
+                  {card.featured && <div className="global-cv-ats" style={{ background: card.accentColor }}>ATS-ready</div>}
+                </div>
+              </div>
             ))}
-          </ul>
+            <div className="global-location-pills">
+              {["Dubai", "London", "Toronto", "Lagos"].map((city) => <span key={city}>{city}</span>)}
+            </div>
+          </div>
         </div>
       </section>
 
