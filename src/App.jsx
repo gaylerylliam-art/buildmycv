@@ -1061,12 +1061,20 @@ function WorkExperienceEditor({ cv, onChange }) {
   const entries = normalizeWorkExperiences(cv);
   const [openId, setOpenId] = useState(entries[0]?.id || "");
   const [aiStatus, setAiStatus] = useState("");
+  const [aiSuggestions, setAiSuggestions] = useState({});
   const commitEntries = (nextEntries) => {
     onChange("workExperiences", nextEntries);
     onChange("experience", formatWorkExperiences(nextEntries));
   };
   const updateEntry = (id, key, value) => {
     commitEntries(entries.map((entry) => (entry.id === id ? { ...entry, [key]: value } : entry)));
+    if (key === "responsibilities") {
+      setAiSuggestions((current) => {
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
+    }
   };
   const addEntry = () => {
     const nextEntry = { ...createExperienceEntry(), jobTitle: cv.jobTitle || "", employer: "" };
@@ -1106,6 +1114,63 @@ function WorkExperienceEditor({ cv, onChange }) {
       .join("\n");
     updateEntry(id, "responsibilities", improved);
     setAiStatus("AI checked grammar and improved the wording. Please review and edit anything that does not match your real experience.");
+  };
+  const createReviewSuggestion = (text) =>
+    text
+      .split("\n")
+      .map((line) => line.trim().replace(/^[-*]\s*/, ""))
+      .filter(Boolean)
+      .slice(0, 5)
+      .map((line) => {
+        const cleaned = line
+          .replace(/\s+/g, " ")
+          .replace(/\bi\b/g, "I")
+          .replace(/\bw\/\b/gi, "with")
+          .replace(/\buae\b/gi, "UAE")
+          .replace(/\bgcc\b/gi, "GCC")
+          .replace(/\bcv\b/gi, "CV")
+          .trim()
+          .replace(/[.]+$/, "");
+        const first = cleaned.charAt(0).toLowerCase() + cleaned.slice(1);
+        const professionalLine = /^(managed|coordinated|prepared|supported|handled|improved|maintained|assisted|recorded|inspected|served|installed|repaired|organized|monitored|processed|delivered|supervised|trained|created|checked|resolved)/i.test(cleaned)
+          ? cleaned
+          : `Improved daily operations by ${first}`;
+        return professionalLine.charAt(0).toUpperCase() + professionalLine.slice(1);
+      })
+      .join("\n");
+  const reviewEntryWithAi = (id) => {
+    const target = entries.find((entry) => entry.id === id);
+    if (!target?.responsibilities?.trim()) {
+      setAiStatus("Add responsibilities or achievements first, then AI can check and improve them.");
+      return;
+    }
+    setAiSuggestions((current) => ({
+      ...current,
+      [id]: {
+        original: target.responsibilities,
+        suggested: createReviewSuggestion(target.responsibilities),
+      },
+    }));
+    setAiStatus("AI created a suggested rewrite. Approve to use it or reject to keep your original text.");
+  };
+  const approveSuggestion = (id) => {
+    const suggestion = aiSuggestions[id];
+    if (!suggestion) return;
+    commitEntries(entries.map((entry) => (entry.id === id ? { ...entry, responsibilities: suggestion.suggested } : entry)));
+    setAiSuggestions((current) => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+    setAiStatus("AI suggestion approved and added to your CV. You can still edit it anytime.");
+  };
+  const rejectSuggestion = (id) => {
+    setAiSuggestions((current) => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+    setAiStatus("AI suggestion rejected. Your original responsibilities were kept.");
   };
   return (
     <section className="space-y-3">
@@ -1150,9 +1215,31 @@ function WorkExperienceEditor({ cv, onChange }) {
               <textarea className="form-field resize-y" rows={5} value={entry.responsibilities || ""} onChange={(event) => updateEntry(entry.id, "responsibilities", event.target.value)} placeholder="Example: Managed inventory records, prepared daily dispatch documents, and coordinated deliveries across UAE sites." />
             </label>
             <div className="ai-assist-row">
-              <button type="button" onClick={() => improveEntry(entry.id)} className="btn-ai btn-ai-work"><Icon name="sparkle" className="h-3 w-3" /> Check with AI</button>
+              <button type="button" onClick={() => reviewEntryWithAi(entry.id)} className="btn-ai btn-ai-work"><Icon name="sparkle" className="h-3 w-3" /> Check with AI</button>
               <span className="ai-hint">Check grammar and make this sound more professional</span>
             </div>
+            {aiSuggestions[entry.id] && (
+              <div className="ai-suggestion-card">
+                <div className="ai-suggestion-header">
+                  <span><Icon name="sparkle" className="h-4 w-4" /> AI suggested rewrite</span>
+                  <span>Approve or reject before it changes your CV</span>
+                </div>
+                <div className="ai-suggestion-grid">
+                  <div>
+                    <p className="ai-suggestion-label">Original text</p>
+                    <pre>{aiSuggestions[entry.id].original}</pre>
+                  </div>
+                  <div>
+                    <p className="ai-suggestion-label">Suggested text</p>
+                    <pre>{aiSuggestions[entry.id].suggested}</pre>
+                  </div>
+                </div>
+                <div className="ai-suggestion-actions">
+                  <button type="button" onClick={() => approveSuggestion(entry.id)} className="ai-approve-button">Approve and use this</button>
+                  <button type="button" onClick={() => rejectSuggestion(entry.id)} className="ai-reject-button">Reject</button>
+                </div>
+              </div>
+            )}
             <button type="button" onClick={() => removeEntry(entry.id)} className="self-start rounded border border-red-200 px-3 py-2 text-xs font-black text-red-700">
               Remove role
             </button>

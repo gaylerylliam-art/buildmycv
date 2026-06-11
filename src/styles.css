@@ -1494,6 +1494,92 @@ summary {
   font-weight: 700;
 }
 
+.ai-suggestion-card {
+  display: grid;
+  gap: 0.8rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 0.65rem;
+  background: #eff6ff;
+  padding: 0.9rem;
+}
+
+.ai-suggestion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: #0c447c;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.ai-suggestion-header span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.ai-suggestion-header span:last-child {
+  color: #64748b;
+  font-size: 0.7rem;
+}
+
+.ai-suggestion-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.ai-suggestion-grid > div {
+  border: 1px solid #dbeafe;
+  border-radius: 0.55rem;
+  background: #ffffff;
+  padding: 0.75rem;
+}
+
+.ai-suggestion-label {
+  margin: 0 0 0.45rem;
+  color: #334155;
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.ai-suggestion-card pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #0f172a;
+  font-family: inherit;
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.ai-suggestion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.ai-approve-button,
+.ai-reject-button {
+  border-radius: 0.45rem;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.ai-approve-button {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.ai-reject-button {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+}
+
 .btn-add-more {
   display: inline-flex;
   align-items: center;
@@ -1502,6 +1588,17 @@ summary {
   color: #185fa5;
   font-size: 0.82rem;
   font-weight: 900;
+}
+
+@media (max-width: 720px) {
+  .ai-suggestion-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-suggestion-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 .builder-preview-panel-v2 {
