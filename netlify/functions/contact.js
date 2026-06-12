@@ -24,7 +24,10 @@ const storeMessage = async ({ name, email, message }) => {
 
   const supabase = createClient(url, key);
   const { error } = await supabase.from("contact_messages").insert({ name, email, message });
-  if (error) throw error;
+  if (error) {
+    console.warn("Contact Supabase storage skipped", error.message || error);
+    return false;
+  }
   return true;
 };
 
@@ -86,10 +89,8 @@ export const handler = async (event) => {
   if (message.length < 10) return json(400, { ok: false, message: "Please enter a message with at least 10 characters." });
 
   try {
-    const [stored, forwarded] = await Promise.all([
-      storeMessage({ name, email, message }),
-      sendEmail({ name, email, message }),
-    ]);
+    const stored = await storeMessage({ name, email, message });
+    const forwarded = await sendEmail({ name, email, message });
 
     return json(200, {
       ok: true,
