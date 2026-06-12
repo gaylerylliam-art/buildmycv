@@ -36,6 +36,24 @@ Local generated HTML checks:
 - `VideoObject` JSON-LD is present.
 - No `â€` or `Â·` mojibake sequences are present.
 
+## Production Verification
+
+Deploy:
+
+- Netlify deploy ID: `6a2bf017313a0ac67d091ce6`
+- Site URL: `https://buildmycvnow.com`
+
+Live checks completed after deploy:
+
+- `/` returned HTTP 200.
+- `Every career. Every country.` is present.
+- `/assets/heygen-demo-poster.svg` is present.
+- `VideoObject` JSON-LD is present.
+- Old homepage H1 is absent.
+- OFW-only homepage block is absent.
+- Mojibake check returned false.
+- `/builder` returned HTTP 200 and still serves the React SPA shell.
+
 ## If Browser Cache Shows Old Page
 
 If `curl` shows the correct homepage but a browser still shows the old page:
