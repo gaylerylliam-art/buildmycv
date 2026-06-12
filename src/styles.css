@@ -2879,6 +2879,285 @@ summary {
   display: none;
 }
 
+.builder-right-stack {
+  min-width: 0;
+  overflow-y: auto;
+  border-left: 1px solid #e5e7eb;
+  background: #f7f7f5;
+}
+
+.builder-right-stack .builder-preview-panel-v2 {
+  border-left: 0;
+}
+
+.ats-panel {
+  margin: 1rem;
+  border: 1px solid #dbeafe;
+  border-radius: 1rem;
+  background: #ffffff;
+  padding: 1rem;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.08);
+}
+
+.ats-mobile-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  border: 0;
+  border-radius: 0.75rem;
+  background: #eff6ff;
+  padding: 0.85rem 1rem;
+  color: #0f3f7a;
+  font-weight: 900;
+}
+
+.ats-mobile-toggle span {
+  color: #2563eb;
+  font-size: 0.75rem;
+}
+
+.ats-score-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.ats-score-ring {
+  flex: 0 0 auto;
+}
+
+.ats-score-number {
+  fill: #0f172a;
+  font-size: 1.35rem;
+  font-weight: 900;
+}
+
+.ats-score-label {
+  fill: #64748b;
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.ats-grade {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 0.25rem 0.6rem;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.ats-score-header h3 {
+  margin: 0.45rem 0 0.2rem;
+  color: #0f172a;
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+.ats-score-header p,
+.ats-job-field span {
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.ats-breakdown {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin-top: 1rem;
+}
+
+.ats-breakdown div {
+  border-radius: 0.75rem;
+  background: #f8fafc;
+  padding: 0.7rem;
+}
+
+.ats-breakdown span {
+  display: block;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: capitalize;
+}
+
+.ats-breakdown strong {
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.ats-job-field {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.ats-job-field textarea {
+  min-height: 6rem;
+  resize: vertical;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.75rem;
+  padding: 0.8rem;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.ats-accordion {
+  margin-top: 0.7rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.85rem;
+  background: #ffffff;
+  padding: 0.75rem;
+}
+
+.ats-accordion summary {
+  cursor: pointer;
+  color: #0f172a;
+  font-weight: 900;
+}
+
+.ats-accordion ul {
+  margin: 0.65rem 0 0;
+  padding-left: 1.1rem;
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.ats-list-green li::marker {
+  color: #16a34a;
+}
+
+.ats-list-amber li::marker {
+  color: #d97706;
+}
+
+.ats-list-blue li::marker {
+  color: #2563eb;
+}
+
+.section-reorder-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(15, 23, 42, 0.48);
+}
+
+.section-reorder-panel {
+  width: min(430px, 100%);
+  height: 100%;
+  overflow-y: auto;
+  background: #ffffff;
+  padding: 1.25rem;
+  box-shadow: -18px 0 60px rgba(15, 23, 42, 0.2);
+}
+
+.section-reorder-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 1rem;
+}
+
+.section-reorder-head h2 {
+  color: #0f172a;
+  font-size: 1.2rem;
+  font-weight: 900;
+}
+
+.section-reorder-head p,
+.section-reorder-help {
+  color: #475569;
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.section-reorder-close {
+  border: 1px solid #cbd5e1;
+  border-radius: 0.65rem;
+  background: #ffffff;
+  padding: 0.55rem 0.75rem;
+  color: #334155;
+  font-weight: 900;
+}
+
+.section-reorder-list {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.section-reorder-row {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid #dbeafe;
+  border-radius: 0.9rem;
+  background: #f8fbff;
+  padding: 0.75rem;
+}
+
+.section-reorder-row.is-hidden {
+  border-color: #e5e7eb;
+  background: #f8fafc;
+  color: #64748b;
+}
+
+.section-drag-handle {
+  cursor: grab;
+  border: 0;
+  border-radius: 0.6rem;
+  background: #dbeafe;
+  padding: 0.45rem 0.55rem;
+  color: #1d4ed8;
+  font-weight: 900;
+}
+
+.section-reorder-icon {
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #e0f2fe;
+  color: #185fa5;
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.section-reorder-name {
+  color: #0f172a;
+  font-size: 0.92rem;
+  font-weight: 900;
+}
+
+.section-eye-toggle {
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #ffffff;
+  padding: 0.5rem 0.75rem;
+  color: #334155;
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.mobile-builder-tabbar {
+  display: none;
+}
+
 .iphone-frame {
   position: relative;
   width: min(100%, 330px);
@@ -3041,6 +3320,7 @@ summary {
   }
 
   .builder-sidebar-v2,
+  .builder-right-stack,
   .builder-preview-panel-v2 {
     display: none;
   }
@@ -3051,7 +3331,7 @@ summary {
 
   .btn-preview-float {
     position: fixed;
-    bottom: 1.25rem;
+    bottom: 4.75rem;
     left: 50%;
     z-index: 60;
     display: inline-flex;
@@ -3065,6 +3345,43 @@ summary {
     font-size: 0.85rem;
     font-weight: 900;
     box-shadow: 0 18px 40px rgba(24, 95, 165, 0.3);
+  }
+
+  .mobile-builder-tabbar {
+    position: fixed;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    left: 0.75rem;
+    z-index: 70;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.35rem;
+    border: 1px solid #dbeafe;
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.96);
+    padding: 0.4rem;
+    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.18);
+    backdrop-filter: blur(10px);
+  }
+
+  .mobile-builder-tabbar button {
+    min-height: 2.75rem;
+    border: 0;
+    border-radius: 0.75rem;
+    background: transparent;
+    color: #334155;
+    font-size: 0.74rem;
+    font-weight: 900;
+  }
+
+  .mobile-builder-tabbar button.active {
+    background: #185fa5;
+    color: #ffffff;
+  }
+
+  .mobile-sheet .ats-panel {
+    margin: 0;
+    box-shadow: none;
   }
 
   .mobile-sheet-backdrop {
@@ -3100,6 +3417,17 @@ summary {
   .profile-photo {
     width: 150px;
     height: 150px;
+  }
+
+  .section-reorder-backdrop {
+    align-items: flex-end;
+  }
+
+  .section-reorder-panel {
+    width: 100%;
+    height: min(76vh, 680px);
+    border-radius: 1rem 1rem 0 0;
+    box-shadow: 0 -18px 60px rgba(15, 23, 42, 0.22);
   }
 }
 

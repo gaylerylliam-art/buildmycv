@@ -67,6 +67,13 @@ const cvPersonalDetails = (cv) =>
     cv.expectedSalaryEnabled && cv.expectedSalary ? `Expected Salary: ${cv.expectedSalary}` : "",
   ].filter(Boolean);
 
+const defaultSectionOrder = ["summary", "experience", "education", "skills", "certifications", "languages", "references"];
+
+const normalizeSectionOrder = (cv = {}) => {
+  const order = Array.isArray(cv.sectionOrder) ? cv.sectionOrder : [];
+  return [...order.filter((id) => defaultSectionOrder.includes(id)), ...defaultSectionOrder.filter((id) => !order.includes(id))];
+};
+
 const exportPhotoShapeClass = (shape = "circle") => {
   if (shape === "circle" || shape === "round") return "round";
   if (shape === "rounded") return "rounded";
@@ -90,6 +97,16 @@ const normalizeCvWorkExperiences = (cv) => {
   ];
 };
 
+const sectionHasContent = (cv = {}, id) => {
+  if (id === "experience") return normalizeCvWorkExperiences(cv).some((entry) => [entry.jobTitle, entry.employer, entry.responsibilities].some((value) => String(value || "").trim()));
+  return Boolean(String(cv[id] || "").trim());
+};
+
+const visibleSectionOrder = (cv = {}) => {
+  const hidden = Array.isArray(cv.hiddenSections) ? cv.hiddenSections : [];
+  return normalizeSectionOrder(cv).filter((id) => !hidden.includes(id) && sectionHasContent(cv, id));
+};
+
 const workExperienceHtml = (cv) =>
   normalizeCvWorkExperiences(cv)
     .map((entry) => {
@@ -104,6 +121,19 @@ const workExperienceHtml = (cv) =>
     })
     .join("");
 
+const cvSectionHtml = (cv, id) => {
+  const sections = {
+    summary: `<div class="section"><h2>Professional Summary</h2><p>${escapeHtml(cv.summary)}</p></div>`,
+    experience: `<div class="section"><h2>Work Experience</h2>${workExperienceHtml(cv)}</div>`,
+    education: `<div class="section"><h2>Education</h2><p>${escapeHtml(cv.education)}</p></div>`,
+    skills: `<div class="section"><h2>Skills</h2><p>${escapeHtml(cv.skills)}</p></div>`,
+    certifications: `<div class="section"><h2>Certifications</h2><p>${escapeHtml(cv.certifications)}</p></div>`,
+    languages: `<div class="section"><h2>Languages</h2><p>${escapeHtml(cv.languages)}</p></div>`,
+    references: `<div class="section"><h2>References</h2><p>${escapeHtml(cv.references)}</p></div>`,
+  };
+  return sections[id] || "";
+};
+
 const saveBlob = (blob, filename) => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -115,7 +145,31 @@ const saveBlob = (blob, filename) => {
   URL.revokeObjectURL(url);
 };
 
+const downloadPdfFromServer = async (html, filename) => {
+  const response = await fetch("/.netlify/functions/export-pdf", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ html, filename }),
+  });
+
+  if (!response.ok) {
+    const message = await response.text().catch(() => "");
+    throw new Error(message || "Server PDF export failed.");
+  }
+
+  const blob = await response.blob();
+  if (!blob.size) throw new Error("Server PDF export returned an empty file.");
+  saveBlob(blob, filename);
+};
+
 const downloadPdfFromHtml = async (html, filename) => {
+  try {
+    await downloadPdfFromServer(html, filename);
+    return;
+  } catch (error) {
+    console.warn("Server PDF export unavailable; using browser fallback.", error);
+  }
+
   const module = await import("html2pdf.js");
   const html2pdf = module.default || module;
   const wrapper = document.createElement("div");
@@ -200,6 +254,25 @@ const downloadCvDocx = async (cv, filename) => {
   const sectionHeading = (text) => paragraph(text, { bold: true, size: 24, after: 100 });
   const personalDetails = cvPersonalDetails(cv);
   const workExperiences = normalizeCvWorkExperiences(cv);
+  const sectionChildren = (id) => {
+    const sections = {
+      summary: [sectionHeading("Professional Summary"), paragraph(cv.summary)],
+      experience: [
+        sectionHeading("Work Experience"),
+        ...workExperiences.flatMap((entry) => [
+          paragraph(entry.jobTitle || "Job title", { bold: true, after: 60 }),
+          paragraph([entry.employer, [entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - ")].filter(Boolean).join(" | "), { size: 20, after: 60 }),
+          ...String(entry.responsibilities || "").split("\n").filter(Boolean).map((line) => paragraph(`- ${line}`)),
+        ]),
+      ],
+      education: [sectionHeading("Education"), paragraph(cv.education)],
+      skills: [sectionHeading("Skills"), paragraph(cv.skills)],
+      certifications: [sectionHeading("Certifications"), paragraph(cv.certifications)],
+      languages: [sectionHeading("Languages"), paragraph(cv.languages)],
+      references: [sectionHeading("References"), paragraph(cv.references)],
+    };
+    return sections[id] || [];
+  };
   const doc = new Document({
     sections: [
       {
@@ -208,25 +281,8 @@ const downloadCvDocx = async (cv, filename) => {
           paragraph(cv.fullName, { bold: true, size: 34, after: 80 }),
           paragraph(cv.jobTitle, { bold: true, size: 24, after: 80 }),
           paragraph(cvContactLines(cv).join(" | "), { size: 18 }),
-          sectionHeading("Professional Summary"),
-          paragraph(cv.summary),
           ...(personalDetails.length ? [sectionHeading("Personal Details"), ...personalDetails.map((line) => paragraph(line))] : []),
-          sectionHeading("Skills"),
-          paragraph(cv.skills),
-          sectionHeading("Work Experience"),
-          ...workExperiences.flatMap((entry) => [
-            paragraph(entry.jobTitle || "Job title", { bold: true, after: 60 }),
-            paragraph([entry.employer, [entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - ")].filter(Boolean).join(" | "), { size: 20, after: 60 }),
-            ...String(entry.responsibilities || "").split("\n").filter(Boolean).map((line) => paragraph(`- ${line}`)),
-          ]),
-          sectionHeading("Education"),
-          paragraph(cv.education),
-          sectionHeading("Certifications"),
-          paragraph(cv.certifications),
-          sectionHeading("Languages"),
-          paragraph(cv.languages),
-          sectionHeading("References"),
-          paragraph(cv.references),
+          ...visibleSectionOrder(cv).flatMap((id) => sectionChildren(id)),
         ],
       },
     ],
@@ -290,14 +346,8 @@ export const buildCvHtml = (cv, theme = { color: "#0f66d0", dark: "#0f172a" }, l
           </div>
         </aside>
         <main class="main-content">
-          <div class="section"><h2>Professional Summary</h2><p>${escapeHtml(cv.summary)}</p></div>
           ${cvPersonalDetails(cv).length ? `<div class="section"><h2>Personal Details</h2><p>${escapeHtml(cvPersonalDetails(cv).join("\n"))}</p></div>` : ""}
-          <div class="section"><h2>Skills</h2><p>${escapeHtml(cv.skills)}</p></div>
-          <div class="section"><h2>Work Experience</h2>${workExperienceHtml(cv)}</div>
-          <div class="section"><h2>Education</h2><p>${escapeHtml(cv.education)}</p></div>
-          <div class="section"><h2>Certifications</h2><p>${escapeHtml(cv.certifications)}</p></div>
-          <div class="section"><h2>Languages</h2><p>${escapeHtml(cv.languages)}</p></div>
-          <div class="section"><h2>References</h2><p>${escapeHtml(cv.references)}</p></div>
+          ${visibleSectionOrder(cv).map((id) => cvSectionHtml(cv, id)).join("")}
         </main>
       </div>` : `
       <div class="header">
@@ -308,14 +358,8 @@ export const buildCvHtml = (cv, theme = { color: "#0f66d0", dark: "#0f172a" }, l
           <p class="contact">${escapeHtml(cvContactLines(cv).join(" | "))}</p>
         </div>
       </div>
-      <div class="section"><h2>Professional Summary</h2><p>${escapeHtml(cv.summary)}</p></div>
       ${cvPersonalDetails(cv).length ? `<div class="section"><h2>Personal Details</h2><p>${escapeHtml(cvPersonalDetails(cv).join("\n"))}</p></div>` : ""}
-      <div class="section"><h2>Skills</h2><p>${escapeHtml(cv.skills)}</p></div>
-      <div class="section"><h2>Work Experience</h2>${workExperienceHtml(cv)}</div>
-      <div class="section"><h2>Education</h2><p>${escapeHtml(cv.education)}</p></div>
-      <div class="section"><h2>Certifications</h2><p>${escapeHtml(cv.certifications)}</p></div>
-      <div class="section"><h2>Languages</h2><p>${escapeHtml(cv.languages)}</p></div>
-      <div class="section"><h2>References</h2><p>${escapeHtml(cv.references)}</p></div>
+      ${visibleSectionOrder(cv).map((id) => cvSectionHtml(cv, id)).join("")}
       `}
     </body>
   </html>

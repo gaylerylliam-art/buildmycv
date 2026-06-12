@@ -1,8 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
+import { closestCenter, DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { categories, layouts, themes } from "./data/categories";
 import TemplatesSectionV3 from "./components/TemplatesSectionV3";
 import PhotoUploadCrop from "./components/PhotoUploadCrop";
+import ATSPanel from "./components/ATSPanel";
 import {
   coverLetterFonts,
   coverLetterLayouts,
@@ -32,6 +36,16 @@ import {
 } from "./supabaseClient";
 
 const defaultCategory = categories[0];
+const defaultSectionOrder = ["summary", "experience", "education", "skills", "certifications", "languages", "references"];
+const sectionLabels = {
+  summary: "Professional Summary",
+  experience: "Work Experience",
+  education: "Education",
+  skills: "Skills",
+  certifications: "Certifications",
+  languages: "Languages",
+  references: "References",
+};
 
 const createExperienceEntry = (category = defaultCategory) => ({
   id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
@@ -59,6 +73,21 @@ const formatWorkExperiences = (entries = []) =>
     )
     .filter(Boolean)
     .join("\n\n");
+
+const normalizeSectionOrder = (cv = {}) => {
+  const order = Array.isArray(cv.sectionOrder) ? cv.sectionOrder : [];
+  return [...order.filter((id) => defaultSectionOrder.includes(id)), ...defaultSectionOrder.filter((id) => !order.includes(id))];
+};
+
+const sectionHasContent = (cv = {}, id) => {
+  if (id === "experience") return normalizeWorkExperiences(cv).some((entry) => [entry.jobTitle, entry.employer, entry.responsibilities].some((value) => String(value || "").trim()));
+  return Boolean(String(cv[id] || "").trim());
+};
+
+const visibleSectionOrder = (cv = {}) => {
+  const hidden = Array.isArray(cv.hiddenSections) ? cv.hiddenSections : [];
+  return normalizeSectionOrder(cv).filter((id) => !hidden.includes(id) && sectionHasContent(cv, id));
+};
 
 const normalizeWorkExperiences = (cv) => {
   if (Array.isArray(cv.workExperiences) && cv.workExperiences.length) {
@@ -128,6 +157,8 @@ const initialCv = {
   expectedSalaryEnabled: false,
   expectedSalary: "",
   references: "Available upon request",
+  sectionOrder: defaultSectionOrder,
+  hiddenSections: [],
   profilePhoto: "",
   photoShape: "circle",
 };
@@ -1943,16 +1974,19 @@ function LiveCVPreview({ cv, theme, layout }) {
       </div>
     </section>
   );
+  const sectionRenderers = {
+    summary: () => section("Professional Summary", cv.summary),
+    experience: () => workExperienceSection,
+    education: () => section("Education", cv.education),
+    skills: () => section("Skills", cv.skills),
+    certifications: () => section("Certifications", cv.certifications),
+    languages: () => section("Languages", cv.languages),
+    references: () => section("References", cv.references),
+  };
   const content = (
     <div className={layout === "compact" ? "space-y-3" : "space-y-5"}>
-      {section("Professional Summary", cv.summary)}
       {personalDetails.length > 0 && section("Personal Details", personalDetails.join("\n"))}
-      {section("Skills", cv.skills)}
-      {workExperienceSection}
-      {section("Education", cv.education)}
-      {section("Certifications", cv.certifications)}
-      {section("Languages", cv.languages)}
-      {section("References", cv.references)}
+      {visibleSectionOrder(cv).map((id) => <React.Fragment key={id}>{sectionRenderers[id]?.()}</React.Fragment>)}
     </div>
   );
   if (layout === "sidebar") {
@@ -2719,6 +2753,69 @@ function SwitchTemplateModal({ templateName, onKeepData, onLoadSample, onClose }
   );
 }
 
+function SortableSectionRow({ id, hidden, onToggle }) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
+  const style = { transform: CSS.Transform.toString(transform), transition: transition || "transform 200ms ease" };
+  return (
+    <li ref={setNodeRef} style={style} className={`section-reorder-row ${hidden ? "hidden-section" : ""}`}>
+      <button type="button" className="section-drag-handle" aria-label={`Drag ${sectionLabels[id]}`} {...attributes} {...listeners}>::</button>
+      <span className="section-reorder-icon">{id.slice(0, 1).toUpperCase()}</span>
+      <span className="section-reorder-name">{sectionLabels[id]}</span>
+      <button type="button" className="section-eye-toggle" onClick={() => onToggle(id)}>{hidden ? "Show" : "Hide"}</button>
+    </li>
+  );
+}
+
+function SectionReorderPanel({ cv, onChange, onClose }) {
+  const order = normalizeSectionOrder(cv);
+  const hidden = Array.isArray(cv.hiddenSections) ? cv.hiddenSections : [];
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+  const updateCvOrder = (nextOrder, nextHidden = hidden) => {
+    localStorage.setItem("bmcv_section_order", JSON.stringify(nextOrder));
+    localStorage.setItem("bmcv_hidden_sections", JSON.stringify(nextHidden));
+    onChange("sectionOrder", nextOrder);
+    onChange("hiddenSections", nextHidden);
+  };
+  const toggleHidden = (id) => {
+    const nextHidden = hidden.includes(id) ? hidden.filter((item) => item !== id) : [...hidden, id];
+    updateCvOrder(order, nextHidden);
+  };
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = order.indexOf(active.id);
+    const newIndex = order.indexOf(over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    updateCvOrder(arrayMove(order, oldIndex, newIndex));
+  };
+  return (
+    <div className="section-reorder-backdrop" onClick={onClose}>
+      <aside className="section-reorder-panel" onClick={(event) => event.stopPropagation()}>
+        <div className="section-reorder-grip" />
+        <div className="section-reorder-head">
+          <div>
+            <h2>Reorder CV sections</h2>
+            <p>Drag sections or hide items from your CV preview and PDF.</p>
+          </div>
+          <button type="button" className="section-reorder-close" onClick={onClose}>Close</button>
+        </div>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={order} strategy={verticalListSortingStrategy}>
+            <ul className="section-reorder-list">
+              {order.map((id) => (
+                <SortableSectionRow key={id} id={id} hidden={hidden.includes(id)} onToggle={toggleHidden} />
+              ))}
+            </ul>
+          </SortableContext>
+        </DndContext>
+      </aside>
+    </div>
+  );
+}
+
 const builderSteps = [
   { id: "personal", label: "Personal info" },
   { id: "experience", label: "Experience" },
@@ -2992,6 +3089,7 @@ function CVBuilderApp({ onHome }) {
   const [session, setSession] = useState(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [pendingTemplateId, setPendingTemplateId] = useState(null);
+  const [sectionReorderOpen, setSectionReorderOpen] = useState(false);
   const [storageMessage, setStorageMessage] = useState("");
   const [userMode, setUserMode] = useState(() => localStorage.getItem("cvforall:user-mode") || "guest");
   const theme = useMemo(() => themes.find((item) => item.id === themeId), [themeId]);
@@ -3014,6 +3112,22 @@ function CVBuilderApp({ onHome }) {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => setSession(nextSession));
     return () => data.subscription.unsubscribe();
+  }, []);
+  useEffect(() => {
+    try {
+      const savedOrder = JSON.parse(localStorage.getItem("bmcv_section_order") || "null");
+      const savedHidden = JSON.parse(localStorage.getItem("bmcv_hidden_sections") || "null");
+      if (Array.isArray(savedOrder) || Array.isArray(savedHidden)) {
+        setCv((current) => ({
+          ...current,
+          sectionOrder: Array.isArray(savedOrder) ? normalizeSectionOrder({ sectionOrder: savedOrder }) : current.sectionOrder,
+          hiddenSections: Array.isArray(savedHidden) ? savedHidden.filter((id) => defaultSectionOrder.includes(id)) : current.hiddenSections,
+        }));
+      }
+    } catch {
+      localStorage.removeItem("bmcv_section_order");
+      localStorage.removeItem("bmcv_hidden_sections");
+    }
   }, []);
   useEffect(() => {
     localStorage.setItem("cvforall:user-mode", userMode);
@@ -3152,6 +3266,9 @@ function CVBuilderApp({ onHome }) {
       return;
     }
     loadTemplateSampleData(id);
+  };
+  const updateCvField = (key, value) => {
+    setCv((current) => ({ ...current, [key]: value }));
   };
   const handleImport = (extracted) => {
     setCv((current) => {
@@ -3298,11 +3415,21 @@ function CVBuilderApp({ onHome }) {
               <ExistingCVImporter onImport={handleImport} />
               <ProfilePhotoUploader cv={cv} onChange={handleProfilePhotoChange} />
               {storageMessage && cloudSavingEnabled && <p className="rounded bg-slate-50 p-3 text-xs font-bold leading-5 text-slate-600">{storageMessage}</p>}
-              <CVBuilderForm cv={cv} onChange={(key, value) => setCv((current) => ({ ...current, [key]: value }))} />
+              <CVBuilderForm cv={cv} onChange={updateCvField} />
               <section className="rounded border border-slate-200 bg-white p-4">
                 <h3 className="panel-title">Save and layout</h3>
                 <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                  <LayoutSelector selected={layoutId} onSelect={setLayoutId} />
+                  <div className="grid gap-4">
+                    <LayoutSelector selected={layoutId} onSelect={setLayoutId} />
+                    <button
+                      type="button"
+                      onClick={() => setSectionReorderOpen(true)}
+                      className="flex w-full items-center justify-between rounded border border-blue-200 bg-blue-50 px-4 py-3 text-left text-sm font-black text-blue-800 hover:bg-blue-100"
+                    >
+                      <span>Reorder CV sections</span>
+                      <span className="text-lg leading-none">+</span>
+                    </button>
+                  </div>
                   <div>
                     {cloudSavingEnabled ? (
                       <MyCvsPanel
@@ -3333,11 +3460,28 @@ function CVBuilderApp({ onHome }) {
               {BUILDER_ADS_ENABLED && <AdBanner compact label="Google AdSense form ad" slot="1010101010" />}
             </div>
           </section>
-          <BuilderPreviewPanel cv={cv} theme={theme} layout={layoutId} onDownload={() => setDownloadTarget("cv")} />
+          <div className="builder-right-stack">
+            <BuilderPreviewPanel cv={cv} theme={theme} layout={layoutId} onDownload={() => setDownloadTarget("cv")} />
+            <ATSPanel cv={cv} />
+          </div>
         </div>
         <button type="button" onClick={() => setMobileCvView("preview")} className="btn-preview-float">
           <Icon name="eye" className="h-4 w-4" /> Preview CV
         </button>
+        <nav className="mobile-builder-tabbar" aria-label="CV builder mobile actions">
+          <button type="button" onClick={() => setMobileCvView("edit")} className={mobileCvView === "edit" ? "active" : ""}>
+            Edit CV
+          </button>
+          <button type="button" onClick={() => setMobileCvView("preview")} className={mobileCvView === "preview" ? "active" : ""}>
+            Preview
+          </button>
+          <button type="button" onClick={() => setMobileCvView("ats")} className={mobileCvView === "ats" ? "active" : ""}>
+            ATS Score
+          </button>
+          <button type="button" onClick={() => setDownloadTarget("cv")}>
+            Export
+          </button>
+        </nav>
         {mobileCvView === "preview" && (
           <div className="mobile-sheet-backdrop" onClick={() => setMobileCvView("edit")}>
             <div className="mobile-sheet" onClick={(event) => event.stopPropagation()}>
@@ -3347,6 +3491,18 @@ function CVBuilderApp({ onHome }) {
                 <button type="button" onClick={() => setMobileCvView("edit")} className="rounded border border-slate-300 px-3 py-2 text-xs font-black text-slate-700">Close</button>
               </div>
               <LiveCVPreview cv={cv} theme={theme} layout={layoutId} />
+            </div>
+          </div>
+        )}
+        {mobileCvView === "ats" && (
+          <div className="mobile-sheet-backdrop" onClick={() => setMobileCvView("edit")}>
+            <div className="mobile-sheet" onClick={(event) => event.stopPropagation()}>
+              <div className="mobile-sheet-handle" />
+              <div className="mb-3 flex items-center justify-between">
+                <span className="preview-live-label"><span className="live-dot" /> ATS score</span>
+                <button type="button" onClick={() => setMobileCvView("edit")} className="rounded border border-slate-300 px-3 py-2 text-xs font-black text-slate-700">Close</button>
+              </div>
+              <ATSPanel cv={cv} />
             </div>
           </div>
         )}
@@ -3382,6 +3538,7 @@ function CVBuilderApp({ onHome }) {
           onClose={() => setPendingTemplateId(null)}
         />
       )}
+      {sectionReorderOpen && <SectionReorderPanel cv={cv} onChange={updateCvField} onClose={() => setSectionReorderOpen(false)} />}
       {authOpen && <AuthModal onClose={() => setAuthOpen(false)} onUrgentMode={startUrgentMode} onRegisteredMode={startRegisteredMode} />}
     </main>
   );
@@ -3458,6 +3615,7 @@ export default function App() {
     </>
   );
 }
+
 
 
 
