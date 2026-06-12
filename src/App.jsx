@@ -2388,11 +2388,21 @@ function LiveCVPreview({ cv, theme, layout }) {
   );
 }
 
-function DownloadModal({ cv, onClose, onVerifiedDownload, title = "Verify to download", description = "Enter your contact details. This mock flow displays an OTP so real email or SMS can be added later.", label = "Downloads" }) {
+function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, emailCopyAddress = "", title = "Verify to download", description = "Enter your contact details. We will send an OTP before unlocking downloads.", label = "Downloads" }) {
   const [details, setDetails] = useState({ name: cv.fullName, email: cv.email, country: cv.country, phone: cv.phone });
   const [otp, setOtp] = useState("");
   const [sentOtp, setSentOtp] = useState("");
   const [verified, setVerified] = useState(false);
+  const [actionStatus, setActionStatus] = useState("");
+  const runDownloadAction = async (type) => {
+    setActionStatus(type === "email" ? "Sending CV copy to email..." : "Preparing your file...");
+    try {
+      const result = await onVerifiedDownload(type, details);
+      setActionStatus(result?.message || (type === "email" ? "CV email request completed." : "Download started."));
+    } catch (error) {
+      setActionStatus(error.message || "Action failed. Please try again.");
+    }
+  };
   const sendOtp = (event) => {
     event.preventDefault();
     setSentOtp(String(Math.floor(100000 + Math.random() * 900000)));
@@ -2434,9 +2444,19 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, title = "Verify to dow
           </div>
         )}
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <button disabled={!verified} onClick={() => onVerifiedDownload("pdf")} className="rounded bg-green-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">Download PDF</button>
-          <button disabled={!verified} onClick={() => onVerifiedDownload("word")} className="rounded border border-blue-600 px-5 py-3 font-bold text-blue-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400">Download DOCX</button>
+          <button disabled={!verified} onClick={() => runDownloadAction("pdf")} className="rounded bg-green-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">Download PDF</button>
+          <button disabled={!verified} onClick={() => runDownloadAction("word")} className="rounded border border-blue-600 px-5 py-3 font-bold text-blue-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400">Download DOCX</button>
+          {canEmailCopy ? (
+            <button disabled={!verified} onClick={() => runDownloadAction("email")} className="rounded border border-green-600 bg-green-50 px-5 py-3 font-bold text-green-800 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-white disabled:text-slate-400 sm:col-span-2">
+              Email CV copy to {emailCopyAddress || details.email}
+            </button>
+          ) : (
+            <p className="rounded bg-blue-50 p-3 text-xs font-bold leading-5 text-blue-900 sm:col-span-2">
+              Sign in with email if you want BuildMyCVNow to send a CV copy to your inbox.
+            </p>
+          )}
         </div>
+        {actionStatus && <p className="mt-3 rounded bg-slate-50 p-3 text-sm font-bold leading-6 text-slate-700">{actionStatus}</p>}
       </div>
     </div>
   );
@@ -2445,7 +2465,7 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, title = "Verify to dow
 function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
   const [mode, setMode] = useState("signin");
   const [form, setForm] = useState({ name: "", email: "", password: "" });
-  const [phoneForm, setPhoneForm] = useState({ phone: "", otp: "" });
+  const [phoneForm, setPhoneForm] = useState({ phone: "", otp: "", challenge: null, mockOtp: "" });
   const [phoneOtpSent, setPhoneOtpSent] = useState(false);
   const [message, setMessage] = useState(isSupabaseConfigured ? "" : "Add VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY or REACT_APP_SUPABASE_URL/REACT_APP_SUPABASE_ANON_KEY to .env to enable login.");
   const [loading, setLoading] = useState(false);
@@ -2535,37 +2555,38 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
   };
   const sendPhoneOtp = async (event) => {
     event.preventDefault();
-    if (!supabase) return;
     setLoading(true);
     setMessage("Sending mobile OTP...");
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        phone: phoneForm.phone,
-        options: { channel: "sms" },
+      const response = await fetch("/.netlify/functions/mobileOtp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "send", phone: phoneForm.phone }),
       });
-      if (error) throw error;
+      const result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.message || "Could not send mobile OTP.");
+      setPhoneForm({ ...phoneForm, challenge: result.challenge, mockOtp: result.mockOtp || "" });
       setPhoneOtpSent(true);
       trackEvent("phone_otp_sent");
-      setMessage("OTP sent. Enter the code from your SMS to continue without cloud saving.");
+      setMessage(result.smsSent ? "OTP sent to your mobile number. Enter the SMS code to continue." : `SMS provider is not configured yet. Test OTP: ${result.mockOtp}`);
     } catch (error) {
-      setMessage(error.message || "Could not send mobile OTP. Make sure Phone Auth is enabled in Supabase.");
+      setMessage(error.message || "Could not send mobile OTP.");
     } finally {
       setLoading(false);
     }
   };
   const verifyPhoneOtp = async (event) => {
     event.preventDefault();
-    if (!supabase) return;
     setLoading(true);
     setMessage("Verifying OTP...");
     try {
-      const { error } = await supabase.auth.verifyOtp({
-        phone: phoneForm.phone,
-        token: phoneForm.otp,
-        type: "sms",
+      const response = await fetch("/.netlify/functions/mobileOtp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "verify", phone: phoneForm.phone, otp: phoneForm.otp, challenge: phoneForm.challenge }),
       });
-      if (error) throw error;
-      await supabase.auth.signOut();
+      const result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.message || "Invalid OTP.");
       trackEvent("phone_otp_verified");
       onUrgentMode("phone");
       onClose();
@@ -2621,9 +2642,14 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
                 <input className="form-field" inputMode="numeric" maxLength={6} value={phoneForm.otp} onChange={(event) => setPhoneForm({ ...phoneForm, otp: event.target.value })} required />
               </label>
             )}
-            <button disabled={!isSupabaseConfigured || loading} className="rounded bg-green-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
+            <button disabled={loading} className="rounded bg-green-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
               {loading ? "Please wait..." : phoneOtpSent ? "Verify OTP and continue" : "Send OTP"}
             </button>
+            {phoneForm.mockOtp && (
+              <p className="rounded bg-amber-50 p-3 text-xs font-bold leading-5 text-amber-900">
+                Test mode OTP: {phoneForm.mockOtp}. Add Twilio environment variables in Netlify to send OTP by SMS.
+              </p>
+            )}
           </form>
         ) : (
         <form onSubmit={submit} className="mt-5 grid gap-3">
@@ -3836,6 +3862,21 @@ function CVBuilderApp({ onHome }) {
     }
   };
   const handleDownload = async (type) => {
+    if (type === "email") {
+      const toEmail = user?.email || session?.user?.email || cv.email;
+      if (!user?.email && !session?.user?.email) {
+        throw new Error("Please sign in with email first to receive a CV copy by email.");
+      }
+      const response = await fetch("/.netlify/functions/emailCv", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: toEmail, cv }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.message || "Could not email your CV.");
+      logEvent("cv_email_requested", { templateId: categoryId, forwarded: result.forwarded });
+      return result;
+    }
     await downloadCvFile(cv, type, theme, layoutId);
     logEvent("cv_downloaded", { format: type, templateId: categoryId, completionPercent: completion.percent });
     setDownloaded(true);
@@ -4067,7 +4108,15 @@ function CVBuilderApp({ onHome }) {
           </div>
         </div>
       )}
-      {downloadTarget === "cv" && <DownloadModal cv={cv} onClose={() => setDownloadTarget(null)} onVerifiedDownload={handleDownload} />}
+      {downloadTarget === "cv" && (
+        <DownloadModal
+          cv={cv}
+          onClose={() => setDownloadTarget(null)}
+          onVerifiedDownload={handleDownload}
+          canEmailCopy={Boolean(user?.email || session?.user?.email)}
+          emailCopyAddress={user?.email || session?.user?.email || ""}
+        />
+      )}
       {downloadTarget === "cover" && <CoverLetterDownloadModal cv={cv} onClose={() => setDownloadTarget(null)} onVerifiedDownload={handleCoverDownload} />}
       {pendingTemplateId && (
         <SwitchTemplateModal
