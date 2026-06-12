@@ -8,24 +8,24 @@ export const homepageFaqs = [
     answer: "No. You can build and download a CV without creating an account. Signing in is only useful if you want to save drafts online and manage multiple CV versions later.",
   },
   {
-    question: "Should I put a photo on my CV for UAE jobs?",
-    answer: "For many UAE and GCC roles, especially hospitality, retail, admin, sales, and customer service, a professional photo is common and often expected. For ATS-heavy multinational roles, the photo is less important. If you use one, choose a clear head-and-shoulders photo with a plain background.",
+    question: "Can I use BuildMyCVNow outside the UAE or GCC?",
+    answer: "Yes. BuildMyCVNow is available globally. You can use it for local jobs, overseas applications, remote roles, and international recruitment. Some fields, such as visa status, nationality, photo, or driving license, are optional so you can match the hiring rules in your country.",
   },
   {
-    question: "What CV format do employers in Dubai prefer?",
-    answer: "Most Dubai employers prefer a simple, readable CV with contact details, visa status if relevant, professional summary, work experience, skills, education, certifications, languages, and references. A clean one or two page format works best for most applicants.",
+    question: "What CV format works for global job applications?",
+    answer: "Most employers prefer a simple, readable CV with contact details, professional summary, work experience, skills, education, certifications, languages, and references when relevant. A clean one or two page ATS-friendly format works well for many countries and industries.",
   },
   {
     question: "What is an ATS-friendly CV?",
     answer: "ATS means Applicant Tracking System. It is software that scans CVs before a recruiter reads them. An ATS-friendly CV uses normal text, clear headings, keywords from the job post, and avoids tables, heavy graphics, and text boxes that software may not read correctly.",
   },
   {
-    question: "Can I write my visa status on my CV?",
-    answer: "Yes. In the UAE it is common to include visa status, notice period, or availability when it helps the employer decide quickly. Examples include UAE residence visa, visit visa, spouse visa, transferable visa, or available immediately.",
+    question: "Should I include visa status, nationality, or a photo?",
+    answer: "It depends on the country and job type. Some markets ask for visa status, nationality, driving license, or a professional photo, while others do not. BuildMyCVNow makes these fields optional so you can include them only when they help your application.",
   },
   {
-    question: "How long should a CV be for UAE jobs?",
-    answer: "For most entry-level and mid-level jobs, one to two pages is enough. Fresh graduates and helpers can usually use one page. Experienced engineers, finance staff, nurses, and managers may need two pages if the information is relevant.",
+    question: "How long should my CV be?",
+    answer: "For most entry-level and mid-level jobs, one to two pages is enough. Fresh graduates and helpers can usually use one page. Experienced professionals, engineers, finance staff, nurses, and managers may need two pages if the information is relevant.",
   },
   {
     question: "Can I build my CV on my phone?",

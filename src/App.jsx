@@ -509,7 +509,7 @@ function LandingPage({ onStart }) {
     ["sparkle", "AI writing assist", "One click improves your job descriptions into clear, recruiter-friendly bullet points."],
     ["eye", "Live preview", "See your CV update as you type, with no switching tabs and no guessing."],
     ["share", "Share via link or QR", "Send your CV over WhatsApp or email instantly when sharing is enabled."],
-    ["briefcase", "UAE-ready fields", "Includes visa status, nationality, expected salary, and driving licence fields."],
+    ["briefcase", "Global-ready fields", "Includes country, nationality, expected salary, driving licence, and region-specific details when needed."],
   ];
   const testimonials = [
     ["Maria G.", "F&B Supervisor - Dubai", "MG", "#E6F1FB", "#0C447C", "Got a callback from a Dubai hotel within 3 days of sending my new CV. The hospitality template was exactly what I needed."],
@@ -592,8 +592,8 @@ function LandingPage({ onStart }) {
   return (
     <main id="top" className="landing-page-redesign">
       <Seo
-        title="Free CV Builder for UAE & GCC Jobs"
-        description="Build a professional, ATS-friendly CV in 5 minutes. Free templates for hospitality, IT, engineering and finance jobs in Dubai, Abu Dhabi and across the Gulf."
+        title="Free CV Builder for Global Jobs"
+        description="Build a professional, ATS-friendly CV in 5 minutes. Free templates for local, remote, overseas, and international jobs."
       />
       <section className="global-hero-section">
         <div className="global-hero-arc" aria-hidden="true" />
@@ -913,11 +913,11 @@ function AboutPage({ onStart }) {
     <PageShell onStart={onStart}>
       <Seo
         title="About"
-        description="Learn about BuildMyCVNow, a free CV builder for UAE, GCC, and Philippines job seekers."
+        description="Learn about BuildMyCVNow, a free CV builder for job seekers worldwide."
       />
       <StaticHero
         title="About BuildMyCVNow"
-        description="BuildMyCVNow helps job seekers create clear, professional CVs for free, especially workers applying in the UAE, GCC, and Philippines job markets."
+        description="BuildMyCVNow helps job seekers worldwide create clear, professional CVs for free, whether they are applying locally, overseas, remotely, or across international job markets."
       />
       <section className="mx-auto grid max-w-7xl gap-8 px-5 py-14 lg:grid-cols-[0.8fr_1fr]">
         <div>
@@ -931,8 +931,8 @@ function AboutPage({ onStart }) {
           {[
             ["Fresh graduates", "Simple CV wording for first jobs, internships, training, and entry-level applications."],
             ["Workers and helpers", "Practical templates for hospitality, domestic services, skilled trades, education, and general helper roles."],
-            ["GCC applicants", "Clear structure for UAE, Dubai, Qatar, Saudi Arabia, Kuwait, Oman, and Bahrain job applications."],
-            ["Philippines job seekers", "Beginner-friendly guidance for local and overseas applications."],
+            ["Overseas applicants", "Clear structure for people applying across countries, relocation roles, and international recruitment markets."],
+            ["Global job seekers", "Beginner-friendly guidance for local jobs, remote work, and worldwide applications."],
           ].map(([title, text]) => (
             <article key={title} className="rounded border border-slate-200 bg-white p-5 shadow-sm">
               <h3 className="font-black text-slate-950">{title}</h3>
@@ -1006,7 +1006,7 @@ function BlogIndexPage({ onStart }) {
     <PageShell onStart={onStart}>
       <Seo
         title="Blog and Career Tips"
-        description="Read CV writing and job search tips for UAE, GCC, Dubai, and Philippines job seekers."
+        description="Read CV writing and job search tips for local, overseas, remote, and international job seekers."
       />
       <StaticHero title="Blog and Career Tips" description="Practical articles to help job seekers write stronger CVs and prepare for applications." />
       <section className="mx-auto max-w-7xl px-5 py-14">
@@ -1091,7 +1091,7 @@ function SiteFooter({ onStart }) {
       <div className="footer-action">
         <button onClick={onStart}>Start free CV</button>
         <p>Copyright 2025 BuildMyCVNow. All rights reserved.</p>
-        <span>Free CV Builder for UAE, GCC & Philippines Job Seekers</span>
+        <span>Free CV Builder for Job Seekers Worldwide</span>
         </div>
     </footer>
   );
@@ -3205,7 +3205,7 @@ function CompletionBar({ completion, onNextStep }) {
 
 function ShareTool({ moment = "download" }) {
   const [copied, setCopied] = useState(false);
-  const shareText = "I made my CV free with this - no sign-up, ATS-friendly, built for UAE/Gulf jobs:";
+  const shareText = "I made my CV free with this - no sign-up, ATS-friendly, built for job seekers worldwide:";
   const urls = {
     native: "https://buildmycvnow.com?utm_source=share&utm_medium=native",
     whatsapp: "https://buildmycvnow.com?utm_source=whatsapp&utm_medium=share",
@@ -3215,7 +3215,7 @@ function ShareTool({ moment = "download" }) {
   const shareNative = async () => {
     logEvent("share_clicked", { channel: "native", moment });
     if (navigator.share) {
-      await navigator.share({ title: "Free CV Builder for UAE Jobs", text: shareText, url: urls.native });
+      await navigator.share({ title: "Free Global CV Builder", text: shareText, url: urls.native });
     } else {
       await navigator.clipboard.writeText(`${shareText} ${urls.copylink}`);
       setCopied(true);
@@ -3229,7 +3229,7 @@ function ShareTool({ moment = "download" }) {
   return (
     <section className="share-tool-card">
       <h3>Know someone job hunting?</h3>
-      <p>Share this free CV builder for UAE and Gulf jobs.</p>
+      <p>Share this free CV builder for local, remote, and international jobs.</p>
       <div className="share-tool-actions">
         <button type="button" onClick={shareNative}>Share</button>
         <a onClick={() => logEvent("share_clicked", { channel: "whatsapp", moment })} href={`https://wa.me/?text=${encodeURIComponent(`${shareText} ${urls.whatsapp}`)}`} target="_blank" rel="noreferrer">WhatsApp</a>
@@ -3262,7 +3262,7 @@ function EmailCapture({ source = "download", roleInterest = "" }) {
   };
   return (
     <form onSubmit={submit} className="email-capture-card">
-      <h3>Want the free UAE Job Hunt Checklist?</h3>
+      <h3>Want the free Job Hunt Checklist?</h3>
       <p>We will email it to you, plus occasional CV tips. No spam.</p>
       <input className="hidden" name="website" tabIndex="-1" autoComplete="off" />
       <div className="email-capture-row">
