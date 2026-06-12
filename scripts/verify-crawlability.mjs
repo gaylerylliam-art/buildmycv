@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
 const dist = path.join(root, "dist");
-const baseUrl = process.env.DEPLOY_PRIME_URL || process.env.URL || "https://buildmycvnow.com";
+const baseUrl = "https://buildmycvnow.com";
 const criticalRoutes = ["/", "/templates", "/faq", "/blog", "/cv-examples", "/for-ofw"];
 const failures = [];
 
