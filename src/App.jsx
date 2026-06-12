@@ -110,6 +110,22 @@ const formatWorkExperiences = (entries = []) =>
     .filter(Boolean)
     .join("\n\n");
 
+const hasImportValue = (value) => {
+  if (Array.isArray(value)) return value.length > 0;
+  return Boolean(String(value || "").trim());
+};
+
+const mergeImportedCvData = (fallback = {}, ai = {}) => {
+  const merged = { ...fallback };
+  Object.entries(ai || {}).forEach(([key, value]) => {
+    if (hasImportValue(value)) merged[key] = value;
+  });
+  if (Array.isArray(merged.workExperiences) && merged.workExperiences.length) {
+    merged.experience = formatWorkExperiences(merged.workExperiences);
+  }
+  return merged;
+};
+
 const normalizeSectionOrder = (cv = {}) => {
   const order = Array.isArray(cv.sectionOrder) ? cv.sectionOrder : [];
   return [...order.filter((id) => defaultSectionOrder.includes(id)), ...defaultSectionOrder.filter((id) => !order.includes(id))];
@@ -1236,16 +1252,39 @@ function CategorySelector({ selected, onSelect }) {
 }
 
 function ExistingCVImporter({ onImport }) {
-  const [status, setStatus] = useState("Upload an existing CV. Mock AI will read the file text and fill the form.");
+  const [status, setStatus] = useState("Upload an existing CV. AI will analyze the file text and fill the form.");
+  const analyzeWithAi = async (text, fileName) => {
+    const response = await fetch("/.netlify/functions/analyzeCv", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, fileName }),
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || "AI analysis is unavailable.");
+    }
+    const data = await response.json();
+    if (!data.cv) throw new Error("AI analysis did not return CV fields.");
+    return data.cv;
+  };
   const handleFile = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    setStatus("Reading CV and extracting details...");
+    setStatus("Reading CV text...");
     try {
       const text = await readCvFile(file);
-      const extracted = mockAiExtractCv(text, file.name);
+      const localExtracted = mockAiExtractCv(text, file.name);
+      let extracted = localExtracted;
+      try {
+        setStatus("AI is analyzing the CV and mapping fields...");
+        const aiExtracted = await analyzeWithAi(text, file.name);
+        extracted = mergeImportedCvData(localExtracted, aiExtracted);
+        setStatus("AI filled the form. Please review each section before download.");
+      } catch (aiError) {
+        extracted = localExtracted;
+        setStatus(`${aiError.message} Local import filled the form; please review and edit.`);
+      }
       onImport(extracted);
-      setStatus("Details filled automatically. Please review and edit before download.");
     } catch (error) {
       setStatus(error.message);
     } finally {
@@ -1261,7 +1300,7 @@ function ExistingCVImporter({ onImport }) {
         <div className="min-w-0">
           <h3 className="panel-title">Upload existing CV</h3>
           <p className="mt-1 text-sm leading-6 text-slate-600">
-            AI import fills the form automatically. You can still edit every field.
+            AI import analyzes the CV first, then fills the form fields. You can still edit every field.
           </p>
           <label className="mt-3 inline-flex cursor-pointer items-center justify-center rounded bg-white px-4 py-3 text-sm font-bold text-blue-700 ring-1 ring-blue-200 hover:bg-blue-50">
             Choose CV file
