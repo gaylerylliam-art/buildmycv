@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { HOME_H1 } from "../src/content/homepage.js";
+import { homepageFaqs } from "../src/content/seoFaq.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
@@ -52,6 +54,24 @@ if (!builder) {
   if (builderTextLength > 1200 || /Live CV preview|Free CV Builder for Job Seekers Worldwide/i.test(builder)) {
     failures.push("/builder: appears prerendered with content; it should remain the SPA app shell");
   }
+}
+
+const homeHtml = readBuiltHtml("/");
+const homeText = stripTags(homeHtml);
+if (!homeText.includes(HOME_H1)) failures.push(`/: missing shared homepage H1 "${HOME_H1}"`);
+if (/â€|Â·/.test(homeHtml)) failures.push("/: contains mojibake byte sequences");
+if (!/<img[^>]+src=["']\/assets\/heygen-demo-poster\.svg["'][^>]+width=["']960["'][^>]+height=["']540["']/i.test(homeHtml)) {
+  failures.push("/: missing static video poster facade with explicit dimensions");
+}
+for (const href of ["/about", "/contact", "/privacy", "/terms", "/faq", "/blog"]) {
+  if (!homeHtml.includes(`href="${href}"`)) failures.push(`/: missing footer link ${href}`);
+}
+for (const faq of homepageFaqs.slice(0, 10)) {
+  if (!homeText.includes(faq.question)) failures.push(`/: missing FAQ question "${faq.question}"`);
+}
+for (const match of homeHtml.matchAll(/\b(?:src|href)=["']\/assets\/([^"']+)["']/g)) {
+  const assetPath = path.join(dist, "assets", match[1]);
+  if (!fs.existsSync(assetPath)) failures.push(`/: referenced asset /assets/${match[1]} is missing`);
 }
 
 if (failures.length) {

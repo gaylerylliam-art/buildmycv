@@ -8,6 +8,16 @@
   external_node_modules = ["@sparticuz/chromium"]
 
 [[headers]]
+  for = "/*.html"
+  [headers.values]
+    Content-Type = "text/html; charset=utf-8"
+
+[[headers]]
+  for = "/"
+  [headers.values]
+    Content-Type = "text/html; charset=utf-8"
+
+[[headers]]
   for = "/.netlify/functions/*"
   [headers.values]
     Access-Control-Allow-Origin = "*"

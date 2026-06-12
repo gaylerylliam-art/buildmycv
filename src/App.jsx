@@ -27,6 +27,18 @@ import {
 } from "./data/coverLetterTemplates";
 import { blogArticles } from "./data/blogArticles";
 import { faqs } from "./data/siteContent";
+import {
+  HOME_BUILD_STEPS,
+  HOME_CITY_PILLS,
+  HOME_EYEBROW,
+  HOME_FEATURES,
+  HOME_H1,
+  HOME_META_DESCRIPTION,
+  HOME_META_TITLE,
+  HOME_SUBHEAD,
+  HOME_TRUST_ITEMS,
+  HOME_VIDEO,
+} from "./content/homepage";
 import { downloadCoverLetterFile, downloadCvFile } from "./utils/downloads";
 import { initAnalytics, trackEvent } from "./utils/analytics";
 import { getRecaptchaToken, isRecaptchaConfigured } from "./utils/recaptcha";
@@ -522,20 +534,8 @@ function LandingPage({ onStart }) {
     { label: "3. AI polishes", short: "AI improve", time: 70, ts: "1:10" },
     { label: "4. Download", short: "Download", time: 105, ts: "1:45" },
   ];
-  const buildSteps = [
-    "Choose a template",
-    "Upload your existing CV (optional)",
-    "Fill in your personal information",
-    "Add work experience and education",
-    "Review your CV strength score",
-    "Download your CV as PDF",
-  ];
-  const features = [
-    ["sparkle", "AI writing assist", "One click improves your job descriptions into clear, recruiter-friendly bullet points."],
-    ["eye", "Live preview", "See your CV update as you type, with no switching tabs and no guessing."],
-    ["share", "Share via link or QR", "Send your CV over WhatsApp or email instantly when sharing is enabled."],
-    ["briefcase", "Global-ready fields", "Includes country, nationality, expected salary, driving licence, and region-specific details when needed."],
-  ];
+  const buildSteps = HOME_BUILD_STEPS;
+  const features = HOME_FEATURES;
   const testimonials = [
     ["Maria G.", "F&B Supervisor - Dubai", "MG", "#E6F1FB", "#0C447C", "Got a callback from a Dubai hotel within 3 days of sending my new CV. The hospitality template was exactly what I needed."],
     ["Raj S.", "IT Support - Abu Dhabi", "RS", "#E1F5EE", "#085041", "Super easy. The AI fixed my job descriptions in one click. Downloaded my CV in under 10 minutes."],
@@ -617,8 +617,8 @@ function LandingPage({ onStart }) {
   return (
     <main id="top" className="landing-page-redesign">
       <Seo
-        title="Free CV Builder for Global Jobs"
-        description="Build a professional, ATS-friendly CV in 5 minutes. Free templates for local, remote, overseas, and international jobs."
+        title={HOME_META_TITLE}
+        description={HOME_META_DESCRIPTION}
       />
       <section className="global-hero-section">
         <div className="global-hero-arc" aria-hidden="true" />
@@ -626,23 +626,23 @@ function LandingPage({ onStart }) {
         <div className="global-hero-blob" aria-hidden="true" />
         <div className="global-hero-inner">
           <div className="global-hero-copy">
-            <span className="global-hero-eyebrow">Free CV Builder - Works Worldwide</span>
+            <span className="global-hero-eyebrow">{HOME_EYEBROW}</span>
             <h1 className="global-hero-headline">
-              Every career.
-              <span>Every country.</span>
+              {HOME_H1.split(". ")[0]}.
+              <span>{HOME_H1.split(". ")[1]}</span>
             </h1>
             <p className="global-hero-subhead">
-              Build a professional, ATS-friendly CV in under 5 minutes. Free templates trusted by job seekers in the UAE, UK, US, Canada, Australia, and 60+ more countries.
+              {HOME_SUBHEAD}
             </p>
             <div className="global-hero-cta-row">
               <button type="button" onClick={onStart} className="global-hero-primary">
                 <Icon name="file" className="h-4 w-4" />
                 Build my CV - it's free
               </button>
-              <a href="#templates" className="global-hero-secondary">Browse templates <Icon name="arrow" className="h-4 w-4" /></a>
+              <a href="/templates" className="global-hero-secondary">Browse templates <Icon name="arrow" className="h-4 w-4" /></a>
             </div>
             <div className="global-hero-trust" role="list">
-              {["No sign-up needed", "ATS-optimized", "5-minute build", "60+ countries"].map((item) => (
+              {HOME_TRUST_ITEMS.map((item) => (
                 <span key={item} role="listitem"><i aria-hidden="true" /> {item}</span>
               ))}
             </div>
@@ -682,7 +682,7 @@ function LandingPage({ onStart }) {
               </div>
             ))}
             <div className="global-location-pills">
-              {["Dubai", "London", "Toronto", "Lagos"].map((city) => <span key={city}>{city}</span>)}
+              {HOME_CITY_PILLS.map((city) => <span key={city}>{city}</span>)}
             </div>
           </div>
         </div>
@@ -690,8 +690,8 @@ function LandingPage({ onStart }) {
 
       <section className="video-section" id="how-it-works">
         <div className="section-eyebrow">See it in action</div>
-        <h2 className="section-title">From blank page to polished CV in minutes</h2>
-        <p className="section-sub">Watch how easy it is - no design skills needed</p>
+        <h2 className="section-title">{HOME_VIDEO.title}</h2>
+        <p className="section-sub">{HOME_VIDEO.subtitle}</p>
         <div className="video-wrapper">
           <div className="browser-chrome">
             <div className="browser-bar">
@@ -1940,7 +1940,8 @@ async function readCvFile(file) {
 }
 
 const cvSectionHeading = /^(summary|profile|objective|skills|core\s+competencies|work\s+experience|professional\s+experience|employment\s+history|employment|career\s+history|education|certifications?|licenses?|languages?|references?|projects?)$/i;
-const dateRangePattern = /((?:(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+)?(?:19|20)\d{2})\s*(?:-|\u2013|\u2014|â€“|â€”|to|until|till|through)\s*((?:(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+)?(?:19|20)\d{2}|present|current|till\s+date|to\s+date|now)/i;
+const mojibakeDashPattern = "\u00e2\u20ac[\u201c\u201d]";
+const dateRangePattern = new RegExp(`((?:(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\.?\\s+)?(?:19|20)\\d{2})\\s*(?:-|\\u2013|\\u2014|${mojibakeDashPattern}|to|until|till|through)\\s*((?:(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\.?\\s+)?(?:19|20)\\d{2}|present|current|till\\s+date|to\\s+date|now)`, "i");
 const singleDatePattern = /((?:(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+)(?:19|20)\d{2})\s*$/i;
 const locationPattern = /\b(abu\s*dhabi|ajman|al\s*ain|bahrain|canada|cebu|chennai|cochin|doha|dubai|gcc|india|kerala|kuwait|lagos|london|mangalore|manila|oman|philippines|qatar|riyadh|saudi|sharjah|singapore|toronto|uae|u\.a\.e\.|united\s+arab\s+emirates|uk|usa)\b/i;
 const jobTitlePattern = /\b(accountant|admin|analyst|assistant|associate|cashier|clerk|controller|coordinator|counsellor|counselor|developer|driver|electrician|engineer|executive|helper|housekeeper|intern|manager|nanny|officer|operator|plumber|receptionist|representative|sales|secretary|supervisor|support|technician|waiter|warehouse|welder)\b/i;
@@ -1949,13 +1950,14 @@ const responsibilityVerbPattern = /^(achieved|assisted|checked|cleaned|communica
 
 const cleanCvLine = (line) =>
   String(line || "")
-    .replace(/[•●▪◦â€¢â—â–ªâ—¦]/g, "-")
+    .replace(/[•●▪◦]/g, "-")
+    .replace(/\u00e2\u20ac[\u00a2\u201d]\u008f?|\u00e2\u2013[\u00aa\u00a6]/g, "-")
     .replace(/\s+/g, " ")
     .trim();
 
 const normalizeImportedDate = (value = "") =>
   cleanCvLine(value)
-    .replace(/^[-\u2013\u2014â€“â€”]\s*/, "")
+    .replace(new RegExp(`^(?:-|\\u2013|\\u2014|${mojibakeDashPattern})\\s*`), "")
     .replace(/\btill\s+date\b/i, "Present")
     .replace(/\bto\s+date\b/i, "Present")
     .replace(/\bcurrent\b/i, "Present")
@@ -1969,7 +1971,7 @@ const isResponsibilityLine = (line) => {
 const splitEmployerAndLocation = (value = "") => {
   const cleaned = cleanCvLine(value).replace(/^[-*]\s*/, "");
   if (!cleaned) return { employer: "", companyLocation: "" };
-  const separators = [" | ", " - ", "\u2013", "\u2014", " â€“ ", " â€” "];
+  const separators = [" | ", " - ", "\u2013", "\u2014", ` ${"\u00e2\u20ac\u201c"} `, ` ${"\u00e2\u20ac\u201d"} `];
   for (const separator of separators) {
     if (!cleaned.includes(separator)) continue;
     const parts = cleaned.split(separator).map((part) => part.trim()).filter(Boolean);
@@ -1987,7 +1989,7 @@ const splitEmployerAndLocation = (value = "") => {
 };
 
 const parseInlineExperienceHeader = (line = "", match) => {
-  const beforeDate = cleanCvLine(line.slice(0, match.index)).replace(/[,;|\-\u2013\u2014â€“â€”\s]+$/, "");
+  const beforeDate = cleanCvLine(line.slice(0, match.index)).replace(new RegExp(`[,;|\\-\\u2013\\u2014\\s]+$|(?:${mojibakeDashPattern})\\s*$`), "");
   if (!beforeDate) return {};
   const atMatch = beforeDate.match(/(.+?)\s+(?:at|with)\s+(.+)$/i);
   if (atMatch) {
@@ -1998,7 +2000,7 @@ const parseInlineExperienceHeader = (line = "", match) => {
       companyLocation: employerLocation.companyLocation,
     };
   }
-  const separators = [" | ", " - ", "\u2013", "\u2014", " â€“ ", " â€” "];
+  const separators = [" | ", " - ", "\u2013", "\u2014", ` ${"\u00e2\u20ac\u201c"} `, ` ${"\u00e2\u20ac\u201d"} `];
   for (const separator of separators) {
     if (!beforeDate.includes(separator)) continue;
     const parts = beforeDate.split(separator).map((part) => part.trim()).filter(Boolean);
