@@ -4053,6 +4053,10 @@ function CVBuilderApp({ onHome }) {
     }
     setDownloadTarget("cv");
   };
+  const dismissSharePrompt = () => {
+    sessionStorage.setItem("bmcv_share_prompt_seen", "1");
+    setShowSharePrompt(false);
+  };
   const handleNextStep = (section) => {
     logEvent("nextstep_clicked", { step: section });
     if (section === "download") requestCvDownload();
@@ -4600,7 +4604,15 @@ function CVBuilderApp({ onHome }) {
           <div className="download-success-stack">
             <div className="rounded border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-900 shadow-lg">Download confirmed. Your CV file is ready.</div>
             {showSharePrompt && (
-              <div>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={dismissSharePrompt}
+                  className="absolute right-3 top-3 z-10 rounded-full border border-slate-200 bg-white px-2 py-1 text-xs font-black text-slate-600 shadow-sm hover:bg-slate-50"
+                  aria-label="Close job hunting popup"
+                >
+                  x
+                </button>
                 <ShareTool moment="post_download" />
                 <EmailCapture source="download" roleInterest={cv.jobTitle} />
               </div>
