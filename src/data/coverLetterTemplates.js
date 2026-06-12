@@ -236,6 +236,8 @@ export function generateCoverLetterTemplate({ cv, role, letter = {} }) {
   const region = regionalFormats.find((item) => item.id === letter.region) || regionalFormats[0];
   const company = letter.companyName || "your company";
   const jobDescription = letter.jobDescription ? ` Based on the job description, I understand that this role requires ${letter.jobDescription.slice(0, 180)}${letter.jobDescription.length > 180 ? "..." : ""}` : "";
+  const skillPhrase = keywords.slice(0, 4).join(", ");
+  const supportPhrase = keywords.slice(4).length ? `, with additional strength in ${keywords.slice(4).join(", ")}` : "";
   return {
     role: selectedRole,
     position: selectedRole,
@@ -250,7 +252,7 @@ export function generateCoverLetterTemplate({ cv, role, letter = {} }) {
     region: letter.region || "gcc",
     jobDescription: letter.jobDescription || "",
     opening: `I am writing to apply for the ${selectedRole} position at ${company}. ${getLevelPhrase(level, letter.yearsExperience)}. I am interested in contributing to your team with professionalism, honesty, and a strong work ethic.`,
-    body: `My background includes ${cv.summary || "relevant practical experience"}${jobDescription}. I can support this role through ${keywords.slice(0, 3).join(", ")}, and ${keywords.slice(3).join(", ")}. My key skills include ${cv.skills || keywords.join(", ")}.`,
+    body: `I can support this role through ${skillPhrase}${supportPhrase}.${jobDescription} I am ready to use my experience honestly, follow company standards, and learn the specific systems used by your team.`,
     qualifications: `I understand the importance of ATS-friendly details, clear communication, and role-specific responsibilities. For this ${region.name}, I have kept the letter ${region.tone}.`,
     value: `I can add value by being dependable, learning quickly, following company standards, and helping the team complete daily work with care and consistency.`,
     closing: sharedClosing,

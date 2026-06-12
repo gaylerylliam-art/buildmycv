@@ -1165,7 +1165,7 @@ function WorkExperienceEditor({ cv, onChange }) {
           .replace(/\bgcc\b/gi, "GCC")
           .replace(/\bcv\b/gi, "CV")
           .trim()
-          .replace(/[.。]+$/, "");
+          .replace(/[.ã€‚]+$/, "");
         const first = cleaned.charAt(0).toLowerCase() + cleaned.slice(1);
         const professionalLine = /^(managed|coordinated|prepared|supported|handled|improved|maintained|assisted|recorded|inspected|served|installed|repaired|organized|monitored|processed|delivered|supervised|trained|created|checked|resolved)/i.test(cleaned)
           ? cleaned
@@ -1554,21 +1554,22 @@ async function readCvFile(file) {
 }
 
 const cvSectionHeading = /^(summary|profile|objective|skills|core\s+competencies|work\s+experience|professional\s+experience|employment\s+history|employment|career\s+history|education|certifications?|licenses?|languages?|references?|projects?)$/i;
-const dateRangePattern = /((?:(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+)?(?:19|20)\d{2})\s*(?:-|–|—|to|until|till|through)\s*((?:(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+)?(?:19|20)\d{2}|present|current|till\s+date|to\s+date|now)/i;
-const locationPattern = /\b(abu\s*dhabi|ajman|al\s*ain|bahrain|canada|cebu|doha|dubai|gcc|india|kuwait|lagos|london|manila|oman|philippines|qatar|riyadh|saudi|sharjah|singapore|toronto|uae|u\.a\.e\.|united\s+arab\s+emirates|uk|usa)\b/i;
-const jobTitlePattern = /\b(accountant|admin|analyst|assistant|associate|cashier|clerk|coordinator|developer|driver|electrician|engineer|executive|helper|housekeeper|manager|nanny|officer|operator|plumber|receptionist|representative|sales|secretary|supervisor|support|technician|waiter|warehouse|welder)\b/i;
-const employerPattern = /\b(agency|association|bank|company|corp|corporation|department|fzc|hotel|industries|llc|limited|logistics|ltd|restaurant|school|services|solutions|trading|transport|warehouse)\b/i;
-const responsibilityVerbPattern = /^(achieved|assisted|checked|cleaned|communicated|conducted|coordinated|created|delivered|developed|drove|ensured|followed|greeted|handled|helped|improved|installed|maintained|managed|monitored|operated|organized|performed|prepared|processed|provided|received|recorded|repaired|reported|resolved|served|supported|supervised|trained|updated|worked)\b/i;
+const dateRangePattern = /((?:(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+)?(?:19|20)\d{2})\s*(?:-|\u2013|\u2014|â€“|â€”|to|until|till|through)\s*((?:(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+)?(?:19|20)\d{2}|present|current|till\s+date|to\s+date|now)/i;
+const singleDatePattern = /((?:(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+)(?:19|20)\d{2})\s*$/i;
+const locationPattern = /\b(abu\s*dhabi|ajman|al\s*ain|bahrain|canada|cebu|chennai|cochin|doha|dubai|gcc|india|kerala|kuwait|lagos|london|mangalore|manila|oman|philippines|qatar|riyadh|saudi|sharjah|singapore|toronto|uae|u\.a\.e\.|united\s+arab\s+emirates|uk|usa)\b/i;
+const jobTitlePattern = /\b(accountant|admin|analyst|assistant|associate|cashier|clerk|controller|coordinator|counsellor|counselor|developer|driver|electrician|engineer|executive|helper|housekeeper|intern|manager|nanny|officer|operator|plumber|receptionist|representative|sales|secretary|supervisor|support|technician|waiter|warehouse|welder)\b/i;
+const employerPattern = /\b(agency|association|bank|company|consultancy|corp|corporation|department|forwarding|fzc|hotel|hypermarket|industries|international|llc|limited|logistics|ltd|mart|restaurant|school|services|shipping|solutions|trading|transport|warehouse)\b/i;
+const responsibilityVerbPattern = /^(achieved|assisted|checked|cleaned|communicated|conducted|coordinated|created|delivered|developed|drove|ensured|followed|gained|greeted|handled|helped|improved|installed|maintained|managed|monitored|operated|organized|oversaw|performed|prepared|processed|provided|received|recorded|repaired|reported|resolved|served|supported|supervised|trained|updated|worked)\b/i;
 
 const cleanCvLine = (line) =>
   String(line || "")
-    .replace(/[•●▪◦]/g, "-")
+    .replace(/[•●▪◦â€¢â—â–ªâ—¦]/g, "-")
     .replace(/\s+/g, " ")
     .trim();
 
 const normalizeImportedDate = (value = "") =>
   cleanCvLine(value)
-    .replace(/^[-–—]\s*/, "")
+    .replace(/^[-\u2013\u2014â€“â€”]\s*/, "")
     .replace(/\btill\s+date\b/i, "Present")
     .replace(/\bto\s+date\b/i, "Present")
     .replace(/\bcurrent\b/i, "Present")
@@ -1582,7 +1583,7 @@ const isResponsibilityLine = (line) => {
 const splitEmployerAndLocation = (value = "") => {
   const cleaned = cleanCvLine(value).replace(/^[-*]\s*/, "");
   if (!cleaned) return { employer: "", companyLocation: "" };
-  const separators = [" | ", " - ", " – ", " — "];
+  const separators = [" | ", " - ", "\u2013", "\u2014", " â€“ ", " â€” "];
   for (const separator of separators) {
     if (!cleaned.includes(separator)) continue;
     const parts = cleaned.split(separator).map((part) => part.trim()).filter(Boolean);
@@ -1597,6 +1598,43 @@ const splitEmployerAndLocation = (value = "") => {
   return locationPattern.test(cleaned) && !employerPattern.test(cleaned) && !jobTitlePattern.test(cleaned)
     ? { employer: "", companyLocation: cleaned }
     : { employer: cleaned, companyLocation: "" };
+};
+
+const parseInlineExperienceHeader = (line = "", match) => {
+  const beforeDate = cleanCvLine(line.slice(0, match.index)).replace(/[,;|\-\u2013\u2014â€“â€”\s]+$/, "");
+  if (!beforeDate) return {};
+  const atMatch = beforeDate.match(/(.+?)\s+(?:at|with)\s+(.+)$/i);
+  if (atMatch) {
+    const employerLocation = splitEmployerAndLocation(atMatch[2]);
+    return {
+      jobTitle: cleanCvLine(atMatch[1]),
+      employer: employerLocation.employer,
+      companyLocation: employerLocation.companyLocation,
+    };
+  }
+  const separators = [" | ", " - ", "\u2013", "\u2014", " â€“ ", " â€” "];
+  for (const separator of separators) {
+    if (!beforeDate.includes(separator)) continue;
+    const parts = beforeDate.split(separator).map((part) => part.trim()).filter(Boolean);
+    if (parts.length >= 2) {
+      const employerLocation = splitEmployerAndLocation(parts.slice(1).join(separator));
+      return {
+        jobTitle: parts[0],
+        employer: employerLocation.employer,
+        companyLocation: employerLocation.companyLocation,
+      };
+    }
+  }
+  const commaParts = beforeDate.split(",").map((part) => part.trim()).filter(Boolean);
+  if (commaParts.length >= 3 && jobTitlePattern.test(commaParts[0])) {
+    const employerLocation = splitEmployerAndLocation(commaParts.slice(1).join(", "));
+    return {
+      jobTitle: commaParts[0],
+      employer: employerLocation.employer,
+      companyLocation: employerLocation.companyLocation,
+    };
+  }
+  return jobTitlePattern.test(beforeDate) ? { jobTitle: beforeDate } : splitEmployerAndLocation(beforeDate);
 };
 
 const assignExperienceMeta = (beforeMeta, afterMeta, fallbackJobTitle = "") => {
@@ -1637,7 +1675,16 @@ const extractStructuredWorkExperiences = (experienceText = "", fallbackJobTitle 
   if (!rawLines.length) return [];
 
   const dateIndices = rawLines
-    .map((line, index) => ({ line, index, match: line.match(dateRangePattern) }))
+    .map((line, index) => {
+      const rangeMatch = line.match(dateRangePattern);
+      const singleMatch = rangeMatch ? null : line.match(singleDatePattern);
+      return {
+        line,
+        index,
+        match: rangeMatch || singleMatch,
+        isSingleDate: Boolean(singleMatch),
+      };
+    })
     .filter((item) => item.match);
 
   if (!dateIndices.length) {
@@ -1650,7 +1697,7 @@ const extractStructuredWorkExperiences = (experienceText = "", fallbackJobTitle 
     }];
   }
 
-  return dateIndices.map(({ index, match }, datePosition) => {
+  return dateIndices.map(({ line: dateLine, index, match, isSingleDate }, datePosition) => {
     const previousDateIndex = datePosition > 0 ? dateIndices[datePosition - 1].index : -1;
     const nextDateIndex = datePosition < dateIndices.length - 1 ? dateIndices[datePosition + 1].index : rawLines.length;
     const beforeMeta = [];
@@ -1672,9 +1719,14 @@ const extractStructuredWorkExperiences = (experienceText = "", fallbackJobTitle 
     let duties = rawLines.slice(dutiesStart, nextDateIndex);
     while (duties.length && !isResponsibilityLine(duties[duties.length - 1])) duties = duties.slice(0, -1);
     duties = duties.map((line) => line.replace(/^[-*]\s*/, "")).filter(Boolean);
-    const entry = assignExperienceMeta(beforeMeta, afterMeta, fallbackJobTitle);
+    const inlineMeta = parseInlineExperienceHeader(dateLine, match);
+    const entry = { ...assignExperienceMeta(beforeMeta, afterMeta, fallbackJobTitle), ...inlineMeta };
+    if (!entry.companyLocation) {
+      const locationAfterDate = afterMeta.find((item) => locationPattern.test(item));
+      if (locationAfterDate) entry.companyLocation = splitEmployerAndLocation(locationAfterDate).companyLocation || locationAfterDate;
+    }
     entry.fromDate = normalizeImportedDate(match[1]);
-    entry.toDate = normalizeImportedDate(match[2]);
+    entry.toDate = isSingleDate ? "" : normalizeImportedDate(match[2]);
     entry.isCurrent = /present/i.test(entry.toDate);
     if (entry.isCurrent) entry.toDate = "";
     entry.responsibilities = duties.join("\n") || "Please review imported CV and add responsibilities for this role.";
@@ -1693,22 +1745,31 @@ function mockAiExtractCv(text, fileName) {
   const nationality = clean.match(/nationality\s*[:\-]\s*([^\n]+)/i)?.[1]?.trim();
   const visaStatus = clean.match(/visa\s*(?:status)?\s*[:\-]\s*([^\n]+)/i)?.[1]?.trim();
   const drivingLicense = clean.match(/(?:driving|driver'?s?)\s+licen[cs]e\s*[:\-]?\s*([^\n]*)/i)?.[0]?.trim();
-  const headingPattern = /summary|profile|objective|skills|experience|employment|work history|education|certification|certificate|language|reference|contact|nationality|visa|driving|linkedin|portfolio|curriculum|resume|cv/i;
+  const headingPattern = /summary|profile|objective|skills|core competencies|experience|professional experience|employment|work history|education|certification|certificate|language|reference|contact|nationality|visa|driving|linkedin|portfolio|curriculum|resume|cv/i;
   const firstLine = lines.find((line) => !line.includes("@") && !headingPattern.test(line) && line.length <= 60 && /[a-z]/i.test(line));
   const compactText = lines.join("\n");
   const section = (names, maxLines = 6) => {
     const index = lines.findIndex((line) => names.some((name) => new RegExp(`^${name}\\b`, "i").test(line) || line.toLowerCase() === name));
     if (index === -1) return "";
-    const nextIndex = lines.findIndex((line, lineIndex) => lineIndex > index && /summary|profile|objective|skills|experience|employment|work history|education|certification|certificate|language|reference/i.test(line));
+    const nextIndex = lines.findIndex((line, lineIndex) => lineIndex > index && /^(summary|profile|objective|skills|core\s+competencies|work\s+experience|professional\s+experience|employment\s+history|employment|career\s+history|work\s+history|education|certifications?|certificates?|languages?|references?)$/i.test(line));
     return lines.slice(index + 1, nextIndex === -1 ? Math.min(lines.length, index + 1 + maxLines) : nextIndex).join("\n").trim();
   };
-  const skills = section(["skills"], 12);
+  const skills = section(["skills", "core competencies"], 20);
   const experience = section(["experience", "professional experience", "employment", "employment history", "work history", "career history"], 120);
   const education = section(["education"], 14);
   const certifications = section(["certification", "certificate"], 10);
   const languages = section(["language"], 8);
   const summary = section(["summary", "profile", "objective"], 4);
   const jobTitle = lines.find((line, index) => index > 0 && index < 8 && !line.includes("@") && !phone?.includes(line) && !headingPattern.test(line) && line.length <= 70);
+  const summaryFallback = (() => {
+    const stopIndex = lines.findIndex((line) => /^(core\s+competencies|skills|professional\s+experience|work\s+experience|employment|education)$/i.test(line));
+    const usableLines = lines
+      .slice(1, stopIndex === -1 ? Math.min(lines.length, 8) : stopIndex)
+      .filter((line) => line.length > 35)
+      .filter((line) => !line.includes("@") && !/linkedin|https?:|^\+?\d/.test(line))
+      .filter((line) => !headingPattern.test(line));
+    return usableLines.join(" ").trim();
+  })();
   const structuredWorkExperiences = extractStructuredWorkExperiences(experience, jobTitle || "");
   const fallbackWorkExperiences = [
     {
@@ -1732,7 +1793,7 @@ function mockAiExtractCv(text, fileName) {
     linkedIn: linkedIn || "",
     portfolioUrl,
     drivingLicense: drivingLicense || "Add driving license status here.",
-    summary: summary || compactText.split("\n").filter((line) => line.length > 40).slice(0, 2).join(" "),
+    summary: summary || summaryFallback || compactText.split("\n").filter((line) => line.length > 40 && !line.includes("@") && !/linkedin/i.test(line)).slice(0, 2).join(" "),
     skills: skills || "Please review imported CV and add key skills here.",
     experience: experience || "Please review imported CV and add work experience here.",
     workExperiences: structuredWorkExperiences.length ? structuredWorkExperiences : fallbackWorkExperiences,
@@ -1922,7 +1983,7 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, title = "Verify to dow
             <h2 className="text-2xl font-black text-slate-950">{title}</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
           </div>
-          <button onClick={onClose} className="text-2xl leading-none text-slate-500">×</button>
+          <button onClick={onClose} className="text-2xl leading-none text-slate-500">Ã—</button>
         </div>
         <form onSubmit={sendOtp} className="mt-5 grid gap-3 sm:grid-cols-2">
           {[
@@ -2291,8 +2352,6 @@ function CoverLetterApplicantForm({ cv, letter, onCvChange, onLetterChange }) {
     ["email", "Email Address", "email"],
     ["phone", "Phone Number", "tel"],
     ["country", "Location", "text"],
-    ["skills", "Key Skills", "textarea"],
-    ["summary", "Professional Summary", "textarea"],
   ];
   const letterFields = [
     ["nationality", "Nationality (optional)", "text"],
@@ -3304,3 +3363,6 @@ export default function App() {
     </>
   );
 }
+
+
+
