@@ -90,7 +90,7 @@ function writePage(route, html) {
   routes.add(route);
 }
 
-function layout({ title, description, canonical, body, jsonLd = [], type = "website" }) {
+function layout({ title, description, canonical, body, jsonLd = [], type = "website", image = `${baseUrl}/assets/og-image.jpg` }) {
   const schemas = Array.isArray(jsonLd) ? jsonLd : [jsonLd];
   return `<!doctype html>
 <html lang="en">
@@ -104,8 +104,15 @@ function layout({ title, description, canonical, body, jsonLd = [], type = "webs
   <meta property="og:description" content="${escapeHtml(description)}" />
   <meta property="og:type" content="${type}" />
   <meta property="og:url" content="${canonical}" />
-  <meta property="og:image" content="${baseUrl}/assets/og-image.jpg" />
+  <meta property="og:image" content="${image}" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:type" content="image/jpeg" />
+  <meta property="og:site_name" content="BuildMyCVNow" />
   <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="${escapeHtml(title)}" />
+  <meta name="twitter:description" content="${escapeHtml(description)}" />
+  <meta name="twitter:image" content="${image}" />
   <script defer data-domain="buildmycvnow.com" src="https://plausible.io/js/script.js"></script>
   <script>window.plausible=window.plausible||function(){(window.plausible.q=window.plausible.q||[]).push(arguments)}</script>
   <style>${criticalCss()}</style>
@@ -124,11 +131,11 @@ function criticalCss() {
 }
 
 function header() {
-  return `<nav class="nav"><div class="nav-inner"><a class="brand" href="/">BuildMyCV<span>Now</span></a><div class="nav-links"><a href="/templates">Templates</a><a href="/cv-examples">CV Examples</a><a href="/blog">Blog</a><a href="/faq">FAQ</a><a class="cta" href="/builder">Build My CV Now</a></div></div></nav>`;
+  return `<nav class="nav"><div class="nav-inner"><a class="brand" href="/">BuildMyCV<span>Now</span></a><div class="nav-links"><a href="/templates">Templates</a><a href="/cv-examples">CV Examples</a><a href="/for-ofw">For OFWs</a><a href="/blog">Blog</a><a href="/faq">FAQ</a><a class="cta" href="/builder">Build My CV Now</a></div></div></nav>`;
 }
 
 function footer() {
-  return `<footer class="footer"><div class="wrap"><p><strong>BuildMyCVNow</strong> â€” Free CV Builder for Job Seekers Worldwide</p><p><a href="/about">About</a> Â· <a href="/privacy">Privacy</a> Â· <a href="/terms">Terms</a> Â· <a href="/faq">FAQ</a> Â· <a href="/blog">Blog</a></p><p>Â© 2026 BuildMyCVNow. All rights reserved.</p></div></footer>`;
+  return `<footer class="footer"><div class="wrap"><p><strong>BuildMyCVNow</strong> â€” Free CV Builder for Job Seekers Worldwide</p><p><a href="/about">About</a> Â· <a href="/privacy">Privacy</a> Â· <a href="/terms">Terms</a> Â· <a href="/faq">FAQ</a> Â· <a href="/blog">Blog</a> Â· <a href="/for-ofw">For OFWs</a></p><p>Â© 2026 BuildMyCVNow. All rights reserved.</p></div></footer>`;
 }
 
 function ctaCard(text = "Build your free CV") {
@@ -151,7 +158,7 @@ writePage("/", layout({
   description: "Build a professional, ATS-friendly CV in 5 minutes. Free templates for local, remote, and international jobs. No sign-up needed.",
   canonical: baseUrl,
   jsonLd: [webAppSchema, faqSchema, orgSchema],
-  body: `<main><section class="hero"><div class="wrap hero-grid"><div><h1>Free CV Builder for Job Seekers Worldwide - ATS-Friendly, No Sign-Up</h1><p class="lead">Build a professional CV in 5 minutes. Templates designed for local jobs, overseas applications, remote roles, and global hiring markets. 100% free â€” no hidden paywall, no watermark.</p><p><a class="cta" href="/builder">Build My CV Now â€” Free</a> <a class="btn secondary" href="/cv-examples">See CV examples</a></p><p class="trust">No sign-up required Â· ATS-friendly Â· Free PDF download</p></div><div class="template-thumb"><h3>Finished global CV preview</h3><p class="muted">Professional Summary</p><p>Reliable applicant with ATS-friendly format, clear skills, work experience, and contact details for international recruiters.</p></div></div></section><div class="proof">Trusted by job seekers worldwide | Useful for local, overseas, and remote applications | 12,000+ CVs started</div>${howItWorks()}${whySection()}${templatesPreview()}${faqSection()}<section class="section cta-band"><div class="wrap"><h2>Ready to build your CV?</h2><p>Free forever, no sign-up, and built for job applications anywhere.</p><a class="cta" href="/builder">Start free now</a></div></section></main>`,
+  body: `<main><section class="hero"><div class="wrap hero-grid"><div><h1>Free CV Builder for Job Seekers Worldwide - ATS-Friendly, No Sign-Up</h1><p class="lead">Build a professional CV in 5 minutes. Templates designed for local jobs, overseas applications, remote roles, and global hiring markets. 100% free â€” no hidden paywall, no watermark.</p><p><a class="cta" href="/builder">Build My CV Now â€” Free</a> <a class="btn secondary" href="/cv-examples">See CV examples</a></p><p class="trust">No sign-up required Â· ATS-friendly Â· Free PDF download</p></div><div class="template-thumb"><h3>Finished global CV preview</h3><p class="muted">Professional Summary</p><p>Reliable applicant with ATS-friendly format, clear skills, work experience, and contact details for international recruiters.</p></div></div></section><div class="proof">Trusted by job seekers worldwide | Useful for local, overseas, and remote applications | 12,000+ CVs started</div>${howItWorks()}${gulfDepthSection()}${whySection()}${templatesPreview()}${comparisonSection()}${faqSection()}${ofwHomeSection()}<section class="section cta-band"><div class="wrap"><h2>Ready to build your CV?</h2><p>Free forever, no sign-up, and built for job applications anywhere.</p><a class="cta" href="/builder">Start free now</a></div></section></main>`,
 }));
 
 function howItWorks() {
@@ -168,6 +175,34 @@ function whySection() {
   return `<section class="section"><div class="wrap"><h2>Why job seekers worldwide choose BuildMyCVNow</h2><div class="grid grid-4">${cards.map(([h, p]) => `<div class="card"><h3>${h}</h3><p>${p}</p></div>`).join("")}</div></div></section>`;
 }
 
+function gulfDepthSection() {
+  const cards = [
+    ["Visa status, done right", "Write phrases like Residence visa - transferable or Visit visa - available immediately in the clear style recruiters expect.", "/blog/visa-status-on-cv-uae", "Read visa guide"],
+    ["The GCC details block", "Country, nationality, visa status, driving license, languages, expected salary, and references are built into the CV form as optional fields.", "/builder", "Open builder"],
+    ["Job-title corrections", "The AI writing assistant and role templates help turn rough wording into cleaner recruiter-friendly job titles and responsibilities.", "/builder", "Try AI help"],
+    ["Salary-realistic examples", "Programmatic CV example pages include practical AED ranges for each role, so examples feel grounded instead of generic.", "/cv-examples", "Browse examples"],
+  ];
+  return `<section class="section"><div class="wrap"><h2>Made for Gulf hiring - not adapted to it</h2><p class="lead">BuildMyCVNow is global, but it also understands Gulf recruitment details that many general CV builders miss.</p><div class="grid grid-4">${cards.map(([title, text, href, link]) => `<article class="card"><div class="cv-snippet" style="min-height:92px"><strong>${title}</strong><p>${text}</p></div><p><a href="${href}">${link}</a></p></article>`).join("")}</div></div></section>`;
+}
+
+function comparisonSection() {
+  const rows = [
+    ["Price at download", "Free", "Free trial, then often paid"],
+    ["Sign-up required", "No for download-only use", "Usually required"],
+    ["Watermark", "Optional credit, removable", "Often on free tier"],
+    ["GCC details block", "Included as optional fields", "Often missing"],
+    ["Visa-status guidance", "Available in tips and articles", "Usually generic"],
+    ["Job-title corrections", "AI writing help in the builder", "Not always included"],
+    ["ATS checker", "Live CV strength and ATS guidance", "Varies by product"],
+    ["Works offline after load", "Local draft mode available in browser", "Usually cloud-only"],
+  ];
+  return `<section class="section"><div class="wrap"><h2>How BuildMyCVNow compares</h2><div class="card"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;border-bottom:1px solid #e2e8f0;padding:10px">Feature</th><th style="text-align:left;border-bottom:1px solid #e2e8f0;padding:10px">BuildMyCVNow</th><th style="text-align:left;border-bottom:1px solid #e2e8f0;padding:10px">Typical CV builders</th></tr></thead><tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td style="border-bottom:1px solid #e2e8f0;padding:10px">${cell}</td>`).join("")}</tr>`).join("")}</tbody></table><p class="muted">Comparison based on common practices of popular CV builders as of ${new Date().getFullYear()}.</p></div></div></section>`;
+}
+
+function ofwHomeSection() {
+  return `<section class="section"><div class="wrap"><h2>Para sa mga kababayan - built with OFWs in mind</h2><p class="lead">Libre talaga. Walang hidden fees, walang sign-up.</p><p>The Filipino community is a major part of the Gulf workforce, and many applicants are building a CV for overseas work for the first time. BuildMyCVNow gives simple guidance for first-time OFW applicants and reminds job seekers to be careful with job-offer scams: legit employers never ask you to pay for a job offer.</p><div class="grid grid-3"><a class="card" data-ofw-link="no-experience" href="/blog/cv-no-experience-dubai"><h3>CV for first-timers</h3><p>No experience yet? Learn what to write first.</p></a><a class="card" data-ofw-link="scam-warning" href="/for-ofw#scam-warning"><h3>Job scam warning signs</h3><p>Check red flags before trusting an offer.</p></a><a class="card" data-ofw-link="ofw-roles" href="/for-ofw#ofw-roles"><h3>CV examples for OFW roles</h3><p>Hospitality, retail, healthcare, driver, and household roles.</p></a></div></div></section>`;
+}
+
 function templatesPreview() {
   return `<section class="section"><div class="wrap"><h2>CV templates for every industry</h2><div class="grid grid-4">${["Hospitality", "Engineering", "Finance", "Logistics"].map((item) => `<a class="card" href="/templates"><h3>${item}</h3><p class="muted">ATS-friendly format with role-specific guidance.</p></a>`).join("")}</div></div></section>`;
 }
@@ -176,11 +211,38 @@ function faqSection() {
   return `<section class="section faq"><div class="wrap"><h2>Frequently asked questions</h2>${homepageFaqs.map((faq) => `<details><summary>${escapeHtml(faq.question)}</summary><p>${escapeHtml(faq.answer)}</p></details>`).join("")}</div></section>`;
 }
 
-writePage("/templates", layout({ title: "CV Templates for UAE Jobs | BuildMyCVNow", description: "Browse free ATS-friendly CV templates for hospitality, finance, engineering, logistics, sales, admin and skilled worker jobs.", canonical: `${baseUrl}/templates`, body: `<main class="section"><div class="wrap"><h1>CV templates for UAE and Gulf jobs</h1><p class="lead">Choose a template built for your industry, then customize it in the free builder.</p><div class="grid grid-4">${seoJobs.slice(0, 12).map((job) => `<a class="card" href="/cv/${job.slug}-dubai"><h3>${job.title}</h3><p>${job.skills.slice(0, 3).join(", ")}</p></a>`).join("")}</div></div></main>` }));
+writePage("/templates", layout({ title: "CV Templates for Global and Gulf Jobs | BuildMyCVNow", description: "Browse free ATS-friendly CV templates for hospitality, finance, engineering, logistics, sales, admin and skilled worker jobs.", canonical: `${baseUrl}/templates`, body: `<main class="section"><div class="wrap"><h1>CV templates for global and Gulf jobs</h1><p class="lead">Choose a template built for your industry, then customize it in the free builder. Each template keeps the layout simple, readable, and friendly for ATS screening.</p><p>Use these templates for local jobs, overseas applications, remote work, and Gulf-market applications where employers may ask for details such as visa status, languages, nationality, driving license, or availability. You can switch templates without losing your current CV data.</p><div class="grid grid-4">${seoJobs.slice(0, 16).map((job) => `<a class="card" href="/cv/${job.slug}-dubai"><h3>${job.title}</h3><p>${job.skills.slice(0, 5).join(", ")}</p><p class="muted">Includes role-specific wording ideas, skills, example duties, and salary guidance where available.</p></a>`).join("")}</div></div></main>` }));
 writePage("/about", layout({ title: "About BuildMyCVNow | Free Global CV Builder", description: "BuildMyCVNow helps job seekers worldwide create professional CVs for free.", canonical: `${baseUrl}/about`, body: `<main class="section"><div class="wrap"><h1>About BuildMyCVNow</h1><p class="lead">BuildMyCVNow was created to help job seekers build better CVs without paying before download.</p><p>We support applicants worldwide, including people applying locally, overseas, remotely, or across competitive international job markets. The mission is simple: make professional CV creation easy, mobile-friendly, and free.</p></div></main>` }));
+const ofwFaqs = [
+  ["Is this really free?", "Yes. You can create, preview, and download your CV for free. No credit card is required."],
+  ["Can I use my phone?", "Yes. The builder is mobile-friendly, with large fields, live preview, and PDF download support."],
+  ["Do I need a UAE number on my CV?", "A UAE number helps if you are already in the UAE, but you can also use your current country code until you arrive."],
+  ["Should I include my passport number?", "No. Do not put your passport number on a public CV. Share sensitive documents only with trusted employers or licensed agencies."],
+  ["Can I make a CV before arriving in the UAE?", "Yes. You can prepare your CV before arrival and update your location, visa status, and phone number later."],
+];
+const ofwSchema = { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: ofwFaqs.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })) };
+writePage("/for-ofw", layout({
+  title: "Free CV Builder for OFWs in UAE & the Gulf | BuildMyCVNow",
+  description: "Free, ATS-friendly CV builder made for Filipino workers applying to jobs in the UAE and Gulf. No sign-up, no fees, mobile-friendly. Tips for visa status, photos and more.",
+  canonical: `${baseUrl}/for-ofw`,
+  image: `${baseUrl}/assets/og/for-ofw.jpg`,
+  jsonLd: ofwSchema,
+  body: `<main><section class="hero"><div class="wrap"><h1>Free CV Builder for OFWs - UAE, Saudi, Qatar & beyond</h1><p class="lead">Para sa mga kababayan. Build a clean, professional CV before applying for overseas work. BuildMyCVNow is free, mobile-friendly, and made to help you explain your real experience clearly.</p><p><a class="cta" href="/builder">Build my CV free</a></p></div></section><section class="section"><div class="wrap"><h2>What Gulf recruiters look for in an OFW CV</h2><div class="grid grid-3"><div class="card"><h3>Clear visa status</h3><p>Use simple phrases such as Visit visa - available immediately, Residence visa - transferable, or Outside UAE - ready to relocate.</p></div><div class="card"><h3>Professional photo norms</h3><p>A neat head-and-shoulders photo is common for hospitality, retail, customer service, and household roles.</p></div><div class="card"><h3>Languages as an asset</h3><p>List English, Tagalog, Arabic, Hindi, or other languages you can use at work, with honest levels.</p></div><div class="card"><h3>Attested documents</h3><p>If true, mention attested certificates, training, licenses, or eligibility documents in certifications.</p></div><div class="card"><h3>Country-code contact number</h3><p>Write your phone with country code, such as +63 or +971, so recruiters can contact you correctly.</p></div></div></div></section><section id="ofw-roles" class="section"><div class="wrap"><h2>In-demand OFW CV examples</h2><div class="grid grid-4">${[
+    ["housekeeping-attendant", "Housekeeping"],
+    ["waiter", "Waiter / Waitress"],
+    ["barista", "Barista"],
+    ["cashier", "Cashier"],
+    ["retail-sales-associate", "Retail Sales"],
+    ["nurse", "Nurse"],
+    ["security-guard", "Security Guard"],
+    ["driver-light-vehicle", "Driver"],
+    ["beautician", "Beautician"],
+    ["office-administrator", "Office Assistant"],
+  ].map(([slug, label]) => `<a class="card" href="/cv/${slug}-dubai"><h3>${label}</h3><p>Open the free CV example and customize it in the builder.</p></a>`).join("")}</div></div></section><section id="scam-warning" class="section"><div class="wrap"><div class="card" style="border-color:#fca5a5;background:#fff7ed"><h2>Job scam warning signs</h2><p><strong>Legit employers never ask you to pay for a job offer.</strong></p><ul><li>They ask for payment before interview, offer letter, or visa processing.</li><li>They refuse to give company details, license information, or a verifiable email address.</li><li>They pressure you to send passport copies or money urgently through personal accounts.</li></ul></div></div></section><section class="section faq"><div class="wrap"><h2>OFW CV questions</h2>${ofwFaqs.map(([q, a]) => `<details><summary>${q}</summary><p>${a}</p></details>`).join("")}</div></section><section class="section cta-band"><div class="wrap"><h2>Start your free OFW CV now</h2><p>No hidden fees. No sign-up required for download.</p><a class="cta" href="/builder">Build my CV</a></div></section></main>`,
+}));
 writePage("/privacy", layout({ title: "Privacy Policy | BuildMyCVNow", description: "Read how BuildMyCVNow handles CV data, analytics, email subscribers, Supabase storage and user deletion requests.", canonical: `${baseUrl}/privacy`, body: `<main class="section"><div class="wrap"><h1>Privacy Policy</h1><p>We collect only the details you enter to create your CV, such as name, email, phone, work history, skills and optional photo. Download-only mode keeps your CV local in your browser.</p><h2>Analytics and email</h2><p>We use privacy-respecting analytics to understand visits and downloads. If you subscribe for the UAE Job Hunt Checklist, your email is stored in Supabase so we can send useful CV and job-search tips. You can request deletion by contacting us.</p><h2>Advertising</h2><p>Google AdSense may use cookies or similar technologies when ads are enabled.</p></div></main>` }));
 writePage("/terms", layout({ title: "Terms of Use | BuildMyCVNow", description: "Read the terms for using BuildMyCVNow, including user responsibilities, CV ownership and employment disclaimer.", canonical: `${baseUrl}/terms`, body: `<main class="section"><div class="wrap"><h1>Terms of Use</h1><p>You own the CV content you enter. You are responsible for ensuring all information is true and accurate.</p><p>BuildMyCVNow helps with formatting and writing support, but it does not guarantee interviews, job offers, visa approval, or employment.</p></div></main>` }));
-writePage("/faq", layout({ title: "FAQ | Free Global CV Builder", description: "Answers to common questions about free CV downloads, ATS-friendly CVs, CV photos, local requirements and mobile CV building.", canonical: `${baseUrl}/faq`, jsonLd: faqSchema, body: `<main>${faqSection()}</main>` }));
+writePage("/faq", layout({ title: "FAQ | Free Global CV Builder", description: "Answers to common questions about free CV downloads, ATS-friendly CVs, CV photos, local requirements and mobile CV building.", canonical: `${baseUrl}/faq`, jsonLd: faqSchema, body: `<main><section class="section faq"><div class="wrap"><h1>BuildMyCVNow FAQ</h1><p class="lead">Answers to common questions about free CV downloads, ATS-friendly formatting, optional regional details, mobile use, cover letters, and data privacy.</p>${homepageFaqs.map((faq) => `<details><summary>${escapeHtml(faq.question)}</summary><p>${escapeHtml(faq.answer)}</p></details>`).join("")}</div></section></main>` }));
 
 const launchCombos = [];
 for (const job of seoJobs) {
@@ -215,6 +277,7 @@ function writeCvPage(job, city) {
     title: `${job.title} CV Example ${city.name} ${year} â€” Free Template`,
     description: `Free ${job.title} CV example for ${city.name}. Includes ${job.skills[0]} and ${job.skills[1]} skills, salary guide, bullets and ATS-friendly template.`,
     canonical: `${baseUrl}${url}`,
+    image: `${baseUrl}/assets/og/cv-${job.slug}.jpg`,
     jsonLd: [schema, { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [{ "@type": "ListItem", position: 1, name: "Home", item: baseUrl }, { "@type": "ListItem", position: 2, name: "CV Examples", item: `${baseUrl}/cv-examples` }, { "@type": "ListItem", position: 3, name: `${job.title} CV ${city.name}`, item: `${baseUrl}${url}` }] }],
     body: `<main class="section"><div class="wrap"><h1>${job.title} CV Example for ${city.name} Jobs (${year} Guide)</h1><p class="lead">${job.intro.replace("Gulf", `${city.name} and Gulf`)}</p>${ctaCard(`Build your ${job.title} CV free in 5 minutes`)}<h2>Example CV summary for a ${job.title}</h2><div class="cv-snippet">${job.sampleSummary}</div><h2>Key skills for ${job.title} jobs in ${city.name}</h2><div class="chips">${job.skills.map((skill) => `<span class="chip">${skill}</span>`).join("")}</div><h2>What to include</h2><ul>${job.duties.map((duty) => `<li>${duty}</li>`).join("")}</ul><h2>Example achievement bullets</h2><ul>${job.sampleBullets.map((bullet) => `<li>${bullet}</li>`).join("")}</ul><h2>${job.title} salary in ${city.name}</h2><p>Typical monthly salary range: <strong>${job.salaryRange}</strong>. Salaries vary by company, experience, language ability, certifications, commission, accommodation, transport, and visa package.</p><h2>CV tips for ${job.title} applications</h2><ul>${job.tips.map((tip) => `<li>${tip}</li>`).join("")}</ul><h2>FAQ</h2>${faqs.map(([q, a]) => `<details><summary>${q}</summary><p>${a}</p></details>`).join("")}<h2>Related roles</h2><p>${related.map((item) => `<a href="/cv/${item.slug}-${city.slug}">${item.title}</a>`).join(" Â· ")} Â· <a href="/blog">Career tips blog</a></p><section class="cta-band card"><h2>Build your ${job.title} CV now</h2><a class="cta" href="/builder?role=${job.slug}&city=${city.slug}">Use this free template</a></section></div></main>`,
   }));
@@ -226,12 +289,12 @@ const articles = fs.readdirSync(blogDir).filter((file) => file.endsWith(".md")).
   return { ...parsed.data, body: parsed.body, html: rendered.html, toc: rendered.toc };
 });
 
-writePage("/blog", layout({ title: "UAE CV and Career Tips Blog | BuildMyCVNow", description: "Read practical UAE and GCC CV tips about ATS, visa status, Dubai CV photos, no-experience CVs and job search preparation.", canonical: `${baseUrl}/blog`, body: `<main class="section"><div class="wrap"><h1>UAE CV and career tips</h1><div class="grid grid-3">${articles.map((article) => `<a class="card" href="/blog/${article.slug}"><h2>${article.title}</h2><p>${article.description}</p><p class="muted">${article.date}</p></a>`).join("")}</div></div></main>` }));
+writePage("/blog", layout({ title: "CV Writing and Career Tips Blog | BuildMyCVNow", description: "Read practical CV writing and job search tips about ATS, visa status, CV photos, no-experience CVs and international job preparation.", canonical: `${baseUrl}/blog`, body: `<main class="section"><div class="wrap"><h1>CV writing and career tips</h1><p class="lead">Read practical guides for writing a stronger CV, preparing for job applications, avoiding common mistakes, and tailoring your profile for local, remote, overseas, and Gulf-market roles.</p><p>These articles are written for first-time CV creators, fresh graduates, hospitality workers, skilled workers, drivers, finance assistants, IT applicants, domestic workers, OFWs, and job seekers who want simple language instead of confusing career jargon.</p><div class="grid grid-3">${articles.map((article) => `<a class="card" href="/blog/${article.slug}"><h2>${article.title}</h2><p>${article.description}</p><p class="muted">${article.date}</p></a>`).join("")}</div></div></main>` }));
 
 for (const article of articles) {
   const relatedRoles = (article.relatedRoles || []).slice(0, 3);
   const articleSchema = { "@context": "https://schema.org", "@type": "Article", headline: article.title, datePublished: article.date, dateModified: article.updated, author: { "@type": "Organization", name: "BuildMyCVNow Team" } };
-  writePage(`/blog/${article.slug}`, layout({ title: `${article.title} | BuildMyCVNow`, description: article.description, canonical: `${baseUrl}/blog/${article.slug}`, type: "article", jsonLd: articleSchema, body: `<main class="section"><article class="article"><p class="muted">BuildMyCVNow Team Â· Published ${article.date} Â· Updated ${article.updated}</p>${article.toc.length ? `<nav class="toc"><strong>In this article</strong>${article.toc.map((item) => `<p><a href="#${item.id}">${item.text}</a></p>`).join("")}</nav>` : ""}${article.html}${ctaCard()}<h2>Related CV examples</h2><p>${relatedRoles.map((role) => `<a href="/cv/${role}-dubai">${role.replaceAll("-", " ")}</a>`).join(" Â· ")}</p></article></main>` }));
+  writePage(`/blog/${article.slug}`, layout({ title: `${article.title} | BuildMyCVNow`, description: article.description, canonical: `${baseUrl}/blog/${article.slug}`, type: "article", image: `${baseUrl}/assets/og/blog-${article.slug}.jpg`, jsonLd: articleSchema, body: `<main class="section"><article class="article"><p class="muted">BuildMyCVNow Team Â· Published ${article.date} Â· Updated ${article.updated}</p>${article.toc.length ? `<nav class="toc"><strong>In this article</strong>${article.toc.map((item) => `<p><a href="#${item.id}">${item.text}</a></p>`).join("")}</nav>` : ""}${article.html}${ctaCard()}<h2>Related CV examples</h2><p>${relatedRoles.map((role) => `<a href="/cv/${role}-dubai">${role.replaceAll("-", " ")}</a>`).join(" Â· ")}</p></article></main>` }));
 }
 
 const rss = `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>BuildMyCVNow Blog</title><link>${baseUrl}/blog</link><description>UAE CV and job search tips</description>${articles.map((article) => `<item><title>${escapeHtml(article.title)}</title><link>${baseUrl}/blog/${article.slug}</link><description>${escapeHtml(article.description)}</description><pubDate>${new Date(article.date).toUTCString()}</pubDate></item>`).join("")}</channel></rss>`;

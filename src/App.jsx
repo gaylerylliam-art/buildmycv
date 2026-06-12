@@ -377,9 +377,11 @@ function Icon({ name, className = "h-5 w-5" }) {
   return <svg {...common}>{paths[name]}</svg>;
 }
 
-function Seo({ title, description }) {
+function Seo({ title, description, image = "https://buildmycvnow.com/assets/og-image.jpg", type = "website" }) {
   useEffect(() => {
-    document.title = `${title} | BuildMyCVNow`;
+    const fullTitle = title.includes("BuildMyCVNow") ? title : `${title} | BuildMyCVNow`;
+    const canonical = `${window.location.origin}${window.location.pathname}`;
+    document.title = fullTitle;
     let meta = document.querySelector("meta[name='description']");
     if (!meta) {
       meta = document.createElement("meta");
@@ -387,7 +389,30 @@ function Seo({ title, description }) {
       document.head.appendChild(meta);
     }
     meta.setAttribute("content", description);
-  }, [title, description]);
+    const setMeta = (selector, attr, value) => {
+      let tag = document.querySelector(selector);
+      if (!tag) {
+        tag = document.createElement("meta");
+        if (selector.includes("property=")) tag.setAttribute("property", selector.match(/property='([^']+)'/)?.[1] || "");
+        else tag.setAttribute("name", selector.match(/name='([^']+)'/)?.[1] || "");
+        document.head.appendChild(tag);
+      }
+      tag.setAttribute(attr, value);
+    };
+    setMeta("meta[property='og:title']", "content", fullTitle);
+    setMeta("meta[property='og:description']", "content", description);
+    setMeta("meta[property='og:type']", "content", type);
+    setMeta("meta[property='og:url']", "content", canonical);
+    setMeta("meta[property='og:image']", "content", image);
+    setMeta("meta[property='og:image:width']", "content", "1200");
+    setMeta("meta[property='og:image:height']", "content", "630");
+    setMeta("meta[property='og:image:type']", "content", "image/jpeg");
+    setMeta("meta[property='og:site_name']", "content", "BuildMyCVNow");
+    setMeta("meta[name='twitter:card']", "content", "summary_large_image");
+    setMeta("meta[name='twitter:title']", "content", fullTitle);
+    setMeta("meta[name='twitter:description']", "content", description);
+    setMeta("meta[name='twitter:image']", "content", image);
+  }, [title, description, image, type]);
   return null;
 }
 
