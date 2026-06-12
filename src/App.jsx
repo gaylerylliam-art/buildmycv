@@ -2560,7 +2560,7 @@ function LiveCVPreview({ cv, theme, layout }) {
   );
 }
 
-function DownloadModal({ onClose, onVerifiedDownload, canEmailCopy = false, emailCopyAddress = "", title = "Download for free", description = "No account or contact details are required. Your file downloads directly to this device." }) {
+function DownloadModal({ onClose, onVerifiedDownload, onSignIn, canEmailCopy = false, emailCopyAddress = "", title = "Download for free", description = "No account or contact details are required. Your file downloads directly to this device." }) {
   const [actionStatus, setActionStatus] = useState("");
   const runDownloadAction = async (type) => {
     setActionStatus(type === "email" ? "Sending CV copy to your verified email..." : "Preparing your file...");
@@ -2592,9 +2592,20 @@ function DownloadModal({ onClose, onVerifiedDownload, canEmailCopy = false, emai
               Email CV copy to {emailCopyAddress}
             </button>
           ) : (
-            <p className="rounded bg-blue-50 p-3 text-xs font-bold leading-5 text-blue-900 sm:col-span-2">
-              Sign in with email if you want BuildMyCVNow to send a CV copy to your inbox.
-            </p>
+            <div className="rounded bg-blue-50 p-3 sm:col-span-2">
+              <p className="text-xs font-bold leading-5 text-blue-900">
+                Sign in with email if you want BuildMyCVNow to save online and send a CV copy to your inbox.
+              </p>
+              {onSignIn && (
+                <button
+                  type="button"
+                  onClick={onSignIn}
+                  className="mt-3 w-full rounded border border-blue-600 bg-white px-4 py-3 text-sm font-black text-blue-700 hover:bg-blue-100"
+                >
+                  Sign in or create account
+                </button>
+              )}
+            </div>
           )}
         </div>
         {actionStatus && <p className="mt-3 rounded bg-slate-50 p-3 text-sm font-bold leading-6 text-slate-700">{actionStatus}</p>}
@@ -4330,6 +4341,10 @@ function CVBuilderApp({ onHome }) {
           cv={cv}
           onClose={() => setDownloadTarget(null)}
           onVerifiedDownload={handleDownload}
+          onSignIn={() => {
+            setDownloadTarget(null);
+            setAuthOpen(true);
+          }}
           canEmailCopy={Boolean(user?.email || session?.user?.email)}
           emailCopyAddress={user?.email || session?.user?.email || ""}
         />
