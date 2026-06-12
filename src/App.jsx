@@ -511,7 +511,7 @@ function LandingPage({ onStart }) {
                 ref={videoRef}
                 className="demo-video"
                 src={videoUrl}
-                poster="/assets/cv-video-thumb.jpg"
+                poster={HEYGEN_DEMO_POSTER_URL}
                 preload="metadata"
                 playsInline
                 loop
@@ -918,8 +918,9 @@ function SiteFooter({ onStart }) {
   );
 }
 
-const HEYGEN_DEMO_PAGE_URL = "https://app.heygen.com/videos/e5593fd9616e4b199b5c8fbf0213df25";
-const HEYGEN_DEMO_VIDEO_URL = "https://resource2.heygen.ai/aws_pacific/avatar_tmp/021c62749e9c473098175a3fcc2354c1/vb98fd2ee761b498498b60a6c07c76242/caption_e5593fd9616e4b199b5c8fbf0213df25.mp4";
+const HEYGEN_DEMO_PAGE_URL = "https://app.heygen.com/videos/buildmycvnow-landscape-boost-37034e74791e4040830908c8fe32f8a0";
+const HEYGEN_DEMO_VIDEO_URL = "https://resource2.heygen.ai/video/transcode/37034e74791e4040830908c8fe32f8a0/v45300492faf240b39a88f9905a3267a9/1920x1080_caption.mp4";
+const HEYGEN_DEMO_POSTER_URL = "https://dynamic.heygen.ai/aws_pacific/avatar_tmp/021c62749e9c473098175a3fcc2354c1/v45300492faf240b39a88f9905a3267a9/37034e74791e4040830908c8fe32f8a0.jpeg";
 
 function IPhonePortraitDisplay({ onStart }) {
   return (
@@ -938,7 +939,7 @@ function IPhonePortraitDisplay({ onStart }) {
             </a>
           </div>
           <div className="landing-video-frame">
-            <video controls playsInline preload="metadata" aria-label="How to create and download your CV for free">
+            <video controls playsInline preload="metadata" poster={HEYGEN_DEMO_POSTER_URL} aria-label="How to create and download your CV for free">
               <source src={HEYGEN_DEMO_VIDEO_URL} type="video/mp4" />
               Your browser cannot play this video. Please open the video in a new tab.
             </video>
