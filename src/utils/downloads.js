@@ -182,8 +182,23 @@ const normalizeCvWorkExperiences = (cv) => {
   ];
 };
 
+const normalizeCvEducationEntries = (cv) => {
+  if (Array.isArray(cv.educationEntries) && cv.educationEntries.length) {
+    return cv.educationEntries;
+  }
+  const lines = String(cv.education || "").split("\n").map((line) => line.trim()).filter(Boolean);
+  if (!lines.length) return [];
+  const entries = [];
+  for (let index = 0; index < lines.length; index += 3) {
+    const [qualification = "", school = "", dates = ""] = lines.slice(index, index + 3);
+    entries.push({ id: `legacy-${index}`, qualification, school, fromDate: dates, toDate: "", location: "", details: "" });
+  }
+  return entries;
+};
+
 const sectionHasContent = (cv = {}, id) => {
   if (id === "experience") return normalizeCvWorkExperiences(cv).some((entry) => [entry.jobTitle, entry.employer, entry.responsibilities].some((value) => cleanExportText(value)));
+  if (id === "education") return normalizeCvEducationEntries(cv).some((entry) => [entry.qualification, entry.school, entry.location, entry.fromDate, entry.toDate, entry.details].some((value) => cleanExportText(value)));
   if (id === "references") return referencesHasContent(cv.references);
   return Boolean(cleanExportText(cv[id]));
 };
@@ -212,6 +227,25 @@ const workExperienceHtml = (cv) =>
     })
     .join("");
 
+const educationHtml = (cv) =>
+  normalizeCvEducationEntries(cv)
+    .map((entry) => {
+      const qualification = cleanExportText(entry.qualification);
+      const school = cleanExportText(entry.school);
+      const location = cleanExportText(entry.location);
+      const details = cleanExportText(entry.details);
+      const dates = [cleanExportText(entry.fromDate), cleanExportText(entry.toDate)].filter(Boolean).join(" - ");
+      if (![qualification, school, location, dates, details].some(Boolean)) return "";
+      return `
+        <div class="education-item">
+          ${qualification ? `<p><strong>${escapeHtml(qualification)}</strong></p>` : ""}
+          ${[school, location, dates].filter(Boolean).length ? `<p>${escapeHtml([school, location, dates].filter(Boolean).join(" | "))}</p>` : ""}
+          ${details ? `<p>${escapeHtml(details)}</p>` : ""}
+        </div>
+      `;
+    })
+    .join("");
+
 const referencesHtml = (references) => {
   const normalized = normalizeReferences(references);
   if (normalized.mode === "on-request") return `<p>References available upon request</p>`;
@@ -233,7 +267,7 @@ const cvSectionHtml = (cv, id) => {
   const sections = {
     summary: `<div class="section"><h2>Professional Summary</h2><p>${escapeHtml(cleanExportText(cv.summary))}</p></div>`,
     experience: `<div class="section"><h2>Work Experience</h2>${workExperienceHtml(cv)}</div>`,
-    education: `<div class="section"><h2>Education</h2><p>${escapeHtml(cleanExportText(cv.education))}</p></div>`,
+    education: `<div class="section"><h2>Education</h2>${educationHtml(cv)}</div>`,
     skills: `<div class="section"><h2>Skills</h2><p>${escapeHtml(cleanExportText(cv.skills))}</p></div>`,
     certifications: `<div class="section"><h2>Certifications</h2><p>${escapeHtml(cleanExportText(cv.certifications))}</p></div>`,
     languages: `<div class="section"><h2>Languages</h2><p>${escapeHtml(cleanExportText(cv.languages))}</p></div>`,
@@ -444,7 +478,19 @@ const downloadCvDocx = async (cv, filename, theme = { color: "#0f66d0", dark: "#
           ].filter(Boolean);
         }),
       ],
-      education: [sectionHeading("Education"), paragraph(cleanExportText(cv.education))],
+      education: [
+        sectionHeading("Education"),
+        ...normalizeCvEducationEntries(cv).flatMap((entry) => {
+          const qualification = cleanExportText(entry.qualification);
+          const meta = [cleanExportText(entry.school), cleanExportText(entry.location), [cleanExportText(entry.fromDate), cleanExportText(entry.toDate)].filter(Boolean).join(" - ")].filter(Boolean).join(" | ");
+          const details = cleanExportText(entry.details);
+          return [
+            qualification ? paragraph(qualification, { bold: true, after: 50, keepNext: true }) : null,
+            meta ? paragraph(meta, { size: 20, after: 50, color: "475569", keepNext: true }) : null,
+            details ? paragraph(details, { after: 80 }) : null,
+          ].filter(Boolean);
+        }),
+      ],
       skills: [sectionHeading("Skills"), paragraph(cleanExportText(cv.skills))],
       certifications: [sectionHeading("Certifications"), paragraph(cleanExportText(cv.certifications))],
       languages: [sectionHeading("Languages"), paragraph(cleanExportText(cv.languages))],
@@ -507,6 +553,7 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
         .section { break-inside: auto; page-break-inside: auto; }
         .section h2 { break-after: avoid; page-break-after: avoid; }
         .experience-item { margin-bottom: 9px; break-inside: avoid; page-break-inside: avoid; }
+        .education-item { margin-bottom: 8px; break-inside: avoid; page-break-inside: avoid; }
         .references-block { break-inside: avoid; page-break-inside: avoid; }
         .references-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
         .reference-card { border: 1px solid #e2e8f0; border-radius: 5px; padding: 8px; font-size: 11px; }

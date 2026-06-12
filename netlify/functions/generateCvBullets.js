@@ -33,7 +33,20 @@ export const handler = async (event) => {
     });
   }
 
-  const prompt = `You are a CV writing assistant for entry-level and worker job seekers. Write 5 short, honest, ATS-friendly bullet points using simple English. Do not exaggerate experience. Return JSON only with a "suggestions" array. Category: ${body.category}. Job title: ${body.jobTitle}. Skills: ${body.skills || "not provided"}. Experience: ${body.experience || "not provided"}.`;
+  const prompt = `You are a CV writing assistant for entry-level and professional job seekers. Rewrite the user's work experience into 5 to 8 short, honest, ATS-friendly CV bullet points using simple English. Do not exaggerate experience. Follow the user's instruction exactly when it is safe and professional.
+
+Rules:
+- If the user says the job is current or asks for present tense, use present tense for that role.
+- If the user asks to arrange by type, group related duties with short labels like "Accounting tasks:" or "Administrative tasks:".
+- Do not add duties that are not supported by the provided experience.
+- Return JSON only with a "suggestions" array.
+
+Category: ${body.category}.
+Job title: ${body.jobTitle}.
+Current role: ${body.isCurrent ? "yes" : "no"}.
+Skills: ${body.skills || "not provided"}.
+User instruction: ${body.instruction || "Improve grammar, clarity, and professional wording."}
+Experience: ${body.experience || "not provided"}.`;
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",

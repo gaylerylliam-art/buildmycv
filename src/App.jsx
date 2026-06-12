@@ -94,6 +94,16 @@ const createExperienceEntry = (category = defaultCategory) => ({
   responsibilities: category.experience,
 });
 
+const createEducationEntry = () => ({
+  id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+  qualification: "",
+  school: "",
+  location: "",
+  fromDate: "",
+  toDate: "",
+  details: "",
+});
+
 const formatWorkExperiences = (entries = []) =>
   entries
     .map((entry) =>
@@ -103,6 +113,22 @@ const formatWorkExperiences = (entries = []) =>
         entry.companyLocation,
         [entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - "),
         entry.responsibilities,
+      ]
+        .filter(Boolean)
+        .join("\n")
+    )
+    .filter(Boolean)
+    .join("\n\n");
+
+const formatEducationEntries = (entries = []) =>
+  entries
+    .map((entry) =>
+      [
+        entry.qualification,
+        entry.school,
+        entry.location,
+        [entry.fromDate, entry.toDate].filter(Boolean).join(" - "),
+        entry.details,
       ]
         .filter(Boolean)
         .join("\n")
@@ -122,6 +148,9 @@ const mergeImportedCvData = (fallback = {}, ai = {}) => {
   });
   if (Array.isArray(merged.workExperiences) && merged.workExperiences.length) {
     merged.experience = formatWorkExperiences(merged.workExperiences);
+  }
+  if (Array.isArray(merged.educationEntries) && merged.educationEntries.length) {
+    merged.education = formatEducationEntries(merged.educationEntries);
   }
   return merged;
 };
@@ -153,6 +182,7 @@ const referencesHasContent = (references) => {
 
 const sectionHasContent = (cv = {}, id) => {
   if (id === "experience") return normalizeWorkExperiences(cv).some((entry) => [entry.jobTitle, entry.employer, entry.responsibilities].some((value) => String(value || "").trim()));
+  if (id === "education") return normalizeEducationEntries(cv).some((entry) => [entry.qualification, entry.school, entry.location, entry.fromDate, entry.toDate, entry.details].some((value) => String(value || "").trim()));
   if (id === "references") return referencesHasContent(cv.references);
   return Boolean(String(cv[id] || "").trim());
 };
@@ -176,6 +206,54 @@ const normalizeWorkExperiences = (cv) => {
       responsibilities: cv.experience,
     },
   ];
+};
+
+const parseEducationText = (education = "") => {
+  const lines = String(education || "").split("\n").map((line) => line.trim()).filter(Boolean);
+  if (!lines.length) return [createEducationEntry()];
+  const datePattern = /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|20\d{2}|19\d{2}).*(?:to|-|–|—).*(?:present|current|20\d{2}|19\d{2}|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)|\b(?:20\d{2}|19\d{2})\b/i;
+  const parseDates = (value = "") => {
+    const [fromDate = "", toDate = ""] = String(value || "").split(/\s+(?:to|-|–|—)\s+/i).map((part) => part.trim());
+    return toDate ? { fromDate, toDate } : { fromDate: value, toDate: "" };
+  };
+  const commaEntries = lines
+    .filter((line) => line.includes(",") && datePattern.test(line))
+    .map((line) => {
+      const parts = line.split(",").map((part) => part.trim()).filter(Boolean);
+      const dateIndex = parts.findIndex((part) => datePattern.test(part));
+      const dateText = dateIndex >= 0 ? parts.slice(dateIndex).join(", ") : "";
+      const textParts = dateIndex >= 0 ? parts.slice(0, dateIndex) : parts;
+      const dates = parseDates(dateText);
+      return {
+        ...createEducationEntry(),
+        qualification: textParts[0] || "",
+        school: textParts.slice(1).join(", "),
+        ...dates,
+      };
+    })
+    .filter((entry) => entry.qualification || entry.school);
+  if (commaEntries.length === lines.length) return commaEntries;
+  const entries = [];
+  for (let index = 0; index < lines.length; index += 3) {
+    const chunk = lines.slice(index, index + 3);
+    const dateLine = chunk.find((line) => datePattern.test(line)) || "";
+    const textLines = chunk.filter((line) => line !== dateLine);
+    const dates = parseDates(dateLine);
+    entries.push({
+      ...createEducationEntry(),
+      qualification: textLines[0] || chunk[0] || "",
+      school: textLines[1] || "",
+      ...dates,
+    });
+  }
+  return entries.filter((entry) => entry.qualification || entry.school || entry.fromDate);
+};
+
+const normalizeEducationEntries = (cv = {}) => {
+  if (Array.isArray(cv.educationEntries) && cv.educationEntries.length) {
+    return cv.educationEntries.map((entry) => ({ ...createEducationEntry(), ...entry }));
+  }
+  return parseEducationText(cv.education);
 };
 
 const photoShapeClass = (shape = "circle", roundedClass = "rounded-xl") => {
@@ -214,7 +292,8 @@ const hasUserEnteredCvData = (cv) => {
     }
     if (typeof value === "object") return Boolean(value && Object.keys(value).length);
     return String(value || "").trim();
-  }) || (Array.isArray(cv.workExperiences) && cv.workExperiences.some((entry) => [entry.jobTitle, entry.employer, entry.companyLocation, entry.fromDate, entry.toDate, entry.responsibilities].some((value) => String(value || "").trim())));
+  }) || (Array.isArray(cv.workExperiences) && cv.workExperiences.some((entry) => [entry.jobTitle, entry.employer, entry.companyLocation, entry.fromDate, entry.toDate, entry.responsibilities].some((value) => String(value || "").trim())))
+    || (Array.isArray(cv.educationEntries) && cv.educationEntries.some((entry) => [entry.qualification, entry.school, entry.location, entry.fromDate, entry.toDate, entry.details].some((value) => String(value || "").trim())));
 };
 
 const initialCv = {
@@ -232,6 +311,7 @@ const initialCv = {
   experience: "",
   workExperiences: [{ ...createExperienceEntry(defaultCategory), jobTitle: "", employer: "", responsibilities: "" }],
   education: "",
+  educationEntries: [createEducationEntry()],
   certifications: "",
   languages: "",
   drivingLicense: "",
@@ -261,6 +341,7 @@ const sampleCv = {
   experience: defaultCategory.experience,
   workExperiences: [createExperienceEntry(defaultCategory)],
   education: "High School Diploma\nManila High School, 2018",
+  educationEntries: [{ ...createEducationEntry(), qualification: "High School Diploma", school: "Manila High School", toDate: "2018" }],
   certifications: "Basic Food Safety Certificate",
   languages: "English, Filipino",
   drivingLicense: "No UAE driving license",
@@ -366,7 +447,7 @@ const completenessFields = [
   ["Professional summary", (cv) => cv.summary && cv.summary.length > 40],
   ["Skills", (cv) => cv.skills && cv.skills.split(",").length >= 3],
   ["Work experience", (cv) => normalizeWorkExperiences(cv).some((entry) => entry.employer && entry.fromDate && (entry.toDate || entry.isCurrent) && entry.responsibilities?.length > 20)],
-  ["Education", (cv) => cv.education && cv.education.length > 10],
+  ["Education", (cv) => normalizeEducationEntries(cv).some((entry) => entry.qualification && (entry.school || entry.toDate || entry.details))],
   ["Certifications", (cv) => cv.certifications && cv.certifications.length > 5],
   ["Languages", (cv) => cv.languages && cv.languages.length > 2],
 ];
@@ -1331,6 +1412,7 @@ function WorkExperienceEditor({ cv, onChange }) {
   const [openId, setOpenId] = useState(entries[0]?.id || "");
   const [aiStatus, setAiStatus] = useState("");
   const [aiSuggestions, setAiSuggestions] = useState({});
+  const [aiInstructions, setAiInstructions] = useState({});
   const commitEntries = (nextEntries) => {
     onChange("workExperiences", nextEntries);
     onChange("experience", formatWorkExperiences(nextEntries));
@@ -1448,8 +1530,58 @@ function WorkExperienceEditor({ cv, onChange }) {
       .replace(/\bprepare\b(?=\s)/gi, "prepared")
       .replace(/\bhandle\b(?=\s)/gi, "handled");
   };
-  const createReviewSuggestion = (text) =>
-    text
+  const presentTenseReplacements = [
+    [/\bManaged\b/g, "Manage"],
+    [/\bCoordinated\b/g, "Coordinate"],
+    [/\bPrepared\b/g, "Prepare"],
+    [/\bSupported\b/g, "Support"],
+    [/\bHandled\b/g, "Handle"],
+    [/\bImproved\b/g, "Improve"],
+    [/\bMaintained\b/g, "Maintain"],
+    [/\bAssisted\b/g, "Assist"],
+    [/\bRecorded\b/g, "Record"],
+    [/\bInspected\b/g, "Inspect"],
+    [/\bServed\b/g, "Serve"],
+    [/\bOrganized\b/g, "Organize"],
+    [/\bMonitored\b/g, "Monitor"],
+    [/\bProcessed\b/g, "Process"],
+    [/\bDelivered\b/g, "Deliver"],
+    [/\bSupervised\b/g, "Supervise"],
+    [/\bTrained\b/g, "Train"],
+    [/\bCreated\b/g, "Create"],
+    [/\bChecked\b/g, "Check"],
+    [/\bResolved\b/g, "Resolve"],
+  ];
+  const categoryForResponsibility = (line) => {
+    if (/\b(account|invoice|ledger|payable|receivable|bank|cash|vat|payroll|budget|financial|balance sheet|audit|accrual|payment|currency|asset)\b/i.test(line)) return "Accounting tasks";
+    if (/\b(file|document|record|report|email|call|schedule|coordinate|admin|office|data|customer|supplier)\b/i.test(line)) return "Administrative tasks";
+    if (/\b(system|software|sap|quickbooks|erp|infor|excel|word|powerpoint)\b/i.test(line)) return "System and reporting tasks";
+    return "Operational tasks";
+  };
+  const applyInstructionToSuggestion = (text, instruction = "", isCurrent = false) => {
+    const wantsPresent = isCurrent || /\b(present tense|currently|current role|still working|i am currently working)\b/i.test(instruction);
+    const wantsGrouped = /\b(group|arrange|categor|type|admin|accounting task|diversified)\b/i.test(instruction);
+    let lines = text.split("\n").map((line) => line.trim()).filter(Boolean);
+    if (wantsPresent) {
+      lines = lines.map((line) => {
+        let next = line;
+        presentTenseReplacements.forEach(([pattern, replacement]) => {
+          next = next.replace(pattern, replacement);
+        });
+        return next;
+      });
+    }
+    if (wantsGrouped) {
+      const groups = lines.reduce((current, line) => {
+        const group = categoryForResponsibility(line);
+        return { ...current, [group]: [...(current[group] || []), line] };
+      }, {});
+      lines = Object.entries(groups).flatMap(([group, items]) => [`${group}:`, ...items]);
+    }
+    return lines.join("\n");
+  };
+  const createReviewSuggestion = (text, instruction = "", isCurrent = false) => {
+    const suggested = text
       .split("\n")
       .map((line) => line.trim().replace(/^[-*]\s*/, ""))
       .filter(Boolean)
@@ -1471,20 +1603,53 @@ function WorkExperienceEditor({ cv, onChange }) {
         return professionalLine.charAt(0).toUpperCase() + professionalLine.slice(1);
       })
       .join("\n");
-  const reviewEntryWithAi = (id) => {
+    return applyInstructionToSuggestion(suggested, instruction, isCurrent);
+  };
+  const reviewEntryWithAi = async (id) => {
     const target = entries.find((entry) => entry.id === id);
     if (!target?.responsibilities?.trim()) {
       setAiStatus("Add responsibilities or achievements first, then AI can check and improve them.");
       return;
     }
+    const instruction = String(aiInstructions[id] || "").trim();
+    setAiStatus("AI is preparing a suggested rewrite from your instruction...");
+    try {
+      const response = await fetch("/.netlify/functions/generateCvBullets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category: cv.industry || "general",
+          jobTitle: target.jobTitle || cv.jobTitle || "Role",
+          skills: cv.skills || "",
+          experience: target.responsibilities,
+          isCurrent: Boolean(target.isCurrent),
+          instruction,
+        }),
+      });
+      if (!response.ok) throw new Error("AI suggestions are unavailable.");
+      const data = await response.json();
+      const suggested = Array.isArray(data.suggestions) && data.suggestions.length
+        ? data.suggestions.join("\n")
+        : createReviewSuggestion(target.responsibilities, instruction, target.isCurrent);
+      setAiSuggestions((current) => ({
+        ...current,
+        [id]: {
+          original: target.responsibilities,
+          suggested,
+        },
+      }));
+      setAiStatus("AI created a suggested rewrite from your instruction. Approve to use it or reject to keep your original text.");
+      return;
+    } catch (error) {
+      setAiStatus(`${error.message} Local assistant created a suggested rewrite instead.`);
+    }
     setAiSuggestions((current) => ({
       ...current,
       [id]: {
         original: target.responsibilities,
-        suggested: createReviewSuggestion(target.responsibilities),
+        suggested: createReviewSuggestion(target.responsibilities, instruction, target.isCurrent),
       },
     }));
-    setAiStatus("AI created a suggested rewrite. Approve to use it or reject to keep your original text.");
   };
   const approveSuggestion = (id) => {
     const suggestion = aiSuggestions[id];
@@ -1551,9 +1716,19 @@ function WorkExperienceEditor({ cv, onChange }) {
               <span className="form-label">Responsibilities / achievements</span>
               <textarea className="form-field resize-y" rows={5} value={entry.responsibilities || ""} onChange={(event) => updateEntry(entry.id, "responsibilities", event.target.value)} placeholder="Example: Managed inventory records, prepared daily dispatch documents, and coordinated deliveries across UAE sites." />
             </label>
+            <label className="block">
+              <span className="form-label">What should AI change or focus on?</span>
+              <textarea
+                className="form-field resize-y"
+                rows={3}
+                value={aiInstructions[entry.id] || ""}
+                onChange={(event) => setAiInstructions((current) => ({ ...current, [entry.id]: event.target.value }))}
+                placeholder="Example: Make this present tense because I currently work here. Arrange duties by type: accounting tasks, admin tasks, and system/reporting tasks."
+              />
+            </label>
             <div className="ai-assist-row">
               <button type="button" onClick={() => reviewEntryWithAi(entry.id)} className="btn-ai btn-ai-work"><Icon name="sparkle" className="h-3 w-3" /> Check with AI</button>
-              <span className="ai-hint">Check spelling, grammar, and make this sound more professional</span>
+              <span className="ai-hint">AI follows your instruction before suggesting changes</span>
             </div>
             {aiSuggestions[entry.id] && (
               <div className="ai-suggestion-card">
@@ -1588,6 +1763,80 @@ function WorkExperienceEditor({ cv, onChange }) {
       {aiStatus && <p className="text-xs font-bold text-blue-700">{aiStatus}</p>}
       <button type="button" onClick={addEntry} className="btn-add-more">
         <Icon name="plus" className="h-4 w-4" /> Add another role
+      </button>
+    </section>
+  );
+}
+
+function EducationEditor({ cv, onChange }) {
+  const entries = normalizeEducationEntries(cv);
+  const [openId, setOpenId] = useState(entries[0]?.id || "");
+  const commitEntries = (nextEntries) => {
+    onChange("educationEntries", nextEntries);
+    onChange("education", formatEducationEntries(nextEntries));
+  };
+  const updateEntry = (id, key, value) => {
+    commitEntries(entries.map((entry) => (entry.id === id ? { ...entry, [key]: value } : entry)));
+  };
+  const addEntry = () => {
+    const nextEntry = createEducationEntry();
+    commitEntries([...entries, nextEntry]);
+    setOpenId(nextEntry.id);
+  };
+  const removeEntry = (id) => {
+    commitEntries(entries.length === 1 ? [createEducationEntry()] : entries.filter((entry) => entry.id !== id));
+  };
+  return (
+    <section className="space-y-3">
+      <p className="text-xs font-bold leading-5 text-slate-500">Add one row for each degree, school, training course, or certificate program.</p>
+      <div className="space-y-3">
+        {entries.map((entry, index) => (
+          <article key={entry.id} className={`entry-card ${openId === entry.id ? "open" : ""}`}>
+            <button type="button" className="entry-card-header" onClick={() => setOpenId(openId === entry.id ? "" : entry.id)}>
+              <Icon name="file" className="h-4 w-4 text-blue-700" />
+              <span className="entry-card-title">{entry.qualification || `Education ${index + 1}`}</span>
+              <Icon name="chevron" className={`h-4 w-4 text-slate-400 transition ${openId === entry.id ? "rotate-180" : ""}`} />
+            </button>
+            {openId === entry.id && (
+              <div className="entry-card-body">
+                <div className="field-pair">
+                  <label>
+                    <span className="form-label">Educational attainment / course</span>
+                    <input className="form-field" value={entry.qualification || ""} onChange={(event) => updateEntry(entry.id, "qualification", event.target.value)} placeholder="Example: Bachelor Degree in Accountancy" />
+                  </label>
+                  <label>
+                    <span className="form-label">School / institution</span>
+                    <input className="form-field" value={entry.school || ""} onChange={(event) => updateEntry(entry.id, "school", event.target.value)} placeholder="Example: Saint Mary's University" />
+                  </label>
+                </div>
+                <label className="block">
+                  <span className="form-label">School location</span>
+                  <input className="form-field" value={entry.location || ""} onChange={(event) => updateEntry(entry.id, "location", event.target.value)} placeholder="Example: Philippines" />
+                </label>
+                <div className="field-pair">
+                  <label>
+                    <span className="form-label">Date from</span>
+                    <input className="form-field" value={entry.fromDate || ""} onChange={(event) => updateEntry(entry.id, "fromDate", event.target.value)} placeholder="Example: June 2008" />
+                  </label>
+                  <label>
+                    <span className="form-label">Date to / completed</span>
+                    <input className="form-field" value={entry.toDate || ""} onChange={(event) => updateEntry(entry.id, "toDate", event.target.value)} placeholder="Example: March 2013" />
+                  </label>
+                </div>
+                <label className="block">
+                  <span className="form-label">Details / honors / units</span>
+                  <textarea className="form-field resize-y" rows={3} value={entry.details || ""} onChange={(event) => updateEntry(entry.id, "details", event.target.value)} placeholder="Optional: honors, major, training details, or relevant coursework" />
+                </label>
+                <button type="button" onClick={() => removeEntry(entry.id)} className="self-start rounded border border-red-200 px-3 py-2 text-xs font-black text-red-700">
+                  Remove education
+                </button>
+              </div>
+            )}
+          </article>
+        ))}
+      </div>
+      <button type="button" onClick={addEntry} className="btn-add-more">
+        <Icon name="plus" className="h-4 w-4" /> Add another education row
       </button>
     </section>
   );
@@ -1823,6 +2072,7 @@ function ReferencesSection({ cv, onChange }) {
 
 function CVBuilderForm({ cv, onChange }) {
   const [smartTips, setSmartTips] = useState({});
+  const [aiInstructions, setAiInstructions] = useState({ skills: "", summary: "" });
   const tipsEnabled = cv.tipsEnabled !== false;
   const handleBlurTip = (field, value) => {
     if (!tipsEnabled) return;
@@ -1830,17 +2080,27 @@ function CVBuilderForm({ cv, onChange }) {
     if (message) setSmartTips((current) => ({ ...current, [field]: message }));
   };
   const clearSmartTip = (field) => setSmartTips((current) => ({ ...current, [field]: "" }));
+  const applySummaryInstruction = (value, instruction) => {
+    const base = value.replace(/\.$/, "");
+    const focus = [];
+    if (/\b(account|finance|treasury|payroll|vat|ledger|invoice)\b/i.test(instruction)) focus.push("accounting and finance support");
+    if (/\b(admin|document|file|office|record)\b/i.test(instruction)) focus.push("administrative coordination");
+    if (/\b(current|present|currently)\b/i.test(instruction)) focus.push("current hands-on responsibilities");
+    if (/\b(short|concise|brief)\b/i.test(instruction)) return base.split(/(?<=[.!?])\s+/).slice(0, 2).join(" ");
+    return focus.length ? `${base}. Skilled in ${focus.join(", ")}.` : `${base}. Experienced in UAE/GCC job requirements, clear communication, and reliable daily performance.`;
+  };
   const improveText = (key) => {
     const value = String(cv[key] || "").trim();
     if (!value) return;
+    const instruction = String(aiInstructions[key] || "").trim();
     const improved = key === "summary"
-      ? `${value.replace(/\.$/, "")}. Experienced in UAE/GCC job requirements, clear communication, and reliable daily performance.`
+      ? applySummaryInstruction(value, instruction)
       : value
           .split(/[,\n]/)
           .map((item) => item.trim())
           .filter(Boolean)
           .slice(0, 10)
-          .join(", ");
+          .join(instruction.toLowerCase().includes("line") ? "\n" : ", ");
     onChange(key, improved);
   };
   return (
@@ -1913,8 +2173,8 @@ function CVBuilderForm({ cv, onChange }) {
         <WorkExperienceEditor cv={cv} onChange={onChange} />
       </CollapsibleFormSection>
 
-      <CollapsibleFormSection id="education" title="Education and certifications" icon="file" badge={cv.education ? "Done" : ""}>
-        <FormField label="Education" type="textarea" rows={4} value={cv.education} onChange={(value) => onChange("education", value)} placeholder="Example: High School Diploma, Manila High School, 2018" />
+      <CollapsibleFormSection id="education" title="Education and certifications" icon="file" badge={normalizeEducationEntries(cv).some((entry) => entry.qualification || entry.school) ? "Done" : ""}>
+        <EducationEditor cv={cv} onChange={onChange} />
         <FormField label="Certifications & licenses" type="textarea" rows={3} value={cv.certifications} onChange={(value) => onChange("certifications", value)} placeholder="Example: Basic Food Safety Certificate, TESDA NC II, UAE driving license" />
       </CollapsibleFormSection>
 
@@ -1927,9 +2187,19 @@ function CVBuilderForm({ cv, onChange }) {
           <textarea value={cv.skills || ""} onChange={(event) => onChange("skills", event.target.value)} onBlur={(event) => handleBlurTip("skills", event.target.value)} rows={4} className="form-field resize-y" placeholder="Example: Inventory control, customer service, Excel, dispatch coordination" />
           <SmartTip message={smartTips.skills} onDismiss={() => clearSmartTip("skills")} />
         </label>
+        <label className="block">
+          <span className="form-label">What should AI do with these skills?</span>
+          <textarea
+            value={aiInstructions.skills}
+            onChange={(event) => setAiInstructions((current) => ({ ...current, skills: event.target.value }))}
+            rows={3}
+            className="form-field resize-y"
+            placeholder="Example: Arrange by line, focus on accounting software first, remove repeated skills."
+          />
+        </label>
         <div className="ai-assist-row">
           <button type="button" onClick={() => improveText("skills")} className="btn-ai"><Icon name="sparkle" className="h-3 w-3" /> Improve with AI</button>
-          <span className="ai-hint">Clean and strengthen your skills list</span>
+          <span className="ai-hint">Clean and strengthen your skills list using your instruction</span>
         </div>
         <FormField label="Languages spoken" type="textarea" rows={3} value={cv.languages} onChange={(value) => onChange("languages", value)} placeholder="Example: English - Good, Filipino - Native, Arabic - Basic" />
       </CollapsibleFormSection>
@@ -1943,9 +2213,19 @@ function CVBuilderForm({ cv, onChange }) {
           <textarea value={cv.summary || ""} onChange={(event) => onChange("summary", event.target.value)} onBlur={(event) => handleBlurTip("summary", event.target.value)} rows={5} className="form-field resize-y" placeholder="Example: Reliable logistics assistant with UAE warehouse experience, strong inventory skills, and careful documentation habits." />
           <SmartTip message={smartTips.summary} onDismiss={() => clearSmartTip("summary")} />
         </label>
+        <label className="block">
+          <span className="form-label">What should AI do with this summary?</span>
+          <textarea
+            value={aiInstructions.summary}
+            onChange={(event) => setAiInstructions((current) => ({ ...current, summary: event.target.value }))}
+            rows={3}
+            className="form-field resize-y"
+            placeholder="Example: Make it concise, accounting-focused, and mention that I currently handle treasury and finance support tasks."
+          />
+        </label>
         <div className="ai-assist-row">
           <button type="button" onClick={() => improveText("summary")} className="btn-ai"><Icon name="sparkle" className="h-3 w-3" /> Improve with AI</button>
-          <span className="ai-hint">Make your summary clearer for UAE/GCC employers</span>
+          <span className="ai-hint">Make your summary clearer using your instruction</span>
         </div>
       </CollapsibleFormSection>
     </div>
@@ -2331,6 +2611,7 @@ function mockAiExtractCv(text, fileName) {
       .join("\n")
       .trim();
   }
+  const educationEntries = parseEducationText(education);
   const fallbackWorkExperiences = [
     {
       ...createExperienceEntry(),
@@ -2360,6 +2641,7 @@ function mockAiExtractCv(text, fileName) {
     experience: formattedExperience || "Please review imported CV and add work experience here.",
     workExperiences: structuredWorkExperiences.length ? structuredWorkExperiences : fallbackWorkExperiences,
     education: education || "Please review imported CV and add education details here.",
+    educationEntries,
     certifications: certifications || "Add certificates or training here.",
     languages: languages || "English",
     references: section(["reference"]) || "Available upon request",
@@ -2473,6 +2755,7 @@ function LiveCVPreview({ cv, theme, layout }) {
     );
   };
   const workEntries = normalizeWorkExperiences(cv);
+  const educationEntries = normalizeEducationEntries(cv).filter((entry) => [entry.qualification, entry.school, entry.location, entry.fromDate, entry.toDate, entry.details].some((value) => String(value || "").trim()));
   const workExperienceSection = (
     <section className="break-inside-avoid">
       <h3 className="cv-section-title" style={{ color: theme.dark, borderColor: theme.color }}>Work Experience</h3>
@@ -2497,10 +2780,30 @@ function LiveCVPreview({ cv, theme, layout }) {
       </div>
     </section>
   );
+  const educationSection = (
+    <section className="break-inside-avoid">
+      <h3 className="cv-section-title" style={{ color: theme.dark, borderColor: theme.color }}>Education</h3>
+      <div className="mt-3 space-y-3">
+        {educationEntries.map((entry) => (
+          <article key={entry.id} className="text-[12px] leading-5 text-slate-700">
+            <div className="flex flex-col justify-between gap-1 sm:flex-row">
+              <div>
+                {entry.qualification && <p className="font-black text-slate-900">{entry.qualification}</p>}
+                {entry.school && <p className="font-bold text-slate-700">{entry.school}</p>}
+                {entry.location && <p className="font-semibold text-slate-500">{entry.location}</p>}
+              </div>
+              <p className="font-bold text-slate-500">{[entry.fromDate, entry.toDate].filter(Boolean).join(" - ")}</p>
+            </div>
+            {entry.details && <p className="mt-1 whitespace-pre-line">{entry.details}</p>}
+          </article>
+        ))}
+      </div>
+    </section>
+  );
   const sectionRenderers = {
     summary: () => section("Professional Summary", cv.summary),
     experience: () => workExperienceSection,
-    education: () => section("Education", cv.education),
+    education: () => educationSection,
     skills: () => section("Skills", cv.skills),
     certifications: () => section("Certifications", cv.certifications),
     languages: () => section("Languages", cv.languages),
@@ -3074,6 +3377,7 @@ const polishCoverLetterText = (text, fieldKey = "") => {
 function CoverLetterForm({ letter, onChange, onRegenerate }) {
   const [aiSuggestions, setAiSuggestions] = useState({});
   const [aiStatus, setAiStatus] = useState("");
+  const [aiInstructions, setAiInstructions] = useState({});
   const fields = [
     ["hiringManager", "Hiring manager name", "text"],
     ["companyName", "Company name", "text"],
@@ -3092,7 +3396,14 @@ function CoverLetterForm({ letter, onChange, onRegenerate }) {
       setAiStatus(`Add text in ${label.toLowerCase()} first, then AI Assistant can check it.`);
       return;
     }
-    const suggested = polishCoverLetterText(original, key);
+    const instruction = String(aiInstructions[key] || "").trim();
+    let suggested = polishCoverLetterText(original, key);
+    if (/\b(short|concise|brief)\b/i.test(instruction)) {
+      suggested = suggested.split(/(?<=[.!?])\s+/).slice(0, 2).join(" ");
+    }
+    if (/\b(account|finance|admin|customer|sales|logistics|technical|teaching)\b/i.test(instruction)) {
+      suggested = `${suggested.replace(/\.$/, "")}, with wording focused on the most relevant experience for the target role.`;
+    }
     setAiSuggestions((current) => ({
       ...current,
       [key]: { original, suggested },
@@ -3149,11 +3460,21 @@ function CoverLetterForm({ letter, onChange, onRegenerate }) {
           </label>
           {type === "textarea" && coverLetterAiFields.has(key) && (
             <div className="mt-2">
+              <label className="block">
+                <span className="form-label">What should AI change or focus on?</span>
+                <textarea
+                  value={aiInstructions[key] || ""}
+                  onChange={(event) => setAiInstructions((current) => ({ ...current, [key]: event.target.value }))}
+                  rows={2}
+                  className="form-field resize-y"
+                  placeholder="Example: Make it shorter, focus on accounting tasks, or make it more confident."
+                />
+              </label>
               <div className="ai-assist-row">
                 <button type="button" onClick={() => reviewWithAi(key, label)} className="btn-ai btn-ai-work">
                   <Icon name="sparkle" className="h-3 w-3" /> AI Assistant
                 </button>
-                <span className="ai-hint">Check grammar, spelling, and rephrase this more professionally</span>
+                <span className="ai-hint">Check grammar and follow your instruction</span>
               </div>
               {aiSuggestions[key] && (
                 <div className="ai-suggestion-card mt-3">
@@ -3370,7 +3691,7 @@ function getBuilderStepState(cv) {
   return {
     personal: Boolean(cv.fullName && cv.email && cv.phone && cv.country),
     experience: normalizeWorkExperiences(cv).some((entry) => entry.employer && entry.responsibilities),
-    education: Boolean(cv.education),
+    education: normalizeEducationEntries(cv).some((entry) => entry.qualification || entry.school),
     skills: Boolean(cv.skills && cv.languages),
     summary: Boolean(cv.summary && cv.summary.length > 40),
   };

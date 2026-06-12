@@ -68,6 +68,29 @@ const referenceHtml = (references) => {
   `).join("");
 };
 
+const normalizeEducationEntries = (cv = {}) => {
+  if (Array.isArray(cv.educationEntries) && cv.educationEntries.length) return cv.educationEntries;
+  const educationLines = String(cv.education || "").split("\n").map((line) => line.trim()).filter(Boolean);
+  if (!educationLines.length) return [];
+  const entries = [];
+  for (let index = 0; index < educationLines.length; index += 3) {
+    const [qualification = "", school = "", dates = ""] = educationLines.slice(index, index + 3);
+    entries.push({ qualification, school, location: "", fromDate: dates, toDate: "", details: "" });
+  }
+  return entries;
+};
+
+const educationHtml = (cv = {}) =>
+  normalizeEducationEntries(cv).map((entry) => {
+    const dates = [entry.fromDate, entry.toDate].filter(Boolean).join(" - ");
+    if (![entry.qualification, entry.school, entry.location, dates, entry.details].some(Boolean)) return "";
+    return `<div class="education-item">
+      ${entry.qualification ? `<p><strong>${escapeHtml(entry.qualification)}</strong></p>` : ""}
+      ${[entry.school, entry.location, dates].filter(Boolean).length ? `<p>${escapeHtml([entry.school, entry.location, dates].filter(Boolean).join(" | "))}</p>` : ""}
+      ${entry.details ? `<p>${escapeHtml(entry.details)}</p>` : ""}
+    </div>`;
+  }).join("");
+
 const sectionHtml = (cv = {}, id) => {
   const experiences = Array.isArray(cv.workExperiences) ? cv.workExperiences : [];
   const sections = {
@@ -79,7 +102,7 @@ const sectionHtml = (cv = {}, id) => {
         <ul>${lines(entry.responsibilities).map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul>
       </div>
     `).join("")}</section>` : "",
-    education: cv.education ? `<section><h2>Education</h2><p>${escapeHtml(cv.education)}</p></section>` : "",
+    education: normalizeEducationEntries(cv).length ? `<section><h2>Education</h2>${educationHtml(cv)}</section>` : "",
     skills: cv.skills ? `<section><h2>Skills</h2><p>${escapeHtml(cv.skills)}</p></section>` : "",
     certifications: cv.certifications ? `<section><h2>Certifications</h2><p>${escapeHtml(cv.certifications)}</p></section>` : "",
     languages: cv.languages ? `<section><h2>Languages</h2><p>${escapeHtml(cv.languages)}</p></section>` : "",
@@ -114,6 +137,7 @@ const buildCvHtml = ({ cv = {}, theme = {}, layout = "classic" }) => {
         .title { color: ${safeTheme.color}; font-weight: 700; }
         .contact { color: #475569; }
         .experience-item { break-inside: avoid; page-break-inside: avoid; margin-bottom: 9px; }
+        .education-item { break-inside: avoid; page-break-inside: avoid; margin-bottom: 8px; }
       </style>
     </head>
     <body class="${escapeHtml(layout)}">

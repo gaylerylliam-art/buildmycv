@@ -58,6 +58,20 @@ const cleanWorkExperiences = (entries) =>
     }))
     .filter((entry) => entry.jobTitle || entry.employer || entry.responsibilities);
 
+const cleanEducationEntries = (entries) =>
+  (Array.isArray(entries) ? entries : [])
+    .map((entry = {}) => ({
+      qualification: cleanString(entry.qualification),
+      school: cleanString(entry.school),
+      location: cleanString(entry.location),
+      fromDate: cleanString(entry.fromDate),
+      toDate: cleanString(entry.toDate),
+      details: Array.isArray(entry.details)
+        ? entry.details.map(cleanString).filter(Boolean).join("\n")
+        : cleanString(entry.details),
+    }))
+    .filter((entry) => entry.qualification || entry.school || entry.details);
+
 const normalizeCv = (cv = {}) => ({
   fullName: cleanString(cv.fullName),
   jobTitle: cleanString(cv.jobTitle),
@@ -73,6 +87,7 @@ const normalizeCv = (cv = {}) => ({
   skills: Array.isArray(cv.skills) ? cv.skills.map(cleanString).filter(Boolean).join("\n") : cleanString(cv.skills),
   experience: cleanString(cv.experience),
   workExperiences: cleanWorkExperiences(cv.workExperiences),
+  educationEntries: cleanEducationEntries(cv.educationEntries),
   education: Array.isArray(cv.education) ? cv.education.map(cleanString).filter(Boolean).join("\n") : cleanString(cv.education),
   certifications: Array.isArray(cv.certifications) ? cv.certifications.map(cleanString).filter(Boolean).join("\n") : cleanString(cv.certifications),
   languages: Array.isArray(cv.languages) ? cv.languages.map(cleanString).filter(Boolean).join("\n") : cleanString(cv.languages),
@@ -140,7 +155,17 @@ export const handler = async (event) => {
         "responsibilities": ["responsibility only, no company names or dates"]
       }
     ],
-    "education": ["degree, school, date lines"],
+    "educationEntries": [
+      {
+        "qualification": "",
+        "school": "",
+        "location": "",
+        "fromDate": "",
+        "toDate": "",
+        "details": ""
+      }
+    ],
+    "education": ["legacy text lines only if structured educationEntries cannot be created"],
     "certifications": [],
     "languages": [],
     "references": "Available upon request"

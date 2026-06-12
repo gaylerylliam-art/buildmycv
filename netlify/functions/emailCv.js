@@ -24,6 +24,18 @@ const lines = (value = "") =>
     .map((line) => line.trim().replace(/^[-\u2022*]\s*/, ""))
     .filter(Boolean);
 
+const normalizeEducationEntries = (cv = {}) => {
+  if (Array.isArray(cv.educationEntries) && cv.educationEntries.length) return cv.educationEntries;
+  const educationLines = String(cv.education || "").split("\n").map((line) => line.trim()).filter(Boolean);
+  if (!educationLines.length) return [];
+  const entries = [];
+  for (let index = 0; index < educationLines.length; index += 3) {
+    const [qualification = "", school = "", dates = ""] = educationLines.slice(index, index + 3);
+    entries.push({ qualification, school, location: "", fromDate: dates, toDate: "", details: "" });
+  }
+  return entries;
+};
+
 const safeFilename = (fullName = "BuildMyCVNow") =>
   `${String(fullName || "BuildMyCVNow").trim().replace(/[^\w-]+/g, "_").slice(0, 60) || "BuildMyCVNow"}_CV.pdf`;
 
@@ -44,7 +56,11 @@ const cvText = (cv = {}) => {
       "",
     ]),
     "EDUCATION",
-    cv.education,
+    ...normalizeEducationEntries(cv).flatMap((entry) => [
+      [entry.qualification, entry.school, entry.location, [entry.fromDate, entry.toDate].filter(Boolean).join(" - ")].filter(Boolean).join(" | "),
+      entry.details,
+      "",
+    ]),
     "",
     "SKILLS",
     cv.skills,
@@ -71,7 +87,11 @@ const cvHtml = (cv = {}) =>
       <p><strong>${escapeHtml(entry.jobTitle)}</strong><br>${escapeHtml([entry.employer, entry.companyLocation, [entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - ")].filter(Boolean).join(" | "))}</p>
       <ul>${lines(entry.responsibilities).map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul>
     `).join("")}
-    <h2>Education</h2><p>${escapeHtml(cv.education)}</p>
+    <h2>Education</h2>
+    ${normalizeEducationEntries(cv).map((entry) => `
+      <p><strong>${escapeHtml(entry.qualification)}</strong><br>${escapeHtml([entry.school, entry.location, [entry.fromDate, entry.toDate].filter(Boolean).join(" - ")].filter(Boolean).join(" | "))}</p>
+      ${entry.details ? `<p>${escapeHtml(entry.details)}</p>` : ""}
+    `).join("")}
     <h2>Skills</h2><p>${escapeHtml(cv.skills)}</p>
     <h2>Certifications</h2><p>${escapeHtml(cv.certifications)}</p>
     <h2>Languages</h2><p>${escapeHtml(cv.languages)}</p>
