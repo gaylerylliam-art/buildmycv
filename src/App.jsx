@@ -240,7 +240,6 @@ const initialCv = {
   industry: "general",
   tipsEnabled: true,
   qrCode: defaultQrCode,
-  showCredit: true,
   references: defaultReferences,
   sectionOrder: defaultSectionOrder,
   hiddenSections: [],
@@ -4226,18 +4225,6 @@ function CVBuilderApp({ onHome }) {
                         </button>
                       </section>
                     )}
-                    <label className="mt-4 flex items-start gap-3 rounded border border-slate-200 bg-white p-4">
-                      <input
-                        type="checkbox"
-                        checked={cv.showCredit !== false}
-                        onChange={(event) => updateCvField("showCredit", event.target.checked)}
-                        className="mt-1 h-4 w-4"
-                      />
-                      <span>
-                        <span className="block text-sm font-black text-slate-950">Show "created with" credit on my CV</span>
-                        <span className="mt-1 block text-xs font-bold leading-5 text-slate-500">Default on, freely removable. This keeps the free tool easy to share without adding a watermark.</span>
-                      </span>
-                    </label>
                   </div>
                 </div>
               </section>

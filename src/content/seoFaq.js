@@ -1,7 +1,7 @@
 export const homepageFaqs = [
   {
     question: "Is BuildMyCVNow really free?",
-    answer: "Yes. You can create, preview, and download your CV for free. There is no hidden paywall at the download step and no credit card is required. The free CV may include an optional small credit line, which you can turn off in the builder settings.",
+    answer: "Yes. You can create, preview, and download your CV for free. There is no hidden paywall at the download step and no credit card is required.",
   },
   {
     question: "Do I need to sign up to download my CV?",

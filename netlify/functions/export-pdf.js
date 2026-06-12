@@ -114,7 +114,6 @@ const buildCvHtml = ({ cv = {}, theme = {}, layout = "classic" }) => {
         .title { color: ${safeTheme.color}; font-weight: 700; }
         .contact { color: #475569; }
         .experience-item { break-inside: avoid; page-break-inside: avoid; margin-bottom: 9px; }
-        .credit-footer { margin-top: 24px; padding-top: 12px; border-top: 1px solid #e5e7eb; color: #9ca3af; font-size: 7pt; text-align: center; }
       </style>
     </head>
     <body class="${escapeHtml(layout)}">
@@ -125,7 +124,6 @@ const buildCvHtml = ({ cv = {}, theme = {}, layout = "classic" }) => {
       </header>
       ${personal.length ? `<section><h2>Personal Details</h2><p>${escapeHtml(personal.join("\n"))}</p></section>` : ""}
       ${visibleSections(cv).map((id) => sectionHtml(cv, id)).join("")}
-      ${cv.showCredit !== false ? `<p class="credit-footer">CV created free at buildmycvnow.com</p>` : ""}
     </body>
   </html>`;
 };
