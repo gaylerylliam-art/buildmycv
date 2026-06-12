@@ -25,6 +25,23 @@ const fileBaseName = (fullName, suffix) => {
   return `${firstName}_${lastName}_${suffix}`.replace(/[^\w-]+/g, "_");
 };
 
+const isExportPlaceholder = (value = "") => {
+  const text = String(value || "").trim();
+  if (!text) return true;
+  return [
+    /^add\b.*\bhere\.?$/i,
+    /^please review imported cv/i,
+    /^employer name$/i,
+    /^job title$/i,
+    /^available upon request$/i,
+  ].some((pattern) => pattern.test(text));
+};
+
+const cleanExportText = (value = "") => {
+  const text = String(value || "").trim();
+  return isExportPlaceholder(text) ? "" : text;
+};
+
 const sanitizeCoverLetterText = (value = "") =>
   String(value || "")
     .split(/\n+/)
@@ -68,10 +85,10 @@ const inlineContactHtml = (lines = []) =>
 
 const cvPersonalDetails = (cv) =>
   [
-    cv.nationality ? `Nationality: ${cv.nationality}` : "",
-    cv.visaStatus ? `Visa Status: ${cv.visaStatus}` : "",
-    cv.drivingLicense ? `Driving License: ${cv.drivingLicense}` : "",
-    cv.expectedSalaryEnabled && cv.expectedSalary ? `Expected Salary: ${cv.expectedSalary}` : "",
+    cleanExportText(cv.nationality) ? `Nationality: ${cleanExportText(cv.nationality)}` : "",
+    cleanExportText(cv.visaStatus) ? `Visa Status: ${cleanExportText(cv.visaStatus)}` : "",
+    cleanExportText(cv.drivingLicense) ? `Driving License: ${cleanExportText(cv.drivingLicense)}` : "",
+    cv.expectedSalaryEnabled && cleanExportText(cv.expectedSalary) ? `Expected Salary: ${cleanExportText(cv.expectedSalary)}` : "",
   ].filter(Boolean);
 
 const defaultSectionOrder = ["summary", "experience", "education", "skills", "certifications", "languages", "references"];
@@ -108,6 +125,46 @@ const exportPhotoShapeClass = (shape = "circle") => {
   return "square";
 };
 
+const hexToDocxColor = (value = "#0f66d0") => String(value || "#0f66d0").replace("#", "").slice(0, 6).toUpperCase();
+
+const base64ToUint8Array = (base64 = "") => {
+  const binary = typeof atob === "function"
+    ? atob(base64)
+    : Buffer.from(base64, "base64").toString("binary");
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+};
+
+const imageTypeFromMime = (mime = "") => {
+  if (/jpe?g/i.test(mime)) return "jpg";
+  if (/gif/i.test(mime)) return "gif";
+  if (/bmp/i.test(mime)) return "bmp";
+  return "png";
+};
+
+const profilePhotoDataForDocx = async (source = "") => {
+  if (!source) return null;
+  try {
+    if (source.startsWith("data:")) {
+      const match = source.match(/^data:([^;,]+)?(;base64)?,(.*)$/);
+      if (!match) return null;
+      const mime = match[1] || "image/png";
+      const encoded = match[3] || "";
+      const data = match[2]
+        ? base64ToUint8Array(encoded)
+        : new TextEncoder().encode(decodeURIComponent(encoded));
+      return { data, type: imageTypeFromMime(mime) };
+    }
+
+    const response = await fetch(source);
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    return { data: new Uint8Array(await blob.arrayBuffer()), type: imageTypeFromMime(blob.type) };
+  } catch (error) {
+    console.warn("Could not prepare profile photo for DOCX export.", error);
+    return null;
+  }
+};
+
 const normalizeCvWorkExperiences = (cv) => {
   if (Array.isArray(cv.workExperiences) && cv.workExperiences.length) {
     return cv.workExperiences;
@@ -126,9 +183,9 @@ const normalizeCvWorkExperiences = (cv) => {
 };
 
 const sectionHasContent = (cv = {}, id) => {
-  if (id === "experience") return normalizeCvWorkExperiences(cv).some((entry) => [entry.jobTitle, entry.employer, entry.responsibilities].some((value) => String(value || "").trim()));
+  if (id === "experience") return normalizeCvWorkExperiences(cv).some((entry) => [entry.jobTitle, entry.employer, entry.responsibilities].some((value) => cleanExportText(value)));
   if (id === "references") return referencesHasContent(cv.references);
-  return Boolean(String(cv[id] || "").trim());
+  return Boolean(cleanExportText(cv[id]));
 };
 
 const visibleSectionOrder = (cv = {}) => {
@@ -139,12 +196,17 @@ const visibleSectionOrder = (cv = {}) => {
 const workExperienceHtml = (cv) =>
   normalizeCvWorkExperiences(cv)
     .map((entry) => {
+      const jobTitle = cleanExportText(entry.jobTitle);
+      const employer = cleanExportText(entry.employer);
+      const location = cleanExportText(entry.companyLocation);
+      const responsibilities = cleanExportText(entry.responsibilities);
       const dates = [entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - ");
+      if (![jobTitle, employer, location, dates, responsibilities].some(Boolean)) return "";
       return `
         <div class="experience-item">
-          <p><strong>${escapeHtml(entry.jobTitle || "Job title")}</strong></p>
-          <p>${escapeHtml(entry.employer || "Employer name")}${dates ? ` | ${escapeHtml(dates)}` : ""}</p>
-          <ul>${joinLines(entry.responsibilities || "")}</ul>
+          ${jobTitle ? `<p><strong>${escapeHtml(jobTitle)}</strong></p>` : ""}
+          ${[employer, location, dates].filter(Boolean).length ? `<p>${escapeHtml([employer, location, dates].filter(Boolean).join(" | "))}</p>` : ""}
+          ${responsibilities ? `<ul>${joinLines(responsibilities)}</ul>` : ""}
         </div>
       `;
     })
@@ -169,12 +231,12 @@ const referencesHtml = (references) => {
 
 const cvSectionHtml = (cv, id) => {
   const sections = {
-    summary: `<div class="section"><h2>Professional Summary</h2><p>${escapeHtml(cv.summary)}</p></div>`,
+    summary: `<div class="section"><h2>Professional Summary</h2><p>${escapeHtml(cleanExportText(cv.summary))}</p></div>`,
     experience: `<div class="section"><h2>Work Experience</h2>${workExperienceHtml(cv)}</div>`,
-    education: `<div class="section"><h2>Education</h2><p>${escapeHtml(cv.education)}</p></div>`,
-    skills: `<div class="section"><h2>Skills</h2><p>${escapeHtml(cv.skills)}</p></div>`,
-    certifications: `<div class="section"><h2>Certifications</h2><p>${escapeHtml(cv.certifications)}</p></div>`,
-    languages: `<div class="section"><h2>Languages</h2><p>${escapeHtml(cv.languages)}</p></div>`,
+    education: `<div class="section"><h2>Education</h2><p>${escapeHtml(cleanExportText(cv.education))}</p></div>`,
+    skills: `<div class="section"><h2>Skills</h2><p>${escapeHtml(cleanExportText(cv.skills))}</p></div>`,
+    certifications: `<div class="section"><h2>Certifications</h2><p>${escapeHtml(cleanExportText(cv.certifications))}</p></div>`,
+    languages: `<div class="section"><h2>Languages</h2><p>${escapeHtml(cleanExportText(cv.languages))}</p></div>`,
     references: `<div class="section references-block"><h2>References</h2>${referencesHtml(cv.references)}</div>`,
   };
   return sections[id] || "";
@@ -306,14 +368,50 @@ const downloadCoverLetterDocx = async (letter, cv, filename) => {
   saveBlob(blob, filename);
 };
 
-const downloadCvDocx = async (cv, filename) => {
-  const { Document, Packer, Paragraph, TextRun } = await import("docx");
+const downloadCvDocx = async (cv, filename, theme = { color: "#0f66d0", dark: "#0f172a" }, layout = "classic") => {
+  const { AlignmentType, Document, ImageRun, Packer, Paragraph, TextRun } = await import("docx");
+  const accent = hexToDocxColor(theme.color);
+  const dark = hexToDocxColor(theme.dark);
+  const photo = await profilePhotoDataForDocx(cv.profilePhoto);
   const paragraph = (text = "", options = {}) =>
     new Paragraph({
-      spacing: { after: options.after ?? 150 },
-      children: [new TextRun({ text: String(text || ""), bold: options.bold, size: options.size || 22 })],
+      spacing: { before: options.before ?? 0, after: options.after ?? 150 },
+      alignment: options.alignment,
+      bullet: options.bullet ? { level: 0 } : undefined,
+      keepNext: options.keepNext,
+      children: [new TextRun({
+        text: String(text || ""),
+        bold: options.bold,
+        size: options.size || 22,
+        color: options.color,
+        italics: options.italics,
+      })],
     });
-  const sectionHeading = (text) => paragraph(text, { bold: true, size: 24, after: 100 });
+  const sectionHeading = (text) =>
+    new Paragraph({
+      spacing: { before: 180, after: 90 },
+      border: { bottom: { color: accent, space: 2, size: 6, style: "single" } },
+      keepNext: true,
+      children: [new TextRun({ text, bold: true, size: 22, color: dark, allCaps: true })],
+    });
+  const photoParagraph = photo
+    ? new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 120 },
+        children: [
+          new ImageRun({
+            data: photo.data,
+            type: photo.type,
+            transformation: { width: 96, height: 96 },
+            altText: {
+              title: "Profile photo",
+              description: `${cv.fullName || "Applicant"} profile photo`,
+              name: "Profile photo",
+            },
+          }),
+        ],
+      })
+    : null;
   const personalDetails = cvPersonalDetails(cv);
   const workExperiences = normalizeCvWorkExperiences(cv);
   const referenceParagraphs = () => {
@@ -330,19 +428,26 @@ const downloadCvDocx = async (cv, filename) => {
   };
   const sectionChildren = (id) => {
     const sections = {
-      summary: [sectionHeading("Professional Summary"), paragraph(cv.summary)],
+      summary: [sectionHeading("Professional Summary"), paragraph(cleanExportText(cv.summary))],
       experience: [
         sectionHeading("Work Experience"),
-        ...workExperiences.flatMap((entry) => [
-          paragraph(entry.jobTitle || "Job title", { bold: true, after: 60 }),
-          paragraph([entry.employer, [entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - ")].filter(Boolean).join(" | "), { size: 20, after: 60 }),
-          ...String(entry.responsibilities || "").split("\n").filter(Boolean).map((line) => paragraph(`- ${line}`)),
-        ]),
+        ...workExperiences.flatMap((entry) => {
+          const meta = [
+            cleanExportText(entry.employer),
+            cleanExportText(entry.companyLocation),
+            [entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - "),
+          ].filter(Boolean).join(" | ");
+          return [
+            cleanExportText(entry.jobTitle) ? paragraph(cleanExportText(entry.jobTitle), { bold: true, after: 50, keepNext: true }) : null,
+            meta ? paragraph(meta, { size: 20, after: 60, color: "475569", keepNext: true }) : null,
+            ...cleanExportText(entry.responsibilities).split("\n").map((line) => line.trim().replace(/^[-•●▪◦*]\s*/, "")).filter(Boolean).map((line) => paragraph(line, { bullet: true, after: 45 })),
+          ].filter(Boolean);
+        }),
       ],
-      education: [sectionHeading("Education"), paragraph(cv.education)],
-      skills: [sectionHeading("Skills"), paragraph(cv.skills)],
-      certifications: [sectionHeading("Certifications"), paragraph(cv.certifications)],
-      languages: [sectionHeading("Languages"), paragraph(cv.languages)],
+      education: [sectionHeading("Education"), paragraph(cleanExportText(cv.education))],
+      skills: [sectionHeading("Skills"), paragraph(cleanExportText(cv.skills))],
+      certifications: [sectionHeading("Certifications"), paragraph(cleanExportText(cv.certifications))],
+      languages: [sectionHeading("Languages"), paragraph(cleanExportText(cv.languages))],
       references: [sectionHeading("References"), ...referenceParagraphs()],
     };
     return sections[id] || [];
@@ -350,11 +455,17 @@ const downloadCvDocx = async (cv, filename) => {
   const doc = new Document({
     sections: [
       {
-        properties: {},
+        properties: {
+          page: {
+            margin: { top: 720, right: 720, bottom: 720, left: 720 },
+          },
+        },
         children: [
-          paragraph(cv.fullName, { bold: true, size: 34, after: 80 }),
-          paragraph(cv.jobTitle, { bold: true, size: 24, after: 80 }),
-          paragraph(cvContactLines(cv).join(" | "), { size: 18 }),
+          ...(photoParagraph ? [photoParagraph] : []),
+          paragraph(cleanExportText(cv.fullName) || "Applicant Name", { bold: true, size: 36, after: 50, alignment: AlignmentType.CENTER, color: dark }),
+          paragraph(cleanExportText(cv.jobTitle), { bold: true, size: 24, after: 80, alignment: AlignmentType.CENTER, color: accent }),
+          ...cvContactLines(cv).map((line) => paragraph(line, { size: 18, after: 45, alignment: AlignmentType.CENTER, color: "475569" })),
+          paragraph("", { after: layout === "compact" ? 50 : 120 }),
           ...(personalDetails.length ? [sectionHeading("Personal Details"), ...personalDetails.map((line) => paragraph(line))] : []),
           ...visibleSectionOrder(cv).flatMap((id) => sectionChildren(id)),
         ],
@@ -378,24 +489,24 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
       <style>
         * { box-sizing: border-box; }
         html { background: #ffffff; }
-        body { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 12mm; font-family: Arial, sans-serif; font-size: 12px; color: #111827; line-height: 1.45; background: #ffffff; overflow-wrap: anywhere; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        h1 { color: #0f172a; margin: 0 0 4px; font-size: 30px; line-height: 1.15; }
-        h2 { color: ${theme.dark}; border-bottom: 1px solid ${theme.color}; padding-bottom: 5px; margin: 18px 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0; }
+        body { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 10mm 11mm; font-family: Arial, sans-serif; font-size: 11px; color: #111827; line-height: 1.38; background: #ffffff; overflow-wrap: anywhere; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        h1 { color: #0f172a; margin: 0 0 3px; font-size: 26px; line-height: 1.12; }
+        h2 { color: ${theme.dark}; border-bottom: 1px solid ${theme.color}; padding-bottom: 4px; margin: 14px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0; }
         p { margin: 0 0 8px; white-space: pre-line; }
         ul { margin: 0; padding-left: 18px; }
-        li { margin-bottom: 4px; break-inside: auto; page-break-inside: auto; }
-        .header { display: flex; gap: 14px; align-items: center; border-bottom: 3px solid ${theme.color}; padding-bottom: 14px; margin-bottom: 12px; min-width: 0; }
+        li { margin-bottom: 3px; break-inside: auto; page-break-inside: auto; }
+        .header { display: flex; gap: 12px; align-items: center; border-bottom: 3px solid ${theme.color}; padding-bottom: 12px; margin-bottom: 10px; min-width: 0; }
         .header-main { flex: 1 1 auto; min-width: 0; }
         .contact { display: flex; flex-wrap: wrap; gap: 2px 7px; align-items: center; color: #4b5563; font-size: 11px; line-height: 1.35; overflow-wrap: anywhere; }
         .contact-separator { color: #cbd5e1; }
         .title { color: ${theme.color}; font-weight: 700; }
-        .photo { width: 86px; height: 86px; object-fit: cover; flex: 0 0 auto; }
+        .photo { width: 78px; height: 78px; object-fit: cover; flex: 0 0 auto; }
         .round { border-radius: 999px; }
         .rounded { border-radius: 14px; }
         .square { border-radius: 5px; }
         .section { break-inside: auto; page-break-inside: auto; }
         .section h2 { break-after: avoid; page-break-after: avoid; }
-        .experience-item { margin-bottom: 12px; break-inside: avoid; page-break-inside: avoid; }
+        .experience-item { margin-bottom: 9px; break-inside: avoid; page-break-inside: avoid; }
         .references-block { break-inside: avoid; page-break-inside: avoid; }
         .references-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
         .reference-card { border: 1px solid #e2e8f0; border-radius: 5px; padding: 8px; font-size: 11px; }
@@ -416,7 +527,7 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
         .sidebar-name { margin: 0; color: #ffffff; font-size: 24px; line-height: 1.15; }
         .sidebar-title { margin: 8px 0 0; color: rgba(255,255,255,0.88); font-size: 14px; font-weight: 700; }
         .sidebar-contact { margin-top: 28px; color: rgba(255,255,255,0.86); font-size: 11px; line-height: 1.8; text-align: left; }
-        .main-content { padding: 24px; min-width: 0; }
+        .main-content { padding: 20px; min-width: 0; }
         .credit-footer { margin: 24px 0 0; padding-top: 12px; border-top: 1px solid #e5e7eb; color: #9ca3af; font-size: 7pt; text-align: center; }
       </style>
     </head>
@@ -471,12 +582,12 @@ const initialsForPdf = (name) =>
     .toUpperCase();
 
 export const downloadCvFile = async (cv, type, theme, layout = "classic") => {
-  const html = await buildCvHtml(cv, theme, layout);
   const baseName = fileBaseName(cv.fullName, "CV");
   if (type === "word") {
-    await downloadCvDocx(cv, `${baseName}.docx`);
+    await downloadCvDocx(cv, `${baseName}.docx`, theme, layout);
     return;
   }
+  const html = await buildCvHtml(cv, theme, layout);
   await downloadPdfFromHtml(html, `${baseName}.pdf`);
 };
 
