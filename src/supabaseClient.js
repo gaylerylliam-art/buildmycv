@@ -130,6 +130,18 @@ export async function deleteUserCv(id) {
   if (error) throw error;
 }
 
+export async function deleteAllUserCvs(userId) {
+  if (!supabase || !userId) return;
+  const { error } = await supabase.from("cvs").delete().eq("user_id", userId);
+  if (error) throw error;
+}
+
+export async function deleteAllUserDrafts(userId) {
+  if (!supabase || !userId) return;
+  const { error } = await supabase.from("cv_drafts").delete().eq("user_id", userId);
+  if (error) throw error;
+}
+
 export async function duplicateUserCv(item) {
   if (!supabase || !item) return null;
   const { data, error } = await supabase
@@ -147,4 +159,26 @@ export async function duplicateUserCv(item) {
     .single();
   if (error) throw error;
   return data;
+}
+
+export async function deleteSignedInAccount() {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData?.session?.access_token;
+  if (!token) throw new Error("Please sign in again before deleting your account.");
+
+  const response = await fetch("/.netlify/functions/accountData", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ action: "delete-account" }),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result.ok) {
+    throw new Error(result.message || "Could not delete account.");
+  }
+  await supabase.auth.signOut();
+  return result;
 }

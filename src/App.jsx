@@ -44,6 +44,9 @@ import { initAnalytics, trackEvent } from "./utils/analytics";
 import { getRecaptchaToken, isRecaptchaConfigured } from "./utils/recaptcha";
 import {
   deleteUserCv,
+  deleteAllUserCvs,
+  deleteAllUserDrafts,
+  deleteSignedInAccount,
   duplicateUserCv,
   isSupabaseConfigured,
   listUserCvs,
@@ -189,30 +192,33 @@ const hasUserEnteredCvData = (cv) => {
   ];
   return meaningfulFields.some((key) => {
     const value = cv[key];
-    if (key === "references") return referencesHasContent(value);
+    if (key === "references") {
+      const normalized = normalizeReferences(value);
+      return normalized.mode !== defaultReferences.mode || normalized.entries.some((entry) => Object.values(entry).some((field) => String(field || "").trim()));
+    }
     if (typeof value === "object") return Boolean(value && Object.keys(value).length);
     return String(value || "").trim();
-  }) || (Array.isArray(cv.workExperiences) && cv.workExperiences.length > 0);
+  }) || (Array.isArray(cv.workExperiences) && cv.workExperiences.some((entry) => [entry.jobTitle, entry.employer, entry.companyLocation, entry.fromDate, entry.toDate, entry.responsibilities].some((value) => String(value || "").trim())));
 };
 
 const initialCv = {
-  fullName: "Juan Dela Cruz",
-  jobTitle: defaultCategory.title,
-  email: "juan.delacruz@email.com",
-  phone: "+971 50 123 4567",
-  country: "United Arab Emirates",
-  nationality: "Filipino",
-  visaStatus: "Visit visa",
+  fullName: "",
+  jobTitle: "",
+  email: "",
+  phone: "",
+  country: "",
+  nationality: "",
+  visaStatus: "",
   linkedIn: "",
   portfolioUrl: "",
-  summary: defaultCategory.summary,
-  skills: defaultCategory.skills,
-  experience: defaultCategory.experience,
-  workExperiences: [createExperienceEntry(defaultCategory)],
-  education: "High School Diploma\nManila High School, 2018",
-  certifications: "Basic Food Safety Certificate",
-  languages: "English, Filipino",
-  drivingLicense: "No UAE driving license",
+  summary: "",
+  skills: "",
+  experience: "",
+  workExperiences: [{ ...createExperienceEntry(defaultCategory), jobTitle: "", employer: "", responsibilities: "" }],
+  education: "",
+  certifications: "",
+  languages: "",
+  drivingLicense: "",
   expectedSalaryEnabled: false,
   expectedSalary: "",
   industry: "general",
@@ -224,6 +230,25 @@ const initialCv = {
   hiddenSections: [],
   profilePhoto: "",
   photoShape: "circle",
+};
+
+const sampleCv = {
+  ...initialCv,
+  fullName: "Juan Dela Cruz",
+  jobTitle: defaultCategory.title,
+  email: "juan.delacruz@email.com",
+  phone: "+971 50 123 4567",
+  country: "United Arab Emirates",
+  nationality: "Filipino",
+  visaStatus: "Visit visa",
+  summary: defaultCategory.summary,
+  skills: defaultCategory.skills,
+  experience: defaultCategory.experience,
+  workExperiences: [createExperienceEntry(defaultCategory)],
+  education: "High School Diploma\nManila High School, 2018",
+  certifications: "Basic Food Safety Certificate",
+  languages: "English, Filipino",
+  drivingLicense: "No UAE driving license",
 };
 
 const createCoverLetterFromCv = (cv, categoryId) => {
@@ -996,7 +1021,7 @@ function PrivacyPage({ onStart }) {
       <StaticHero title="Privacy Policy" description="This policy explains what BuildMyCVNow may collect and how user CV data should be handled." />
       <section className="mx-auto max-w-4xl px-5 py-14">
         <PolicyCard title="Privacy Policy">
-          <p>BuildMyCVNow may collect the information needed to create, save, and download CVs, including name, email address, phone number, country, nationality, visa status, job history, education, skills, uploaded CV text, profile photos, saved drafts, and download verification details.</p>
+          <p>BuildMyCVNow may collect the information needed to create, save, and email CVs when you choose account mode, including name, email address, phone number, country, nationality, visa status, job history, education, skills, uploaded CV text, profile photos, saved drafts, and email delivery metadata.</p>
           <p>Download-only users keep CV data in browser state or localStorage so they can finish their CV quickly. This information is not intentionally saved to Supabase unless the user signs in and chooses cloud saving. Download-only users should download their file before closing the browser.</p>
           <p>Registered users can save CV drafts, uploaded files, profile photos, and CV versions with Supabase Auth, Supabase Database, and Supabase Storage under their authenticated account. Row Level Security should be used so users can only access their own records.</p>
           <p>BuildMyCVNow may use Google Analytics to understand page usage, Google reCAPTCHA to reduce spam, and Google AdSense to display advertising. These services may use cookies or similar technologies to measure traffic, protect forms, serve ads, and personalize ads where allowed.</p>
@@ -2388,27 +2413,17 @@ function LiveCVPreview({ cv, theme, layout }) {
   );
 }
 
-function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, emailCopyAddress = "", title = "Verify to download", description = "Enter your contact details. We will send an OTP before unlocking downloads.", label = "Downloads" }) {
-  const [details, setDetails] = useState({ name: cv.fullName, email: cv.email, country: cv.country, phone: cv.phone });
-  const [otp, setOtp] = useState("");
-  const [sentOtp, setSentOtp] = useState("");
-  const [verified, setVerified] = useState(false);
+function DownloadModal({ onClose, onVerifiedDownload, canEmailCopy = false, emailCopyAddress = "", title = "Download for free", description = "No account or contact details are required. Your file downloads directly to this device." }) {
   const [actionStatus, setActionStatus] = useState("");
   const runDownloadAction = async (type) => {
-    setActionStatus(type === "email" ? "Sending CV copy to email..." : "Preparing your file...");
+    setActionStatus(type === "email" ? "Sending CV copy to your verified email..." : "Preparing your file...");
     try {
-      const result = await onVerifiedDownload(type, details);
+      const result = await onVerifiedDownload(type);
       setActionStatus(result?.message || (type === "email" ? "CV email request completed." : "Download started."));
     } catch (error) {
       setActionStatus(error.message || "Action failed. Please try again.");
     }
   };
-  const sendOtp = (event) => {
-    event.preventDefault();
-    setSentOtp(String(Math.floor(100000 + Math.random() * 900000)));
-    setOtp("");
-  };
-  const verify = () => setVerified(otp === sentOtp);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4">
       <div className="w-full max-w-lg rounded bg-white p-6 shadow-soft">
@@ -2417,38 +2432,17 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
             <h2 className="text-2xl font-black text-slate-950">{title}</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
           </div>
-          <button onClick={onClose} className="text-2xl leading-none text-slate-500">Ã—</button>
+          <button onClick={onClose} className="text-2xl leading-none text-slate-500" aria-label="Close">x</button>
         </div>
-        <form onSubmit={sendOtp} className="mt-5 grid gap-3 sm:grid-cols-2">
-          {[
-            ["name", "Name"],
-            ["email", "Contact email"],
-            ["country", "Country"],
-            ["phone", "Contact number"],
-          ].map(([key, label]) => (
-            <label key={key} className="block">
-              <span className="form-label">{label}</span>
-              <input value={details[key]} onChange={(event) => setDetails({ ...details, [key]: event.target.value })} className="form-field" required />
-            </label>
-          ))}
-          <button className="rounded bg-blue-600 px-5 py-3 font-bold text-white sm:col-span-2">Generate OTP</button>
-        </form>
-        {sentOtp && (
-          <div className="mt-5 rounded border border-green-200 bg-green-50 p-4">
-            <p className="text-sm font-bold text-green-900">Mock OTP: {sentOtp}</p>
-            <div className="mt-3 flex gap-2">
-              <input value={otp} onChange={(event) => setOtp(event.target.value)} inputMode="numeric" maxLength={6} className="form-field" placeholder="Enter 6-digit OTP" />
-              <button onClick={verify} className="rounded bg-green-600 px-5 py-3 font-bold text-white">Verify</button>
-            </div>
-            {verified && <p className="mt-3 text-sm font-bold text-green-800">OTP verified. {label} are unlocked.</p>}
-          </div>
-        )}
+        <div className="mt-5 rounded border border-green-200 bg-green-50 p-4 text-sm font-bold leading-6 text-green-950">
+          Free download-only mode keeps this CV in your browser. It is not saved online unless you create an account.
+        </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <button disabled={!verified} onClick={() => runDownloadAction("pdf")} className="rounded bg-green-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">Download PDF</button>
-          <button disabled={!verified} onClick={() => runDownloadAction("word")} className="rounded border border-blue-600 px-5 py-3 font-bold text-blue-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400">Download DOCX</button>
+          <button onClick={() => runDownloadAction("pdf")} className="rounded bg-green-600 px-5 py-3 font-bold text-white">Download PDF</button>
+          <button onClick={() => runDownloadAction("word")} className="rounded border border-blue-600 px-5 py-3 font-bold text-blue-700">Download DOCX</button>
           {canEmailCopy ? (
-            <button disabled={!verified} onClick={() => runDownloadAction("email")} className="rounded border border-green-600 bg-green-50 px-5 py-3 font-bold text-green-800 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-white disabled:text-slate-400 sm:col-span-2">
-              Email CV copy to {emailCopyAddress || details.email}
+            <button onClick={() => runDownloadAction("email")} className="rounded border border-green-600 bg-green-50 px-5 py-3 font-bold text-green-800 sm:col-span-2">
+              Email CV copy to {emailCopyAddress}
             </button>
           ) : (
             <p className="rounded bg-blue-50 p-3 text-xs font-bold leading-5 text-blue-900 sm:col-span-2">
@@ -2464,7 +2458,7 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
 
 function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
   const [mode, setMode] = useState("signin");
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [form, setForm] = useState({ name: "", email: "" });
   const [phoneForm, setPhoneForm] = useState({ phone: "", otp: "", challenge: null, mockOtp: "" });
   const [phoneOtpSent, setPhoneOtpSent] = useState(false);
   const [message, setMessage] = useState(isSupabaseConfigured ? "" : "Add VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY or REACT_APP_SUPABASE_URL/REACT_APP_SUPABASE_ANON_KEY to .env to enable login.");
@@ -2496,22 +2490,19 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
       const options = {
         emailRedirectTo: AUTH_REDIRECT_URL,
         data: { full_name: form.name },
-        captchaToken,
       };
-      const { error } =
-        mode === "signup"
-          ? await supabase.auth.signUp({ email: form.email, password: form.password, options })
-          : await supabase.auth.signInWithPassword({ email: form.email, password: form.password, captchaToken });
+      const { error } = await supabase.auth.signInWithOtp({
+        email: form.email,
+        options: {
+          ...options,
+          shouldCreateUser: true,
+          captchaToken,
+        },
+      });
       if (error) throw error;
-      trackEvent(mode === "signup" ? "signup" : "login", { method: "email" });
-      if (mode === "signup") {
-        setLastSignupEmail(form.email);
-        setMessage("Signup request sent. Please check your inbox and spam folder for the confirmation email. If it does not arrive, use Resend confirmation email below.");
-      } else {
-        setMessage("Signed in successfully.");
-        onRegisteredMode();
-      }
-      if (mode === "signin") onClose();
+      trackEvent(mode === "signup" ? "signup" : "login", { method: "email_otp" });
+      setLastSignupEmail(form.email);
+      setMessage("Email verification sent. Open the link or enter the OTP from your inbox to continue. Check spam if it does not arrive.");
     } catch (error) {
       setMessage(error.message || "Authentication failed.");
     } finally {
@@ -2521,23 +2512,15 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
   const resendConfirmation = async () => {
     if (!supabase || !lastSignupEmail) return;
     setLoading(true);
-    setMessage("Sending confirmation email again...");
+    setMessage("Sending email verification again...");
     try {
-      const { error } = await supabase.auth.resend({
-        type: "signup",
+      const { error } = await supabase.auth.signInWithOtp({
         email: lastSignupEmail,
-        options: { emailRedirectTo: AUTH_REDIRECT_URL },
+        options: { emailRedirectTo: AUTH_REDIRECT_URL, shouldCreateUser: true },
       });
-      if (error) {
-        const fallback = await fetch("/.netlify/functions/resendSignupConfirmation", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: lastSignupEmail }),
-        });
-        if (!fallback.ok) throw error;
-      }
-      trackEvent("signup_confirmation_resend");
-      setMessage("Confirmation email sent again. Please check your inbox and spam folder.");
+      if (error) throw error;
+      trackEvent("email_otp_resend");
+      setMessage("Email verification sent again. Please check your inbox and spam folder.");
     } catch (error) {
       setMessage(error.message || "Could not resend confirmation email.");
     } finally {
@@ -2565,10 +2548,10 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
       });
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.message || "Could not send mobile OTP.");
-      setPhoneForm({ ...phoneForm, challenge: result.challenge, mockOtp: result.mockOtp || "" });
+      setPhoneForm({ ...phoneForm, challenge: result.challenge, mockOtp: "" });
       setPhoneOtpSent(true);
       trackEvent("phone_otp_sent");
-      setMessage(result.smsSent ? "OTP sent to your mobile number. Enter the SMS code to continue." : `SMS provider is not configured yet. Test OTP: ${result.mockOtp}`);
+      setMessage("OTP sent to your mobile number. Enter the SMS code to continue.");
     } catch (error) {
       setMessage(error.message || "Could not send mobile OTP.");
     } finally {
@@ -2601,8 +2584,8 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
       <div className="w-full max-w-md rounded bg-white p-6 shadow-soft">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-black text-slate-950">{mode === "signin" ? "Login" : "Create account"}</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">Choose quick download-only mode or sign in to save CVs online.</p>
+            <h2 className="text-2xl font-black text-slate-950">{mode === "signin" ? "Email login" : "Create account"}</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">Use free download-only mode, or verify your email to save CVs online and receive generated CV copies.</p>
           </div>
           <button onClick={onClose} className="text-2xl leading-none text-slate-500">x</button>
         </div>
@@ -2614,14 +2597,14 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
             Continue with mobile OTP
           </button>
           <p className="rounded bg-amber-50 p-3 text-xs font-bold leading-5 text-amber-900">
-            Download-only mode: Your CV will not be saved online. Download your file before closing the browser.
+            Free download-only mode: no account, no online CV, local browser only, instant PDF/DOCX download.
           </p>
         </div>
         <div className="mt-4">
-          <p className="mb-2 text-xs font-black uppercase text-slate-500">Sign in / Create account to save online</p>
+          <p className="mb-2 text-xs font-black uppercase text-slate-500">Email verified account mode</p>
           <div className="grid grid-cols-2 gap-2">
           {[
-            ["signin", "Login"],
+            ["signin", "Email login"],
             ["signup", "Sign up"],
           ].map(([id, label]) => (
             <button key={id} onClick={() => setMode(id)} className={`rounded px-4 py-3 text-sm font-black ${mode === id ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-700"}`}>
@@ -2645,11 +2628,6 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
             <button disabled={loading} className="rounded bg-green-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
               {loading ? "Please wait..." : phoneOtpSent ? "Verify OTP and continue" : "Send OTP"}
             </button>
-            {phoneForm.mockOtp && (
-              <p className="rounded bg-amber-50 p-3 text-xs font-bold leading-5 text-amber-900">
-                Test mode OTP: {phoneForm.mockOtp}. Add Twilio environment variables in Netlify to send OTP by SMS.
-              </p>
-            )}
           </form>
         ) : (
         <form onSubmit={submit} className="mt-5 grid gap-3">
@@ -2663,13 +2641,9 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
             <span className="form-label">Email address</span>
             <input className="form-field" type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} required />
           </label>
-          <label>
-            <span className="form-label">Password</span>
-            <input className="form-field" type="password" minLength={6} value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} required />
-          </label>
           {isRecaptchaConfigured && <p className="text-xs font-bold text-slate-500">Protected by Google reCAPTCHA.</p>}
           <button disabled={!isSupabaseConfigured || loading} className="rounded bg-green-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
-            {loading ? "Please wait..." : mode === "signin" ? "Login" : "Create account"}
+            {loading ? "Please wait..." : mode === "signin" ? "Send email OTP" : "Create account by email"}
           </button>
         </form>
         )}
@@ -2684,7 +2658,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
         )}
         {lastSignupEmail && (
           <button disabled={loading} onClick={resendConfirmation} className="mt-3 w-full rounded border border-green-600 px-5 py-3 font-bold text-green-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400">
-            Resend confirmation email
+            Resend email verification
           </button>
         )}
         {message && <p className="mt-4 rounded bg-slate-50 p-3 text-sm font-bold leading-6 text-slate-700">{message}</p>}
@@ -2693,7 +2667,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
   );
 }
 
-function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDraft, onLoadDraft, draftStatus }) {
+function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDraft, onLoadDraft, onExportData, onClearLocalDraft, onDeleteAllData, onDeleteAccount, draftStatus }) {
   const [items, setItems] = useState([]);
   const [message, setMessage] = useState(user ? "Load your saved CVs." : "Login to save and manage up to 5 CVs.");
   const refresh = async () => {
@@ -2730,9 +2704,25 @@ function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDra
     }
   };
   const remove = async (id) => {
+    if (!window.confirm("Delete this saved CV?")) return;
     try {
       await deleteUserCv(id);
       await refresh();
+    } catch (error) {
+      setMessage(error.message);
+    }
+  };
+  const removeAll = async () => {
+    try {
+      await onDeleteAllData();
+      await refresh();
+    } catch (error) {
+      setMessage(error.message);
+    }
+  };
+  const removeAccount = async () => {
+    try {
+      await onDeleteAccount();
     } catch (error) {
       setMessage(error.message);
     }
@@ -2752,6 +2742,16 @@ function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDra
         <div className="mt-3 grid grid-cols-2 gap-2">
           <button onClick={onSaveDraft} className="rounded bg-blue-600 px-3 py-2 text-xs font-black text-white">Save draft</button>
           <button onClick={onLoadDraft} className="rounded bg-white px-3 py-2 text-xs font-black text-blue-700 ring-1 ring-blue-200">Restore draft</button>
+        </div>
+      </div>
+      <div className="mt-3 rounded border border-slate-200 bg-white p-3">
+        <p className="text-xs font-black text-slate-950">Privacy and data controls</p>
+        <p className="mt-1 text-xs font-bold leading-5 text-slate-500">CVs can include sensitive personal data. You can export or delete your saved data at any time.</p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <button onClick={() => onExportData(items)} className="rounded bg-slate-100 px-3 py-2 text-xs font-black text-slate-700">Export my data</button>
+          <button onClick={onClearLocalDraft} className="rounded bg-slate-100 px-3 py-2 text-xs font-black text-slate-700">Clear local draft</button>
+          <button onClick={removeAll} className="rounded bg-red-50 px-3 py-2 text-xs font-black text-red-700">Delete saved CVs</button>
+          <button onClick={removeAccount} className="rounded bg-red-600 px-3 py-2 text-xs font-black text-white">Delete account</button>
         </div>
       </div>
       <p className="mt-2 text-xs font-bold leading-5 text-slate-500">{message}</p>
@@ -3103,8 +3103,8 @@ function CoverLetterDownloadModal({ cv, onClose, onVerifiedDownload }) {
       cv={cv}
       onClose={onClose}
       onVerifiedDownload={onVerifiedDownload}
-      title="Verify to download cover letter"
-      description="Enter your contact details to unlock your free cover letter download. This uses the same mock OTP flow as the CV."
+      title="Download cover letter for free"
+      description="No account or contact details are required. Your cover letter downloads directly to this device."
       label="Cover letter downloads"
     />
   );
@@ -3791,6 +3791,12 @@ function CVBuilderApp({ onHome }) {
     }
     loadTemplateSampleData(id);
   };
+  const loadCurrentSampleData = () => {
+    setCv(sampleCv);
+    setCoverLetter(createCoverLetterFromCv(sampleCv, defaultCategory.id));
+    setCategoryId(defaultCategory.id);
+    trackEvent("load_sample_cv");
+  };
   const updateCvField = (key, value) => {
     if (key === "tipsEnabled") localStorage.setItem("bmcv_tips_enabled", String(Boolean(value)));
     setCv((current) => ({ ...current, [key]: value }));
@@ -3862,22 +3868,30 @@ function CVBuilderApp({ onHome }) {
     }
   };
   const handleDownload = async (type) => {
-    if (type === "email") {
-      const toEmail = user?.email || session?.user?.email || cv.email;
-      if (!user?.email && !session?.user?.email) {
+    const emailGeneratedCv = async (format) => {
+      if (!user?.email || !session?.access_token) {
         throw new Error("Please sign in with email first to receive a CV copy by email.");
       }
       const response = await fetch("/.netlify/functions/emailCv", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: toEmail, cv }),
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ cv, theme, layoutId, format }),
       });
-      const result = await response.json();
+      const result = await response.json().catch(() => ({}));
       if (!response.ok || !result.ok) throw new Error(result.message || "Could not email your CV.");
-      logEvent("cv_email_requested", { templateId: categoryId, forwarded: result.forwarded });
+      logEvent("cv_email_requested", { templateId: categoryId, forwarded: result.forwarded, format });
       return result;
+    };
+    if (type === "email") {
+      return emailGeneratedCv("pdf");
     }
     await downloadCvFile(cv, type, theme, layoutId);
+    if (user?.email && session?.access_token) {
+      emailGeneratedCv(type).catch((error) => setDraftStatus(error.message || "CV downloaded, but email copy could not be sent."));
+    }
     logEvent("cv_downloaded", { format: type, templateId: categoryId, completionPercent: completion.percent });
     setDownloaded(true);
     if (showSharePrompt) sessionStorage.setItem("bmcv_share_prompt_seen", "1");
@@ -3897,6 +3911,46 @@ function CVBuilderApp({ onHome }) {
     await supabase?.auth.signOut();
     setUserMode("guest");
     trackEvent("logout");
+  };
+  const exportUserData = (items = []) => {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      accountEmail: user?.email || "",
+      currentDraft: draftPayload(),
+      savedCvs: items,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "buildmycvnow-data-export.json";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    trackEvent("export_account_data");
+  };
+  const clearLocalDraft = () => {
+    if (!window.confirm("Clear the draft saved in this browser? This will not delete cloud CVs.")) return;
+    localStorage.removeItem(DRAFT_STORAGE_KEY);
+    setSaveStatus("Local draft cleared");
+    trackEvent("clear_local_draft");
+  };
+  const deleteAllAccountData = async () => {
+    if (!user?.id || !window.confirm("Delete all saved CVs and cloud drafts for this account? This cannot be undone.")) return;
+    await deleteAllUserCvs(user.id);
+    await deleteAllUserDrafts(user.id);
+    setDraftStatus("Saved CVs and cloud drafts deleted.");
+    trackEvent("delete_account_cv_data");
+  };
+  const deleteAccount = async () => {
+    if (!window.confirm("Permanently delete your account and saved CV data? This cannot be undone.")) return;
+    await deleteSignedInAccount();
+    setUserMode("guest");
+    setSession(null);
+    localStorage.removeItem("cvforall:user-mode");
+    setDraftStatus("Account deleted.");
+    trackEvent("delete_account");
   };
   const startUrgentMode = (method) => {
     setUserMode(method === "phone" ? "urgent-phone" : "urgent-local");
@@ -3956,7 +4010,19 @@ function CVBuilderApp({ onHome }) {
           />
           <section className="builder-form-panel-v2">
             <div className="builder-form-inner">
+              <section className="rounded border border-slate-200 bg-white p-4 text-xs font-bold leading-5 text-slate-600">
+                Upload/import privacy note: CV files can contain sensitive personal data. In download-only mode, imported text stays in this browser unless you choose to sign in and save online.
+              </section>
               <ExistingCVImporter onImport={handleImport} />
+              {!hasUserEnteredCvData(cv) && (
+                <section className="rounded border border-blue-100 bg-blue-50 p-4">
+                  <h3 className="panel-title text-blue-950">Start from scratch or load a sample</h3>
+                  <p className="mt-2 text-xs font-bold leading-5 text-blue-800">The builder starts blank so you never accidentally download sample information.</p>
+                  <button type="button" onClick={loadCurrentSampleData} className="mt-3 rounded bg-blue-600 px-4 py-3 text-sm font-black text-white hover:bg-blue-700">
+                    Load sample CV
+                  </button>
+                </section>
+              )}
               <ProfilePhotoUploader cv={cv} onChange={handleProfilePhotoChange} />
               {storageMessage && cloudSavingEnabled && <p className="rounded bg-slate-50 p-3 text-xs font-bold leading-5 text-slate-600">{storageMessage}</p>}
               <CVBuilderForm cv={cv} onChange={updateCvField} />
@@ -3985,6 +4051,10 @@ function CVBuilderApp({ onHome }) {
                         onLoad={loadSavedCv}
                         onSaveDraft={() => saveCloudDraft()}
                         onLoadDraft={restoreCloudDraft}
+                        onExportData={exportUserData}
+                        onClearLocalDraft={clearLocalDraft}
+                        onDeleteAllData={deleteAllAccountData}
+                        onDeleteAccount={deleteAccount}
                         draftStatus={draftStatus}
                       />
                     ) : (

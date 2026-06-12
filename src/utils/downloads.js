@@ -269,11 +269,11 @@ const saveBlob = (blob, filename) => {
   URL.revokeObjectURL(url);
 };
 
-const downloadPdfFromServer = async (html, filename) => {
+const downloadPdfFromServer = async ({ cv, theme, layout, filename }) => {
   const response = await fetch("/.netlify/functions/export-pdf", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ html, filename }),
+    body: JSON.stringify({ cv, theme, layout, filename }),
   });
 
   if (!response.ok) {
@@ -286,9 +286,9 @@ const downloadPdfFromServer = async (html, filename) => {
   saveBlob(blob, filename);
 };
 
-const downloadPdfFromHtml = async (html, filename) => {
+const downloadPdfFromHtml = async (html, filename, cv, theme, layout) => {
   try {
-    await downloadPdfFromServer(html, filename);
+    await downloadPdfFromServer({ cv, theme, layout, filename });
     return;
   } catch (error) {
     console.warn("Server PDF export unavailable; using browser fallback.", error);
@@ -588,7 +588,7 @@ export const downloadCvFile = async (cv, type, theme, layout = "classic") => {
     return;
   }
   const html = await buildCvHtml(cv, theme, layout);
-  await downloadPdfFromHtml(html, `${baseName}.pdf`);
+  await downloadPdfFromHtml(html, `${baseName}.pdf`, cv, theme, layout);
 };
 
 export const buildCoverLetterHtml = (letter, cv, theme = { color: "#0f66d0", dark: "#0f172a" }) => {

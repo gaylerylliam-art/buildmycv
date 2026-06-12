@@ -17,7 +17,9 @@ const sendSms = async ({ phone, otp }) => {
   const sid = process.env.TWILIO_ACCOUNT_SID;
   const token = process.env.TWILIO_AUTH_TOKEN;
   const from = process.env.TWILIO_FROM_NUMBER;
-  if (!sid || !token || !from) return false;
+  if (!sid || !token || !from) {
+    throw new Error("Mobile OTP is not configured yet. Please use email verification or download-only mode.");
+  }
 
   const params = new URLSearchParams();
   params.set("To", phone);
@@ -60,14 +62,17 @@ export const handler = async (event) => {
     const otp = String(Math.floor(100000 + Math.random() * 900000));
     const expires = Date.now() + 10 * 60 * 1000;
     const challenge = { phone, expires, signature: signChallenge({ phone, otp, expires }) };
-    const smsSent = await sendSms({ phone, otp });
+    try {
+      await sendSms({ phone, otp });
+    } catch (error) {
+      return json(503, { ok: false, message: error.message || "Mobile OTP is not available." });
+    }
 
     return json(200, {
       ok: true,
-      smsSent,
+      smsSent: true,
       challenge,
-      mockOtp: smsSent ? undefined : otp,
-      message: smsSent ? "OTP sent to your mobile number." : "OTP generated. Configure Twilio in Netlify to send it by SMS.",
+      message: "OTP sent to your mobile number.",
     });
   }
 
