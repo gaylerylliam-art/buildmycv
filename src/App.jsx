@@ -2169,7 +2169,91 @@ function CoverLetterApplicantForm({ cv, letter, onCvChange, onLetterChange }) {
   );
 }
 
+const coverLetterAiFields = new Set(["jobDescription", "opening", "body", "qualifications", "value", "closing"]);
+
+const coverLetterSpellingCorrections = [
+  [/\brecive\b/gi, "receive"],
+  [/\brecieved\b/gi, "received"],
+  [/\breceving\b/gi, "receiving"],
+  [/\bfroward\b/gi, "forward"],
+  [/\bfrowrd\b/gi, "forward"],
+  [/\bfrowrded\b/gi, "forwarded"],
+  [/\bforwrd\b/gi, "forward"],
+  [/\bconcernrd\b/gi, "concerned"],
+  [/\bconced\b/gi, "concerned"],
+  [/\bcpstumer\b/gi, "customer"],
+  [/\bcostumer\b/gi, "customer"],
+  [/\bcustum(er|ers)\b/gi, "customer$1"],
+  [/\bcomunication\b/gi, "communication"],
+  [/\bmanagment\b/gi, "management"],
+  [/\bexperiance\b/gi, "experience"],
+  [/\bresponsiblity\b/gi, "responsibility"],
+  [/\bresponsiblities\b/gi, "responsibilities"],
+  [/\bachivement\b/gi, "achievement"],
+  [/\bachivements\b/gi, "achievements"],
+  [/\bprofesional\b/gi, "professional"],
+  [/\boppertunity\b/gi, "opportunity"],
+  [/\boppurtunity\b/gi, "opportunity"],
+  [/\bintersted\b/gi, "interested"],
+  [/\bappling\b/gi, "applying"],
+  [/\bapplyed\b/gi, "applied"],
+  [/\bcompnay\b/gi, "company"],
+  [/\borganisation\b/gi, "organization"],
+  [/\balot\b/gi, "a lot"],
+  [/\bteh\b/gi, "the"],
+  [/\bi\b/g, "I"],
+];
+
+const professionalReplacements = [
+  [/\bi want to apply for\b/gi, "I am pleased to apply for"],
+  [/\bi am writing for\b/gi, "I am writing to apply for"],
+  [/\bi am good at\b/gi, "I have practical experience in"],
+  [/\bi can do\b/gi, "I am able to handle"],
+  [/\bi know how to\b/gi, "I have experience in"],
+  [/\bhard working\b/gi, "hardworking"],
+  [/\bfast learner\b/gi, "quick learner"],
+  [/\bteam player\b/gi, "collaborative team member"],
+  [/\bworked in\b/gi, "gained experience in"],
+  [/\bhelped\b/gi, "supported"],
+  [/\bdone\b/gi, "completed"],
+  [/\bmake sure\b/gi, "ensure"],
+  [/\blook after\b/gi, "manage"],
+  [/\btalk to\b/gi, "communicate with"],
+];
+
+const polishCoverLetterText = (text, fieldKey = "") => {
+  let polished = String(text || "")
+    .replace(/\s+/g, " ")
+    .replace(/\s+([,.;:!?])/g, "$1")
+    .trim();
+  coverLetterSpellingCorrections.forEach(([pattern, replacement]) => {
+    polished = polished.replace(pattern, replacement);
+  });
+  professionalReplacements.forEach(([pattern, replacement]) => {
+    polished = polished.replace(pattern, replacement);
+  });
+  polished = polished
+    .split(/(?<=[.!?])\s+|\n+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean)
+    .map((sentence) => {
+      const cleaned = sentence.replace(/[.]+$/, "");
+      return `${cleaned.charAt(0).toUpperCase()}${cleaned.slice(1)}.`;
+    })
+    .join(" ");
+  if (!polished) return "";
+  if (fieldKey === "opening" && !/\b(apply|application|position|opportunity)\b/i.test(polished)) {
+    polished = `${polished} I am interested in this opportunity and confident that my background matches the needs of the role.`;
+  }
+  if (fieldKey === "closing" && !/\b(thank|interview|consideration|opportunity)\b/i.test(polished)) {
+    polished = `${polished} Thank you for your time and consideration. I would welcome the opportunity to discuss my application further.`;
+  }
+  return polished;
+};
+
 function CoverLetterForm({ letter, onChange, onRegenerate }) {
+  const [aiSuggestions, setAiSuggestions] = useState({});
+  const [aiStatus, setAiStatus] = useState("");
   const fields = [
     ["hiringManager", "Hiring manager name", "text"],
     ["companyName", "Company name", "text"],
@@ -2182,6 +2266,38 @@ function CoverLetterForm({ letter, onChange, onRegenerate }) {
     ["value", "Value proposition", "textarea"],
     ["closing", "Closing paragraph", "textarea"],
   ];
+  const reviewWithAi = (key, label) => {
+    const original = String(letter[key] || "").trim();
+    if (!original) {
+      setAiStatus(`Add text in ${label.toLowerCase()} first, then AI Assistant can check it.`);
+      return;
+    }
+    const suggested = polishCoverLetterText(original, key);
+    setAiSuggestions((current) => ({
+      ...current,
+      [key]: { original, suggested },
+    }));
+    setAiStatus("AI Assistant checked spelling, grammar, and professional wording. Please approve or reject the suggestion.");
+  };
+  const approveSuggestion = (key) => {
+    const suggestion = aiSuggestions[key];
+    if (!suggestion) return;
+    onChange(key, suggestion.suggested);
+    setAiSuggestions((current) => {
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
+    setAiStatus("Suggestion applied. Please review the cover letter preview before downloading.");
+  };
+  const rejectSuggestion = (key) => {
+    setAiSuggestions((current) => {
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
+    setAiStatus("Suggestion rejected. Your original cover letter text was kept.");
+  };
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2">
@@ -2202,15 +2318,50 @@ function CoverLetterForm({ letter, onChange, onRegenerate }) {
         Generate ATS-friendly letter
       </button>
       {fields.map(([key, label, type]) => (
-        <label key={key} className="block">
-          <span className="form-label">{label}</span>
-          {type === "textarea" ? (
-            <textarea value={letter[key] || ""} onChange={(event) => onChange(key, event.target.value)} rows={key === "body" ? 6 : 4} className="form-field resize-y" />
-          ) : (
-            <input value={letter[key] || ""} onChange={(event) => onChange(key, event.target.value)} className="form-field" />
+        <div key={key} className="block">
+          <label>
+            <span className="form-label">{label}</span>
+            {type === "textarea" ? (
+              <textarea value={letter[key] || ""} onChange={(event) => onChange(key, event.target.value)} rows={key === "body" ? 6 : 4} className="form-field resize-y" />
+            ) : (
+              <input value={letter[key] || ""} onChange={(event) => onChange(key, event.target.value)} className="form-field" />
+            )}
+          </label>
+          {type === "textarea" && coverLetterAiFields.has(key) && (
+            <div className="mt-2">
+              <div className="ai-assist-row">
+                <button type="button" onClick={() => reviewWithAi(key, label)} className="btn-ai btn-ai-work">
+                  <Icon name="sparkle" className="h-3 w-3" /> AI Assistant
+                </button>
+                <span className="ai-hint">Check grammar, spelling, and rephrase this more professionally</span>
+              </div>
+              {aiSuggestions[key] && (
+                <div className="ai-suggestion-card mt-3">
+                  <div className="ai-suggestion-header">
+                    <span><Icon name="sparkle" className="h-4 w-4" /> AI suggested rewrite</span>
+                    <span>Approve or reject before it changes your cover letter</span>
+                  </div>
+                  <div className="ai-suggestion-grid">
+                    <div>
+                      <p className="ai-suggestion-label">Original text</p>
+                      <pre>{aiSuggestions[key].original}</pre>
+                    </div>
+                    <div>
+                      <p className="ai-suggestion-label">Suggested text</p>
+                      <pre>{aiSuggestions[key].suggested}</pre>
+                    </div>
+                  </div>
+                  <div className="ai-suggestion-actions">
+                    <button type="button" onClick={() => approveSuggestion(key)} className="ai-approve-button">Approve and use this</button>
+                    <button type="button" onClick={() => rejectSuggestion(key)} className="ai-reject-button">Reject</button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
-        </label>
+        </div>
       ))}
+      {aiStatus && <p className="text-sm font-bold text-blue-700">{aiStatus}</p>}
     </div>
   );
 }
