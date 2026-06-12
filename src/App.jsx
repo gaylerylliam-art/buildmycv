@@ -711,7 +711,7 @@ function LandingPage({ onStart }) {
       className: "global-cv-card-right",
     },
   ];
-  const videoUrl = HEYGEN_DEMO_VIDEO_URL;
+  const videoUrl = BUILDMYCV_DEMO_VIDEO_URL;
 
   const toggleVideo = async () => {
     const video = videoRef.current;
@@ -825,7 +825,7 @@ function LandingPage({ onStart }) {
                 ref={videoRef}
                 className="demo-video"
                 src={videoUrl}
-                poster={HEYGEN_DEMO_POSTER_URL}
+                poster={BUILDMYCV_DEMO_POSTER_URL}
                 preload="metadata"
                 playsInline
                 loop
@@ -1247,9 +1247,9 @@ function SiteFooter({ onStart }) {
   );
 }
 
-const HEYGEN_DEMO_PAGE_URL = "https://app.heygen.com/videos/buildmycvnow-landscape-boost-37034e74791e4040830908c8fe32f8a0";
-const HEYGEN_DEMO_VIDEO_URL = "https://resource2.heygen.ai/video/transcode/37034e74791e4040830908c8fe32f8a0/v45300492faf240b39a88f9905a3267a9/1920x1080_caption.mp4";
-const HEYGEN_DEMO_POSTER_URL = "https://dynamic.heygen.ai/aws_pacific/avatar_tmp/021c62749e9c473098175a3fcc2354c1/v45300492faf240b39a88f9905a3267a9/37034e74791e4040830908c8fe32f8a0.jpeg";
+const BUILDMYCV_DEMO_VIDEO_URL = "/assets/buildmycvnow-demo.mp4";
+const BUILDMYCV_DEMO_PAGE_URL = BUILDMYCV_DEMO_VIDEO_URL;
+const BUILDMYCV_DEMO_POSTER_URL = "/assets/cv-video-thumb.jpg";
 
 function IPhonePortraitDisplay({ onStart }) {
   return (
@@ -1263,13 +1263,13 @@ function IPhonePortraitDisplay({ onStart }) {
               </span>
               BuildMyCV<span className="text-green-600">Now</span>
             </span>
-            <a href={HEYGEN_DEMO_PAGE_URL} target="_blank" rel="noreferrer" className="rounded bg-green-600 px-3 py-2 text-xs font-black text-white">
+            <a href={BUILDMYCV_DEMO_PAGE_URL} target="_blank" rel="noreferrer" className="rounded bg-green-600 px-3 py-2 text-xs font-black text-white">
               Open video
             </a>
           </div>
           <div className="landing-video-frame">
-            <video controls playsInline preload="metadata" poster={HEYGEN_DEMO_POSTER_URL} aria-label="How to create and download your CV for free">
-              <source src={HEYGEN_DEMO_VIDEO_URL} type="video/mp4" />
+            <video controls playsInline preload="metadata" poster={BUILDMYCV_DEMO_POSTER_URL} aria-label="How to create and download your CV for free">
+              <source src={BUILDMYCV_DEMO_VIDEO_URL} type="video/mp4" />
               Your browser cannot play this video. Please open the video in a new tab.
             </video>
           </div>
@@ -1294,7 +1294,7 @@ function IPhonePortraitDisplay({ onStart }) {
             <button onClick={onStart} className="rounded bg-green-600 px-6 py-4 font-bold text-white hover:bg-green-700">
               Try the CV builder
             </button>
-            <a href={HEYGEN_DEMO_PAGE_URL} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded border border-blue-600 px-6 py-4 font-bold text-blue-700 hover:bg-blue-50">
+            <a href={BUILDMYCV_DEMO_PAGE_URL} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded border border-blue-600 px-6 py-4 font-bold text-blue-700 hover:bg-blue-50">
               Open video
             </a>
           </div>
