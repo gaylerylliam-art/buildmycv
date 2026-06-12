@@ -826,7 +826,7 @@ function LandingPage({ onStart }) {
 }
 
 function ContactSection() {
-  const [status, setStatus] = useState(isSupabaseConfigured ? "Ready to send your message." : "Supabase is not configured yet. Add the Supabase environment variables to enable contact form submissions.");
+  const [status, setStatus] = useState("Messages are forwarded to gaylerylliam@gmail.com.");
   const [sending, setSending] = useState(false);
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -835,14 +835,16 @@ function ContactSection() {
     setSending(true);
     setStatus("Sending your message...");
     try {
-      await submitContactMessage({
+      const result = await submitContactMessage({
         name: formData.get("name"),
         email: formData.get("email"),
         message: formData.get("message"),
       });
       trackEvent("contact_form_sent");
       form.reset();
-      setStatus("Message sent successfully. We will reply as soon as possible.");
+      setStatus(result.forwarded
+        ? "Message sent successfully to gaylerylliam@gmail.com. We will reply as soon as possible."
+        : "Message received, but EmailJS forwarding is not configured yet in Netlify.");
     } catch (error) {
       trackEvent("contact_form_failed");
       setStatus(error.message || "Could not send message. Please try again later.");
@@ -856,10 +858,10 @@ function ContactSection() {
         <div>
           <h2 className="text-3xl font-black text-slate-950">Contact Us</h2>
           <p className="mt-4 text-lg leading-8 text-slate-600">
-            Questions, feedback, and partnership messages are welcome. This form stores your message securely in Supabase so the BuildMyCVNow team can review and reply.
+            Questions, feedback, and partnership messages are welcome. This form forwards every message to gaylerylliam@gmail.com and can also keep a secure Supabase copy for follow-up.
           </p>
           <div className="mt-6 rounded bg-white p-5 text-sm leading-6 text-slate-600 ring-1 ring-slate-200">
-            <p><strong className="text-slate-950">Email:</strong> support@buildmycvnow.com</p>
+            <p><strong className="text-slate-950">Email forwarding:</strong> gaylerylliam@gmail.com</p>
             <p><strong className="text-slate-950">Response time:</strong> 1-2 business days</p>
           </div>
         </div>
@@ -876,7 +878,8 @@ function ContactSection() {
             <span className="form-label">Message</span>
             <textarea className="form-field" name="message" rows={5} placeholder="How can we help?" required />
           </label>
-          <button disabled={!isSupabaseConfigured || sending} className="rounded bg-green-600 px-6 py-4 font-bold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-slate-300">
+          <input className="hidden" name="website" tabIndex="-1" autoComplete="off" />
+          <button disabled={sending} className="rounded bg-green-600 px-6 py-4 font-bold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-slate-300">
             {sending ? "Sending..." : "Send message"}
           </button>
           <p className="rounded bg-slate-50 p-3 text-sm font-bold leading-6 text-slate-600">{status}</p>

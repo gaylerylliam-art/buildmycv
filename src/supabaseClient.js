@@ -16,9 +16,20 @@ export const supabase = isSupabaseConfigured
   : null;
 
 export async function submitContactMessage({ name, email, message }) {
-  if (!supabase) throw new Error("Supabase is not configured yet.");
+  const response = await fetch("/.netlify/functions/contact", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, email, message }),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (response.ok && result.ok) return result;
+
+  if (!supabase) {
+    throw new Error(result.message || "Could not send message. Please try again later.");
+  }
   const { error } = await supabase.from("contact_messages").insert({ name, email, message });
   if (error) throw error;
+  return { ok: true, stored: true, forwarded: false };
 }
 
 export async function uploadProfilePhoto(userId, dataUrl) {
