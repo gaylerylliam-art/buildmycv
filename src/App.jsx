@@ -75,6 +75,31 @@ const normalizeWorkExperiences = (cv) => {
   ];
 };
 
+const hasUserEnteredCvData = (cv) => {
+  const meaningfulFields = [
+    "fullName",
+    "jobTitle",
+    "email",
+    "phone",
+    "country",
+    "nationality",
+    "visaStatus",
+    "linkedIn",
+    "portfolioUrl",
+    "summary",
+    "skills",
+    "experience",
+    "education",
+    "certifications",
+    "languages",
+    "drivingLicense",
+    "expectedSalary",
+    "references",
+    "profilePhoto",
+  ];
+  return meaningfulFields.some((key) => String(cv[key] || "").trim()) || (Array.isArray(cv.workExperiences) && cv.workExperiences.length > 0);
+};
+
 const initialCv = {
   fullName: "Juan Dela Cruz",
   jobTitle: defaultCategory.title,
@@ -2718,6 +2743,34 @@ function CoverLetterDownloadModal({ cv, onClose, onVerifiedDownload }) {
   );
 }
 
+function SwitchTemplateModal({ templateName, onKeepData, onLoadSample, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4">
+      <div className="w-full max-w-md rounded bg-white p-6 shadow-2xl">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-black text-slate-950">Switch Template?</h2>
+            <p className="mt-2 text-sm font-bold leading-6 text-slate-600">{templateName ? `Switch to ${templateName}.` : "Choose how to switch templates."}</p>
+          </div>
+          <button type="button" onClick={onClose} className="text-xl text-slate-500" aria-label="Close template switch dialog">x</button>
+        </div>
+        <div className="mt-5 rounded border border-blue-100 bg-blue-50 p-4 text-sm font-bold leading-6 text-blue-950">
+          <p>Your current CV information will be kept.</p>
+          <p className="mt-2">Only the design and suggested content will change.</p>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <button type="button" onClick={onKeepData} className="rounded bg-green-600 px-5 py-3 text-sm font-black text-white hover:bg-green-700">
+            Keep My Data
+          </button>
+          <button type="button" onClick={onLoadSample} className="rounded border border-blue-200 bg-white px-5 py-3 text-sm font-black text-blue-700 hover:bg-blue-50">
+            Load Template Sample Data
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const builderSteps = [
   { id: "personal", label: "Personal info" },
   { id: "experience", label: "Experience" },
@@ -2990,6 +3043,7 @@ function CVBuilderApp({ onHome }) {
   const [currentStep, setCurrentStep] = useState("personal");
   const [session, setSession] = useState(null);
   const [authOpen, setAuthOpen] = useState(false);
+  const [pendingTemplateId, setPendingTemplateId] = useState(null);
   const [storageMessage, setStorageMessage] = useState("");
   const [userMode, setUserMode] = useState(() => localStorage.getItem("cvforall:user-mode") || "guest");
   const theme = useMemo(() => themes.find((item) => item.id === themeId), [themeId]);
@@ -3111,8 +3165,22 @@ function CVBuilderApp({ onHome }) {
     const timer = window.setInterval(saveDraft, 30000);
     return () => window.clearInterval(timer);
   }, [cv, coverLetter, categoryId, themeId, layoutId, coverThemeId, coverFontId, coverLayoutId, cloudSavingEnabled, user?.id]);
-  const handleCategory = (id) => {
+  const keepCurrentDataForTemplate = (id) => {
+    if (!id || id === categoryId) {
+      setPendingTemplateId(null);
+      return;
+    }
+    setCategoryId(id);
+    setCoverLetter(createCoverLetterFromCv(cv, id));
+    setPendingTemplateId(null);
+    trackEvent("switch_template_keep_data");
+  };
+  const loadTemplateSampleData = (id) => {
     const category = categories.find((item) => item.id === id);
+    if (!category) {
+      setPendingTemplateId(null);
+      return;
+    }
     setCategoryId(id);
     setCv((current) => {
       const nextCv = {
@@ -3126,6 +3194,16 @@ function CVBuilderApp({ onHome }) {
       setCoverLetter(createCoverLetterFromCv(nextCv, id));
       return nextCv;
     });
+    setPendingTemplateId(null);
+    trackEvent("switch_template_load_sample");
+  };
+  const handleCategory = (id) => {
+    if (!id || id === categoryId) return;
+    if (hasUserEnteredCvData(cv)) {
+      setPendingTemplateId(id);
+      return;
+    }
+    loadTemplateSampleData(id);
   };
   const handleImport = (extracted) => {
     setCv((current) => {
@@ -3348,6 +3426,14 @@ function CVBuilderApp({ onHome }) {
       )}
       {downloadTarget === "cv" && <DownloadModal cv={cv} onClose={() => setDownloadTarget(null)} onVerifiedDownload={handleDownload} />}
       {downloadTarget === "cover" && <CoverLetterDownloadModal cv={cv} onClose={() => setDownloadTarget(null)} onVerifiedDownload={handleCoverDownload} />}
+      {pendingTemplateId && (
+        <SwitchTemplateModal
+          templateName={categories.find((item) => item.id === pendingTemplateId)?.name}
+          onKeepData={() => keepCurrentDataForTemplate(pendingTemplateId)}
+          onLoadSample={() => loadTemplateSampleData(pendingTemplateId)}
+          onClose={() => setPendingTemplateId(null)}
+        />
+      )}
       {authOpen && <AuthModal onClose={() => setAuthOpen(false)} onUrgentMode={startUrgentMode} onRegisteredMode={startRegisteredMode} />}
     </main>
   );
