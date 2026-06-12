@@ -97,8 +97,10 @@ const sectionHtml = (cv = {}, id) => {
     summary: cv.summary ? `<section><h2>Professional Summary</h2><p>${escapeHtml(cv.summary)}</p></section>` : "",
     experience: experiences.length ? `<section><h2>Work Experience</h2>${experiences.map((entry) => `
       <div class="experience-item">
-        <p><strong>${escapeHtml(entry.jobTitle)}</strong></p>
-        <p>${escapeHtml([entry.employer, entry.companyLocation, [entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - ")].filter(Boolean).join(" | "))}</p>
+        ${entry.jobTitle ? `<p><strong>Position:</strong> ${escapeHtml(entry.jobTitle)}</p>` : ""}
+        ${entry.employer ? `<p><strong>Company:</strong> ${escapeHtml(entry.employer)}</p>` : ""}
+        ${entry.companyLocation ? `<p><strong>Location:</strong> ${escapeHtml(entry.companyLocation)}</p>` : ""}
+        ${[entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - ") ? `<p><strong>Duration:</strong> ${escapeHtml([entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - "))}</p>` : ""}
         <ul>${lines(entry.responsibilities).map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul>
       </div>
     `).join("")}</section>` : "",

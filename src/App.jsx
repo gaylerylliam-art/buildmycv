@@ -2762,13 +2762,11 @@ function LiveCVPreview({ cv, theme, layout }) {
       <div className="mt-3 space-y-4">
         {workEntries.map((entry) => (
           <article key={entry.id} className="text-[12px] leading-5 text-slate-700">
-            <div className="flex flex-col justify-between gap-1 sm:flex-row">
-              <div>
-                <p className="font-black text-slate-900">{entry.jobTitle || "Job title"}</p>
-                <p className="font-bold text-slate-700">{entry.employer || "Employer name"}</p>
-                {entry.companyLocation && <p className="font-semibold text-slate-500">{entry.companyLocation}</p>}
-              </div>
-              <p className="font-bold text-slate-500">{[entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - ")}</p>
+            <div className="grid gap-1">
+              <p><span className="font-black text-slate-900">Position:</span> <span className="font-bold text-slate-800">{entry.jobTitle || "Job title"}</span></p>
+              <p><span className="font-black text-slate-900">Company:</span> <span className="font-bold text-slate-700">{entry.employer || "Employer name"}</span></p>
+              {entry.companyLocation && <p><span className="font-black text-slate-900">Location:</span> <span className="font-semibold text-slate-500">{entry.companyLocation}</span></p>}
+              <p><span className="font-black text-slate-900">Duration:</span> <span className="font-bold text-slate-500">{[entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - ")}</span></p>
             </div>
             {entry.responsibilities && (
               <ul className="mt-2 list-disc space-y-1 pl-5">

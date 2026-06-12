@@ -51,7 +51,10 @@ const cvText = (cv = {}) => {
     "",
     "WORK EXPERIENCE",
     ...experiences.flatMap((entry) => [
-      [entry.jobTitle, entry.employer, entry.companyLocation, [entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - ")].filter(Boolean).join(" | "),
+      entry.jobTitle ? `Position: ${entry.jobTitle}` : "",
+      entry.employer ? `Company: ${entry.employer}` : "",
+      entry.companyLocation ? `Location: ${entry.companyLocation}` : "",
+      [entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - ") ? `Duration: ${[entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - ")}` : "",
       ...lines(entry.responsibilities).map((line) => `- ${line}`),
       "",
     ]),
@@ -84,7 +87,10 @@ const cvHtml = (cv = {}) =>
     <h2>Professional Summary</h2><p>${escapeHtml(cv.summary)}</p>
     <h2>Work Experience</h2>
     ${(Array.isArray(cv.workExperiences) ? cv.workExperiences : []).map((entry) => `
-      <p><strong>${escapeHtml(entry.jobTitle)}</strong><br>${escapeHtml([entry.employer, entry.companyLocation, [entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - ")].filter(Boolean).join(" | "))}</p>
+      ${entry.jobTitle ? `<p><strong>Position:</strong> ${escapeHtml(entry.jobTitle)}</p>` : ""}
+      ${entry.employer ? `<p><strong>Company:</strong> ${escapeHtml(entry.employer)}</p>` : ""}
+      ${entry.companyLocation ? `<p><strong>Location:</strong> ${escapeHtml(entry.companyLocation)}</p>` : ""}
+      ${[entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - ") ? `<p><strong>Duration:</strong> ${escapeHtml([entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - "))}</p>` : ""}
       <ul>${lines(entry.responsibilities).map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul>
     `).join("")}
     <h2>Education</h2>

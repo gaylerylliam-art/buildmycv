@@ -219,8 +219,10 @@ const workExperienceHtml = (cv) =>
       if (![jobTitle, employer, location, dates, responsibilities].some(Boolean)) return "";
       return `
         <div class="experience-item">
-          ${jobTitle ? `<p><strong>${escapeHtml(jobTitle)}</strong></p>` : ""}
-          ${[employer, location, dates].filter(Boolean).length ? `<p>${escapeHtml([employer, location, dates].filter(Boolean).join(" | "))}</p>` : ""}
+          ${jobTitle ? `<p><strong>Position:</strong> ${escapeHtml(jobTitle)}</p>` : ""}
+          ${employer ? `<p><strong>Company:</strong> ${escapeHtml(employer)}</p>` : ""}
+          ${location ? `<p><strong>Location:</strong> ${escapeHtml(location)}</p>` : ""}
+          ${dates ? `<p><strong>Duration:</strong> ${escapeHtml(dates)}</p>` : ""}
           ${responsibilities ? `<ul>${joinLines(responsibilities)}</ul>` : ""}
         </div>
       `;
@@ -466,14 +468,15 @@ const downloadCvDocx = async (cv, filename, theme = { color: "#0f66d0", dark: "#
       experience: [
         sectionHeading("Work Experience"),
         ...workExperiences.flatMap((entry) => {
-          const meta = [
-            cleanExportText(entry.employer),
-            cleanExportText(entry.companyLocation),
-            [entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - "),
-          ].filter(Boolean).join(" | ");
+          const jobTitle = cleanExportText(entry.jobTitle);
+          const employer = cleanExportText(entry.employer);
+          const location = cleanExportText(entry.companyLocation);
+          const duration = [entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - ");
           return [
-            cleanExportText(entry.jobTitle) ? paragraph(cleanExportText(entry.jobTitle), { bold: true, after: 50, keepNext: true }) : null,
-            meta ? paragraph(meta, { size: 20, after: 60, color: "475569", keepNext: true }) : null,
+            jobTitle ? paragraph(`Position: ${jobTitle}`, { bold: true, after: 40, keepNext: true }) : null,
+            employer ? paragraph(`Company: ${employer}`, { size: 20, after: 40, color: "475569", keepNext: true }) : null,
+            location ? paragraph(`Location: ${location}`, { size: 20, after: 40, color: "475569", keepNext: true }) : null,
+            duration ? paragraph(`Duration: ${duration}`, { size: 20, after: 60, color: "475569", keepNext: true }) : null,
             ...cleanExportText(entry.responsibilities).split("\n").map((line) => line.trim().replace(/^[-•●▪◦*]\s*/, "")).filter(Boolean).map((line) => paragraph(line, { bullet: true, after: 45 })),
           ].filter(Boolean);
         }),
