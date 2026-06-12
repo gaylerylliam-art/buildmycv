@@ -379,6 +379,14 @@ function LandingPage({ onStart }) {
     { label: "3. AI polishes", short: "AI improve", time: 70, ts: "1:10" },
     { label: "4. Download", short: "Download", time: 105, ts: "1:45" },
   ];
+  const buildSteps = [
+    "Choose a template",
+    "Upload your existing CV (optional)",
+    "Fill in your personal information",
+    "Add work experience and education",
+    "Review your CV strength score",
+    "Download your CV as PDF",
+  ];
   const features = [
     ["sparkle", "AI writing assist", "One click improves your job descriptions into clear, recruiter-friendly bullet points."],
     ["eye", "Live preview", "See your CV update as you type, with no switching tabs and no guessing."],
@@ -583,6 +591,18 @@ function LandingPage({ onStart }) {
               </button>
             ))}
           </div>
+        </div>
+        <div className="build-steps-panel">
+          <h3>How to Build Your CV</h3>
+          <div className="build-steps-grid">
+            {buildSteps.map((step, index) => (
+              <div key={step} className="build-step-card">
+                <span>Step {index + 1}</span>
+                <p>{step}</p>
+              </div>
+            ))}
+          </div>
+          <p className="build-step-tip">Tip: You can switch templates at any time without losing your data.</p>
         </div>
         <div className="stats-row">
           {[

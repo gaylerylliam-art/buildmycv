@@ -818,6 +818,67 @@ summary {
   color: var(--brand);
 }
 
+.build-steps-panel {
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: #ffffff;
+  box-shadow: 0 18px 48px rgba(17, 17, 17, 0.06);
+  margin: 1.6rem auto 0;
+  max-width: 860px;
+  padding: 1.35rem;
+}
+
+.build-steps-panel h3 {
+  color: var(--text-primary);
+  font-size: 1.2rem;
+  font-weight: 800;
+  margin: 0 0 1rem;
+  text-align: center;
+}
+
+.build-steps-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.build-step-card {
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-subtle);
+  padding: 0.95rem;
+}
+
+.build-step-card span {
+  color: var(--brand);
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.35rem;
+  text-transform: uppercase;
+}
+
+.build-step-card p {
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.build-step-tip {
+  border-radius: var(--radius-md);
+  background: #ecfdf5;
+  color: #065f46;
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.5;
+  margin: 1rem 0 0;
+  padding: 0.85rem 1rem;
+  text-align: center;
+}
+
 .stats-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1886,7 +1947,8 @@ summary {
   .hero-inner,
   .section-inner,
   .video-wrapper,
-  .browser-chrome {
+  .browser-chrome,
+  .build-steps-panel {
     max-width: calc(100vw - 40px);
     width: calc(100vw - 40px);
   }
@@ -1936,6 +1998,18 @@ summary {
   .chapter-timestamps {
     display: grid;
     grid-template-columns: 1fr 1fr;
+  }
+
+  .build-steps-panel {
+    padding: 1rem;
+  }
+
+  .build-steps-panel h3 {
+    font-size: 1.05rem;
+  }
+
+  .build-steps-grid {
+    grid-template-columns: 1fr;
   }
 
   .ts-link {
