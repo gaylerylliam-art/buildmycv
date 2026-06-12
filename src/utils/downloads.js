@@ -21,6 +21,35 @@ const fileBaseName = (fullName, suffix) => {
   return `${firstName}_${lastName}_${suffix}`.replace(/[^\w-]+/g, "_");
 };
 
+const sanitizeCoverLetterText = (value = "") =>
+  String(value || "")
+    .split(/\n+/)
+    .map((line) =>
+      line
+        .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "")
+        .replace(/https?:\/\/(?:www\.)?linkedin\.com\/[^\s)]+/gi, "")
+        .replace(/linkedin\.com\/[^\s)]+/gi, "")
+        .replace(/https?:\/\/[^\s)]+/gi, "")
+        .replace(/\+?\d[\d\s().-]{7,}\d/g, "")
+        .replace(/\s*[#|•]\s*/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+    )
+    .filter((line) => line && !/^(contact|email|phone|mobile|linkedin|location)\b/i.test(line))
+    .join("\n")
+    .replace(/\s+,/g, ",")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+const sanitizeCoverLetter = (letter = {}) => ({
+  ...letter,
+  opening: sanitizeCoverLetterText(letter.opening),
+  body: sanitizeCoverLetterText(letter.body),
+  qualifications: sanitizeCoverLetterText(letter.qualifications),
+  value: sanitizeCoverLetterText(letter.value),
+  closing: sanitizeCoverLetterText(letter.closing),
+});
+
 const cvContactLines = (cv) =>
   [
     cv.email,
@@ -107,6 +136,7 @@ const downloadPdfFromHtml = async (html, filename) => {
 };
 
 const downloadCoverLetterDocx = async (letter, cv, filename) => {
+  const cleanLetter = sanitizeCoverLetter(letter);
   const { AlignmentType, Document, Packer, Paragraph, TextRun } = await import("docx");
   const today = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
   const paragraph = (text = "", options = {}) =>
@@ -123,9 +153,9 @@ const downloadCoverLetterDocx = async (letter, cv, filename) => {
     });
   const contactLines = [
     `${cv.email} | ${cv.phone} | ${cv.country}`,
-    letter.linkedIn ? `LinkedIn: ${letter.linkedIn}` : "",
-    letter.nationality ? `Nationality: ${letter.nationality}` : "",
-    letter.visaStatus ? `Visa Status: ${letter.visaStatus}` : "",
+    cleanLetter.linkedIn ? `LinkedIn: ${cleanLetter.linkedIn}` : "",
+    cleanLetter.nationality ? `Nationality: ${cleanLetter.nationality}` : "",
+    cleanLetter.visaStatus ? `Visa Status: ${cleanLetter.visaStatus}` : "",
   ].filter(Boolean);
   const doc = new Document({
     sections: [
@@ -135,14 +165,14 @@ const downloadCoverLetterDocx = async (letter, cv, filename) => {
           paragraph(cv.fullName, { bold: true, size: 32, after: 80 }),
           ...contactLines.map((line) => paragraph(line, { size: 18, after: 70 })),
           paragraph(today),
-          paragraph(letter.companyName),
-          paragraph(letter.companyAddress),
-          paragraph(`Dear ${letter.hiringManager || "Hiring Manager"},`),
-          paragraph(letter.opening),
-          paragraph(letter.body),
-          letter.qualifications ? paragraph(letter.qualifications) : paragraph("", { after: 0 }),
-          letter.value ? paragraph(letter.value) : paragraph("", { after: 0 }),
-          paragraph(letter.closing),
+          paragraph(cleanLetter.companyName),
+          paragraph(cleanLetter.companyAddress),
+          paragraph(`Dear ${cleanLetter.hiringManager || "Hiring Manager"},`),
+          paragraph(cleanLetter.opening),
+          paragraph(cleanLetter.body),
+          cleanLetter.qualifications ? paragraph(cleanLetter.qualifications) : paragraph("", { after: 0 }),
+          cleanLetter.value ? paragraph(cleanLetter.value) : paragraph("", { after: 0 }),
+          paragraph(cleanLetter.closing),
           paragraph("Sincerely,", { after: 80 }),
           paragraph(cv.fullName, { bold: true }),
           paragraph("", { alignment: AlignmentType.LEFT, after: 0 }),
@@ -301,7 +331,9 @@ export const downloadCvFile = async (cv, type, theme, layout = "classic") => {
   await downloadPdfFromHtml(html, `${baseName}.pdf`);
 };
 
-export const buildCoverLetterHtml = (letter, cv, theme = { color: "#0f66d0", dark: "#0f172a" }) => `
+export const buildCoverLetterHtml = (letter, cv, theme = { color: "#0f66d0", dark: "#0f172a" }) => {
+  const cleanLetter = sanitizeCoverLetter(letter);
+  return `
   <html>
     <head>
       <meta charset="UTF-8" />
@@ -320,24 +352,25 @@ export const buildCoverLetterHtml = (letter, cv, theme = { color: "#0f66d0", dar
       <div class="header">
         <h1>${escapeHtml(cv.fullName)}</h1>
         <p class="muted">${escapeHtml(cv.jobTitle)} | ${escapeHtml(cv.email)} | ${escapeHtml(cv.phone)} | ${escapeHtml(cv.country)}</p>
-        ${letter.linkedIn || letter.nationality || letter.visaStatus ? `<p class="muted">${escapeHtml([letter.linkedIn, letter.nationality && `Nationality: ${letter.nationality}`, letter.visaStatus && `Visa Status: ${letter.visaStatus}`].filter(Boolean).join(" | "))}</p>` : ""}
+        ${cleanLetter.linkedIn || cleanLetter.nationality || cleanLetter.visaStatus ? `<p class="muted">${escapeHtml([cleanLetter.linkedIn, cleanLetter.nationality && `Nationality: ${cleanLetter.nationality}`, cleanLetter.visaStatus && `Visa Status: ${cleanLetter.visaStatus}`].filter(Boolean).join(" | "))}</p>` : ""}
       </div>
       <p>${escapeHtml(new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }))}</p>
       <div class="section">
-        <p>${escapeHtml(letter.companyName)}</p>
-        <p>${escapeHtml(letter.companyAddress)}</p>
+        <p>${escapeHtml(cleanLetter.companyName)}</p>
+        <p>${escapeHtml(cleanLetter.companyAddress)}</p>
       </div>
-      <p class="section">Dear ${escapeHtml(letter.hiringManager || "Hiring Manager")},</p>
-      <p>${escapeHtml(letter.opening).replaceAll("\n", "<br />")}</p>
-      <p>${escapeHtml(letter.body).replaceAll("\n", "<br />")}</p>
-      ${letter.qualifications ? `<p>${escapeHtml(letter.qualifications).replaceAll("\n", "<br />")}</p>` : ""}
-      ${letter.value ? `<p>${escapeHtml(letter.value).replaceAll("\n", "<br />")}</p>` : ""}
-      <p>${escapeHtml(letter.closing).replaceAll("\n", "<br />")}</p>
+      <p class="section">Dear ${escapeHtml(cleanLetter.hiringManager || "Hiring Manager")},</p>
+      <p>${escapeHtml(cleanLetter.opening).replaceAll("\n", "<br />")}</p>
+      <p>${escapeHtml(cleanLetter.body).replaceAll("\n", "<br />")}</p>
+      ${cleanLetter.qualifications ? `<p>${escapeHtml(cleanLetter.qualifications).replaceAll("\n", "<br />")}</p>` : ""}
+      ${cleanLetter.value ? `<p>${escapeHtml(cleanLetter.value).replaceAll("\n", "<br />")}</p>` : ""}
+      <p>${escapeHtml(cleanLetter.closing).replaceAll("\n", "<br />")}</p>
       <p class="section">Sincerely,</p>
       <p class="signature">${escapeHtml(cv.fullName)}</p>
     </body>
   </html>
 `;
+};
 
 export const downloadCoverLetterFile = async (letter, cv, type, theme) => {
   const html = buildCoverLetterHtml(letter, cv, theme);

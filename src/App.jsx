@@ -102,13 +102,14 @@ const initialCv = {
 
 const createCoverLetterFromCv = (cv, categoryId) => {
   const template = coverLetterTemplates[categoryId] || coverLetterTemplates.hospitality;
+  const safeCv = sanitizeCvForCoverLetter(cv);
   return generateCoverLetterTemplate({
-    cv,
+    cv: safeCv,
     role: template.position,
     letter: {
       companyName: "Company Name",
-      companyAddress: cv.country,
-      position: cv.jobTitle || template.position,
+      companyAddress: safeCv.country,
+      position: safeCv.jobTitle || template.position,
       opening: template.opening,
       body: template.body,
       closing: template.closing,
@@ -116,8 +117,45 @@ const createCoverLetterFromCv = (cv, categoryId) => {
   });
 };
 
+const sanitizeCvTextForCoverLetter = (value = "") =>
+  String(value || "")
+    .split(/\n+/)
+    .map((line) =>
+      line
+        .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "")
+        .replace(/https?:\/\/(?:www\.)?linkedin\.com\/[^\s)]+/gi, "")
+        .replace(/linkedin\.com\/[^\s)]+/gi, "")
+        .replace(/https?:\/\/[^\s)]+/gi, "")
+        .replace(/\+?\d[\d\s().-]{7,}\d/g, "")
+        .replace(/\s*[#|•]\s*/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+    )
+    .filter((line) => line && !/^(contact|email|phone|mobile|linkedin|location)\b/i.test(line))
+    .join("\n")
+    .replace(/\s+,/g, ",")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+const sanitizeCvForCoverLetter = (cv = {}) => ({
+  ...cv,
+  summary: sanitizeCvTextForCoverLetter(cv.summary),
+  skills: sanitizeCvTextForCoverLetter(cv.skills),
+  experience: sanitizeCvTextForCoverLetter(cv.experience),
+});
+
+const sanitizeCoverLetterParagraphs = (letter = {}) => ({
+  ...letter,
+  opening: sanitizeCvTextForCoverLetter(letter.opening),
+  body: sanitizeCvTextForCoverLetter(letter.body),
+  qualifications: sanitizeCvTextForCoverLetter(letter.qualifications),
+  value: sanitizeCvTextForCoverLetter(letter.value),
+  closing: sanitizeCvTextForCoverLetter(letter.closing),
+});
+
 const coverLetterToText = (letter, cv) => {
   const today = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+  const cleanLetter = sanitizeCoverLetterParagraphs(letter);
   return [
     cv.fullName,
     `${cv.email} | ${cv.phone} | ${cv.country}`,
@@ -132,15 +170,15 @@ const coverLetterToText = (letter, cv) => {
     "",
     `Dear ${letter.hiringManager || "Hiring Manager"},`,
     "",
-    letter.opening,
+    cleanLetter.opening,
     "",
-    letter.body,
+    cleanLetter.body,
     "",
-    letter.qualifications,
+    cleanLetter.qualifications,
     "",
-    letter.value,
+    cleanLetter.value,
     "",
-    letter.closing,
+    cleanLetter.closing,
     "",
     "Sincerely,",
     cv.fullName,
@@ -1793,8 +1831,8 @@ function mockAiExtractCv(text, fileName) {
     linkedIn: linkedIn || "",
     portfolioUrl,
     drivingLicense: drivingLicense || "Add driving license status here.",
-    summary: summary || summaryFallback || compactText.split("\n").filter((line) => line.length > 40 && !line.includes("@") && !/linkedin/i.test(line)).slice(0, 2).join(" "),
-    skills: skills || "Please review imported CV and add key skills here.",
+    summary: sanitizeCvTextForCoverLetter(summary || summaryFallback || compactText.split("\n").filter((line) => line.length > 40 && !line.includes("@") && !/linkedin/i.test(line)).slice(0, 2).join(" ")) || "Please review imported CV and add a professional summary here.",
+    skills: sanitizeCvTextForCoverLetter(skills) || "Please review imported CV and add key skills here.",
     experience: experience || "Please review imported CV and add work experience here.",
     workExperiences: structuredWorkExperiences.length ? structuredWorkExperiences : fallbackWorkExperiences,
     education: education || "Please review imported CV and add education details here.",
@@ -2382,6 +2420,7 @@ function CoverLetterApplicantForm({ cv, letter, onCvChange, onLetterChange }) {
 }
 
 const coverLetterAiFields = new Set(["jobDescription", "opening", "body", "qualifications", "value", "closing"]);
+const coverLetterParagraphFields = new Set(["opening", "body", "qualifications", "value", "closing"]);
 
 const coverLetterSpellingCorrections = [
   [/\brecive\b/gi, "receive"],
@@ -2479,7 +2518,7 @@ function CoverLetterForm({ letter, onChange, onRegenerate }) {
     ["closing", "Closing paragraph", "textarea"],
   ];
   const reviewWithAi = (key, label) => {
-    const original = String(letter[key] || "").trim();
+    const original = String(coverLetterParagraphFields.has(key) ? sanitizeCvTextForCoverLetter(letter[key]) : letter[key] || "").trim();
     if (!original) {
       setAiStatus(`Add text in ${label.toLowerCase()} first, then AI Assistant can check it.`);
       return;
@@ -2534,7 +2573,7 @@ function CoverLetterForm({ letter, onChange, onRegenerate }) {
           <label>
             <span className="form-label">{label}</span>
             {type === "textarea" ? (
-              <textarea value={letter[key] || ""} onChange={(event) => onChange(key, event.target.value)} rows={key === "body" ? 6 : 4} className="form-field resize-y" />
+              <textarea value={coverLetterParagraphFields.has(key) ? sanitizeCvTextForCoverLetter(letter[key]) : letter[key] || ""} onChange={(event) => onChange(key, event.target.value)} rows={key === "body" ? 6 : 4} className="form-field resize-y" />
             ) : (
               <input value={letter[key] || ""} onChange={(event) => onChange(key, event.target.value)} className="form-field" />
             )}
@@ -2611,6 +2650,7 @@ function CoverLetterLayoutSelector({ selected, onSelect }) {
 function CoverLetterPreview({ cv, letter, theme, fontId, layoutId }) {
   const font = coverLetterFonts.find((item) => item.id === fontId) || coverLetterFonts[0];
   const compact = layoutId === "compact";
+  const cleanLetter = sanitizeCoverLetterParagraphs(letter);
   const today = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
   return (
     <article className={`letter-paper ${font.className} ${compact ? "p-7" : "p-10"}`}>
@@ -2631,11 +2671,11 @@ function CoverLetterPreview({ cv, letter, theme, fontId, layoutId }) {
           <p>{letter.companyAddress}</p>
         </div>
         <p>Dear {letter.hiringManager || "Hiring Manager"},</p>
-        <p className="whitespace-pre-line">{letter.opening}</p>
-        <p className="whitespace-pre-line">{letter.body}</p>
-        {letter.qualifications && <p className="whitespace-pre-line">{letter.qualifications}</p>}
-        {letter.value && <p className="whitespace-pre-line">{letter.value}</p>}
-        <p className="whitespace-pre-line">{letter.closing}</p>
+        <p className="whitespace-pre-line">{cleanLetter.opening}</p>
+        <p className="whitespace-pre-line">{cleanLetter.body}</p>
+        {cleanLetter.qualifications && <p className="whitespace-pre-line">{cleanLetter.qualifications}</p>}
+        {cleanLetter.value && <p className="whitespace-pre-line">{cleanLetter.value}</p>}
+        <p className="whitespace-pre-line">{cleanLetter.closing}</p>
         <div>
           <p>Sincerely,</p>
           <p className="mt-2 font-black text-slate-950" style={{ color: theme.dark }}>{cv.fullName}</p>
@@ -3102,20 +3142,21 @@ function CVBuilderApp({ onHome }) {
     trackEvent("load_saved_cv");
   };
   const updateCvFromCoverLetter = (key, value) => {
-    setCv((current) => ({ ...current, [key]: value }));
+    setCv((current) => ({ ...current, [key]: ["summary", "skills", "experience"].includes(key) ? sanitizeCvTextForCoverLetter(value) : value }));
   };
   const handleCoverRoleChange = (role) => {
     setCoverLetter((current) => generateCoverLetterTemplate({ cv: { ...cv, jobTitle: role }, role, letter: current }));
     setCv((current) => ({ ...current, jobTitle: role }));
   };
   const regenerateCoverLetter = async () => {
-    const localDraft = generateCoverLetterTemplate({ cv, role: coverLetter.position, letter: coverLetter });
+    const safeCv = sanitizeCvForCoverLetter(cv);
+    const localDraft = generateCoverLetterTemplate({ cv: safeCv, role: coverLetter.position, letter: sanitizeCoverLetterParagraphs(coverLetter) });
     try {
       const response = await fetch("/.netlify/functions/generateCoverLetter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          cv,
+          cv: safeCv,
           companyName: coverLetter.companyName,
           position: coverLetter.position,
           category: coverLetter.position,
@@ -3273,7 +3314,7 @@ function CVBuilderApp({ onHome }) {
           letter={coverLetter}
           onCvChange={updateCvFromCoverLetter}
           onRoleChange={handleCoverRoleChange}
-          onLetterChange={(key, value) => setCoverLetter((current) => ({ ...current, [key]: value }))}
+          onLetterChange={(key, value) => setCoverLetter((current) => ({ ...current, [key]: coverLetterParagraphFields.has(key) ? sanitizeCvTextForCoverLetter(value) : value }))}
           onRegenerate={regenerateCoverLetter}
           themeId={coverThemeId}
           onThemeChange={setCoverThemeId}
