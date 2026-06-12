@@ -42,6 +42,11 @@ const splitList = (value) => {
     .filter(Boolean);
 };
 
+const normalizeReferences = (references) => {
+  if (!references || typeof references === "string") return { mode: references ? "on-request" : "none", entries: [] };
+  return { mode: references.mode || "none", entries: Array.isArray(references.entries) ? references.entries : [] };
+};
+
 const normalizeExperience = (cvData) => {
   if (Array.isArray(cvData.workExperiences) && cvData.workExperiences.length) return cvData.workExperiences;
   if (Array.isArray(cvData.experience)) return cvData.experience;
@@ -163,6 +168,16 @@ export function scoreCV(cvData = {}, jobDescription = "") {
 
   if (!cvData.visaStatus && !cvData.nationality) tips.push("Add your UAE visa status or nationality - GCC employers expect this.");
   if (!/arabic/i.test(cvData.languages || "")) tips.push("List Arabic language proficiency if applying to UAE government or semi-government.");
+  if (cvData.qrCode?.enabled && !/linkedin\.com/i.test(cvData.linkedIn || "")) {
+    warnings.push("QR codes are ignored by ATS systems. Keep your LinkedIn URL written as text too.");
+  }
+  const references = normalizeReferences(cvData.references);
+  if (references.mode === "listed") {
+    tips.push("Listing references uses valuable space. Use 'Available upon request' unless the job asks for references.");
+    if (references.entries.some((entry) => entry.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(entry.email))) {
+      warnings.push("Check reference email format before downloading.");
+    }
+  }
   tips.push("Add more measurable achievements: numbers, percentages, AED values.");
 
   const score = Math.max(5, Math.min(100, sections + format + keywords + readability));

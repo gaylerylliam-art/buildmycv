@@ -7,6 +7,12 @@ import { categories, layouts, themes } from "./data/categories";
 import TemplatesSectionV3 from "./components/TemplatesSectionV3";
 import PhotoUploadCrop from "./components/PhotoUploadCrop";
 import ATSPanel from "./components/ATSPanel";
+import { industryOptions, getTips } from "./content/cvTips";
+import { computeCompletion } from "./lib/cvCompletion";
+import { getSmartTip } from "./lib/smartTips";
+import { normalizeQrUrl } from "./lib/validateQrUrl";
+import { useQrSvg } from "./hooks/useQrSvg";
+import { useTheme } from "./hooks/useTheme";
 import {
   coverLetterFonts,
   coverLetterLayouts,
@@ -37,6 +43,19 @@ import {
 
 const defaultCategory = categories[0];
 const defaultSectionOrder = ["summary", "experience", "education", "skills", "certifications", "languages", "references"];
+const defaultQrCode = { enabled: false, url: "", label: "Scan for LinkedIn", position: "header" };
+const createReferenceEntry = () => ({
+  id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+  name: "",
+  jobTitle: "",
+  company: "",
+  relationship: "Manager",
+  phoneCode: "+971",
+  phone: "",
+  email: "",
+  consentGiven: false,
+});
+const defaultReferences = { mode: "on-request", entries: [] };
 const sectionLabels = {
   summary: "Professional Summary",
   experience: "Work Experience",
@@ -79,8 +98,29 @@ const normalizeSectionOrder = (cv = {}) => {
   return [...order.filter((id) => defaultSectionOrder.includes(id)), ...defaultSectionOrder.filter((id) => !order.includes(id))];
 };
 
+const normalizeReferences = (references) => {
+  if (!references) return defaultReferences;
+  if (typeof references === "string") {
+    return /available upon request/i.test(references) || !references.trim()
+      ? defaultReferences
+      : { mode: "listed", entries: [{ ...createReferenceEntry(), name: references, consentGiven: false }] };
+  }
+  return {
+    mode: references.mode || "on-request",
+    entries: Array.isArray(references.entries) ? references.entries.map((entry) => ({ ...createReferenceEntry(), ...entry })) : [],
+  };
+};
+
+const referencesHasContent = (references) => {
+  const normalized = normalizeReferences(references);
+  if (normalized.mode === "on-request") return true;
+  if (normalized.mode !== "listed") return false;
+  return normalized.entries.some((entry) => entry.consentGiven && entry.name && entry.company);
+};
+
 const sectionHasContent = (cv = {}, id) => {
   if (id === "experience") return normalizeWorkExperiences(cv).some((entry) => [entry.jobTitle, entry.employer, entry.responsibilities].some((value) => String(value || "").trim()));
+  if (id === "references") return referencesHasContent(cv.references);
   return Boolean(String(cv[id] || "").trim());
 };
 
@@ -133,7 +173,12 @@ const hasUserEnteredCvData = (cv) => {
     "references",
     "profilePhoto",
   ];
-  return meaningfulFields.some((key) => String(cv[key] || "").trim()) || (Array.isArray(cv.workExperiences) && cv.workExperiences.length > 0);
+  return meaningfulFields.some((key) => {
+    const value = cv[key];
+    if (key === "references") return referencesHasContent(value);
+    if (typeof value === "object") return Boolean(value && Object.keys(value).length);
+    return String(value || "").trim();
+  }) || (Array.isArray(cv.workExperiences) && cv.workExperiences.length > 0);
 };
 
 const initialCv = {
@@ -156,7 +201,10 @@ const initialCv = {
   drivingLicense: "No UAE driving license",
   expectedSalaryEnabled: false,
   expectedSalary: "",
-  references: "Available upon request",
+  industry: "general",
+  tipsEnabled: true,
+  qrCode: defaultQrCode,
+  references: defaultReferences,
   sectionOrder: defaultSectionOrder,
   hiddenSections: [],
   profilePhoto: "",
@@ -318,6 +366,10 @@ function Icon({ name, className = "h-5 w-5" }) {
     share: <><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.6 10.7l6.8-4.4" /><path d="M8.6 13.3l6.8 4.4" /></>,
     qr: <><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 14h2v2h-2z" /><path d="M19 14h2v2h-2z" /><path d="M14 19h2v2h-2z" /><path d="M19 19h2v2h-2z" /></>,
     chevron: <path d="m6 9 6 6 6-6" />,
+    sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></>,
+    moon: <path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5 7 7 0 1 0 20.5 14.5z" />,
+    monitor: <><rect x="3" y="4" width="18" height="12" rx="2" /><path d="M8 20h8" /><path d="M12 16v4" /></>,
+    lightbulb: <><path d="M9 18h6" /><path d="M10 22h4" /><path d="M8.5 14a6 6 0 1 1 7 0c-.8.6-1.5 1.6-1.5 2.6h-4c0-1-.7-2-1.5-2.6z" /></>,
   };
   return <svg {...common}>{paths[name]}</svg>;
 }
@@ -1475,7 +1527,215 @@ function FormField({ label, value, onChange, type = "text", rows = 3, placeholde
   );
 }
 
+function ThemeToggle({ mode, setMode, cycleMode }) {
+  const options = [
+    ["light", "sun", "Light"],
+    ["dark", "moon", "Dark"],
+    ["system", "monitor", "System"],
+  ];
+  return (
+    <>
+      <div className="theme-toggle" aria-label="Builder theme">
+        {options.map(([id, icon, label]) => (
+          <button key={id} type="button" title={label} aria-label={label} onClick={() => setMode(id)} className={mode === id ? "active" : ""}>
+            <Icon name={icon} className="h-4 w-4" />
+          </button>
+        ))}
+      </div>
+      <button type="button" onClick={cycleMode} className="theme-cycle-button" aria-label="Cycle theme">
+        <Icon name={mode === "dark" ? "moon" : mode === "light" ? "sun" : "monitor"} className="h-4 w-4" />
+      </button>
+    </>
+  );
+}
+
+function InlineTip({ industry, field, enabled }) {
+  const [dismissed, setDismissed] = useState(() => sessionStorage.getItem(`bmcv_tip_dismissed_${field}`) === "1");
+  const [open, setOpen] = useState(false);
+  const [index, setIndex] = useState(0);
+  const fieldTips = getTips(industry, field);
+  useEffect(() => {
+    setIndex((current) => (fieldTips.length ? (current + 1) % fieldTips.length : 0));
+  }, [field, industry, fieldTips.length]);
+  if (!fieldTips.length) return null;
+  const dismiss = () => {
+    sessionStorage.setItem(`bmcv_tip_dismissed_${field}`, "1");
+    setDismissed(true);
+  };
+  return (
+    <div className="inline-tip-wrap">
+      <button type="button" className="inline-tip-button" onClick={() => setOpen((value) => !value)} aria-label="Show writing tips">
+        <Icon name="lightbulb" className="h-4 w-4" />
+      </button>
+      {enabled && !dismissed && (
+        <div className="inline-tip-strip">
+          <span>{fieldTips[index] || fieldTips[0]}</span>
+          <button type="button" onClick={dismiss}>Hide</button>
+        </div>
+      )}
+      {open && (
+        <div className="inline-tip-popover">
+          {fieldTips.map((tip) => <p key={tip}>{tip}</p>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SmartTip({ message, onDismiss }) {
+  if (!message) return null;
+  return (
+    <div className="smart-tip">
+      <span>{message}</span>
+      <button type="button" onClick={onDismiss}>Dismiss</button>
+    </div>
+  );
+}
+
+function TipSection({ industry, field, tipsEnabled, children }) {
+  return (
+    <div className="tip-section">
+      <InlineTip industry={industry} field={field} enabled={tipsEnabled} />
+      {children}
+    </div>
+  );
+}
+
+function QrBlock({ qrCode, color = "#1E293B", size = 64 }) {
+  const normalized = normalizeQrUrl(qrCode?.url || "");
+  const enabled = qrCode?.enabled && normalized.ok;
+  const svg = useQrSvg(enabled ? normalized.url : "", color);
+  if (!enabled || !svg) return null;
+  return (
+    <div className="cv-qr-block" style={{ width: size }}>
+      <div className="cv-qr-svg" style={{ width: size, height: size }} dangerouslySetInnerHTML={{ __html: svg }} />
+      <p>{qrCode.label || "Scan for LinkedIn"}</p>
+    </div>
+  );
+}
+
+function QrCodeSection({ cv, onChange }) {
+  const qrCode = { ...defaultQrCode, ...(cv.qrCode || {}) };
+  const normalized = normalizeQrUrl(qrCode.url || cv.linkedIn || cv.portfolioUrl || "");
+  const svg = useQrSvg(qrCode.enabled && normalized.ok ? normalized.url : "", "#1E293B");
+  const update = (patch) => onChange("qrCode", { ...qrCode, ...patch });
+  return (
+    <CollapsibleFormSection id="qr" title="LinkedIn QR code" icon="qr" badge={qrCode.enabled && normalized.ok ? "Ready" : ""}>
+      <label className="flex items-start gap-3">
+        <input type="checkbox" checked={Boolean(qrCode.enabled)} onChange={(event) => update({ enabled: event.target.checked })} className="mt-1 h-4 w-4" />
+        <span>
+          <span className="block text-sm font-black">Add QR code to my CV</span>
+          <span className="mt-1 block text-xs font-bold leading-5 text-slate-500">Tip: ATS systems ignore QR codes. Keep your LinkedIn URL as text too.</span>
+        </span>
+      </label>
+      <div className="qr-form-grid">
+        <label>
+          <span className="form-label">LinkedIn, GitHub, or portfolio URL</span>
+          <input value={qrCode.url} onChange={(event) => update({ url: event.target.value })} className="form-field" placeholder="linkedin.com/in/yourname" />
+          <span className={normalized.ok ? "qr-valid" : "qr-invalid"}>{normalized.message}</span>
+        </label>
+        <div className="qr-mini-preview">
+          {svg ? <div dangerouslySetInnerHTML={{ __html: svg }} /> : <span>QR preview</span>}
+        </div>
+      </div>
+      <div className="field-pair">
+        <FormField label="QR caption" value={qrCode.label} onChange={(value) => update({ label: value.slice(0, 30) })} placeholder="Scan for LinkedIn" />
+        <label>
+          <span className="form-label">QR position</span>
+          <select value={qrCode.position} onChange={(event) => update({ position: event.target.value })} className="form-field">
+            <option value="header">Header right</option>
+            <option value="sidebar">Sidebar bottom</option>
+            <option value="footer">Footer center</option>
+          </select>
+        </label>
+      </div>
+    </CollapsibleFormSection>
+  );
+}
+
+function ReferencesSection({ cv, onChange }) {
+  const references = normalizeReferences(cv.references);
+  const update = (next) => onChange("references", next);
+  const addReference = () => {
+    if (references.entries.length >= 4) return;
+    update({ ...references, mode: "listed", entries: [...references.entries, createReferenceEntry()] });
+  };
+  const updateEntry = (id, patch) => {
+    update({ ...references, entries: references.entries.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry)) });
+  };
+  const removeEntry = (id) => {
+    if (!window.confirm("Remove this reference?")) return;
+    update({ ...references, entries: references.entries.filter((entry) => entry.id !== id) });
+  };
+  return (
+    <CollapsibleFormSection id="references" title="References" icon="file" badge={referencesHasContent(references) ? "Done" : ""}>
+      <div className="reference-mode-grid">
+        {[
+          ["none", "Do not include", "Hide references from this CV"],
+          ["on-request", "Available upon request", "Recommended for UAE/GCC"],
+          ["listed", "List my references", "Show approved referee details"],
+        ].map(([id, title, text]) => (
+          <button key={id} type="button" onClick={() => update({ ...references, mode: id })} className={references.mode === id ? "reference-mode active" : "reference-mode"}>
+            <strong>{title}</strong>
+            <span>{text}</span>
+          </button>
+        ))}
+      </div>
+      {references.mode === "listed" && (
+        <div className="reference-entry-list">
+          {references.entries.map((entry) => (
+            <article key={entry.id} className="reference-entry-card">
+              <div className="field-pair">
+                <FormField label="Reference name" value={entry.name} onChange={(value) => updateEntry(entry.id, { name: value })} />
+                <FormField label="Job title" value={entry.jobTitle} onChange={(value) => updateEntry(entry.id, { jobTitle: value })} />
+              </div>
+              <div className="field-pair">
+                <FormField label="Company" value={entry.company} onChange={(value) => updateEntry(entry.id, { company: value })} />
+                <label>
+                  <span className="form-label">Relationship</span>
+                  <select value={entry.relationship} onChange={(event) => updateEntry(entry.id, { relationship: event.target.value })} className="form-field">
+                    {["Manager", "Supervisor", "Colleague", "Client", "HR", "Professor", "Other"].map((item) => <option key={item}>{item}</option>)}
+                  </select>
+                </label>
+              </div>
+              <div className="field-pair">
+                <label>
+                  <span className="form-label">Phone</span>
+                  <div className="phone-row">
+                    <select value={entry.phoneCode || "+971"} onChange={(event) => updateEntry(entry.id, { phoneCode: event.target.value })} className="form-field">
+                      {["+971", "+966", "+965", "+973", "+974", "+968", "+63", "+91", "+92"].map((code) => <option key={code}>{code}</option>)}
+                    </select>
+                    <input value={entry.phone || ""} onChange={(event) => updateEntry(entry.id, { phone: event.target.value })} className="form-field" />
+                  </div>
+                </label>
+                <FormField label="Email" type="email" value={entry.email} onChange={(value) => updateEntry(entry.id, { email: value })} />
+              </div>
+              <label className="reference-consent">
+                <input type="checkbox" checked={Boolean(entry.consentGiven)} onChange={(event) => updateEntry(entry.id, { consentGiven: event.target.checked })} />
+                <span>I have this person's permission to share contact details.</span>
+              </label>
+              {!entry.consentGiven && <p className="reference-hidden-badge">Hidden until consent confirmed</p>}
+              <button type="button" onClick={() => removeEntry(entry.id)} className="reference-remove">Delete reference</button>
+            </article>
+          ))}
+          <button type="button" onClick={addReference} disabled={references.entries.length >= 4} className="add-reference-button">
+            {references.entries.length >= 4 ? "Maximum 4 references" : "Add reference"}
+          </button>
+        </div>
+      )}
+    </CollapsibleFormSection>
+  );
+}
+
 function CVBuilderForm({ cv, onChange }) {
+  const [smartTips, setSmartTips] = useState({});
+  const tipsEnabled = cv.tipsEnabled !== false;
+  const handleBlurTip = (field, value) => {
+    if (!tipsEnabled) return;
+    const message = getSmartTip(field, value);
+    if (message) setSmartTips((current) => ({ ...current, [field]: message }));
+  };
+  const clearSmartTip = (field) => setSmartTips((current) => ({ ...current, [field]: "" }));
   const improveText = (key) => {
     const value = String(cv[key] || "").trim();
     if (!value) return;
@@ -1492,13 +1752,35 @@ function CVBuilderForm({ cv, onChange }) {
   return (
     <div className="space-y-3">
       <CollapsibleFormSection id="personal" title="Personal info" icon="file" defaultOpen badge={cv.fullName ? "Done" : ""}>
+        <TipSection industry={cv.industry} field="contact" tipsEnabled={tipsEnabled}>
+          <div className="field-pair">
+            <label>
+              <span className="form-label">Which industry are you applying in?</span>
+              <select value={cv.industry || "general"} onChange={(event) => onChange("industry", event.target.value)} className="form-field">
+                {industryOptions.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+              </select>
+            </label>
+            <label className="tips-toggle">
+              <input type="checkbox" checked={tipsEnabled} onChange={(event) => onChange("tipsEnabled", event.target.checked)} />
+              <span>Show writing tips</span>
+            </label>
+          </div>
+        </TipSection>
         <div className="field-pair">
           <FormField label="Full name" value={cv.fullName} onChange={(value) => onChange("fullName", value)} placeholder="Example: Juan Dela Cruz" />
           <FormField label="Job title" value={cv.jobTitle} onChange={(value) => onChange("jobTitle", value)} placeholder="Example: Logistics Assistant" />
         </div>
         <div className="field-pair">
-          <FormField label="Contact email" type="email" value={cv.email} onChange={(value) => onChange("email", value)} placeholder="name@email.com" />
-          <FormField label="Contact number" type="tel" value={cv.phone} onChange={(value) => onChange("phone", value)} placeholder="+971 50 123 4567" />
+          <label className="block">
+            <span className="form-label">Contact email</span>
+            <input type="email" value={cv.email || ""} onChange={(event) => onChange("email", event.target.value)} onBlur={(event) => handleBlurTip("email", event.target.value)} className="form-field" placeholder="name@email.com" />
+            <SmartTip message={smartTips.email} onDismiss={() => clearSmartTip("email")} />
+          </label>
+          <label className="block">
+            <span className="form-label">Contact number</span>
+            <input type="tel" value={cv.phone || ""} onChange={(event) => onChange("phone", event.target.value)} onBlur={(event) => handleBlurTip("phone", event.target.value)} className="form-field" placeholder="+971 50 123 4567" />
+            <SmartTip message={smartTips.phone} onDismiss={() => clearSmartTip("phone")} />
+          </label>
         </div>
         <div className="field-pair">
           <FormField label="Country" value={cv.country} onChange={(value) => onChange("country", value)} placeholder="United Arab Emirates" />
@@ -1533,6 +1815,7 @@ function CVBuilderForm({ cv, onChange }) {
       </CollapsibleFormSection>
 
       <CollapsibleFormSection id="experience" title="Work experience" icon="briefcase" defaultOpen badge={normalizeWorkExperiences(cv).some((entry) => entry.employer) ? "Done" : ""}>
+        <InlineTip industry={cv.industry} field="experience" enabled={tipsEnabled} />
         <WorkExperienceEditor cv={cv} onChange={onChange} />
       </CollapsibleFormSection>
 
@@ -1541,18 +1824,31 @@ function CVBuilderForm({ cv, onChange }) {
         <FormField label="Certifications & licenses" type="textarea" rows={3} value={cv.certifications} onChange={(value) => onChange("certifications", value)} placeholder="Example: Basic Food Safety Certificate, TESDA NC II, UAE driving license" />
       </CollapsibleFormSection>
 
-      <CollapsibleFormSection id="skills" title="Skills, languages, and references" icon="check" badge={cv.skills ? "Done" : ""}>
-        <FormField label="Skills" type="textarea" rows={4} value={cv.skills} onChange={(value) => onChange("skills", value)} placeholder="Example: Inventory control, customer service, Excel, dispatch coordination" />
+      <ReferencesSection cv={cv} onChange={onChange} />
+
+      <CollapsibleFormSection id="skills" title="Skills and languages" icon="check" badge={cv.skills ? "Done" : ""}>
+        <InlineTip industry={cv.industry} field="skills" enabled={tipsEnabled} />
+        <label className="block">
+          <span className="form-label">Skills</span>
+          <textarea value={cv.skills || ""} onChange={(event) => onChange("skills", event.target.value)} onBlur={(event) => handleBlurTip("skills", event.target.value)} rows={4} className="form-field resize-y" placeholder="Example: Inventory control, customer service, Excel, dispatch coordination" />
+          <SmartTip message={smartTips.skills} onDismiss={() => clearSmartTip("skills")} />
+        </label>
         <div className="ai-assist-row">
           <button type="button" onClick={() => improveText("skills")} className="btn-ai"><Icon name="sparkle" className="h-3 w-3" /> Improve with AI</button>
           <span className="ai-hint">Clean and strengthen your skills list</span>
         </div>
         <FormField label="Languages spoken" type="textarea" rows={3} value={cv.languages} onChange={(value) => onChange("languages", value)} placeholder="Example: English - Good, Filipino - Native, Arabic - Basic" />
-        <FormField label="References" type="textarea" rows={3} value={cv.references} onChange={(value) => onChange("references", value)} placeholder="Available upon request" />
       </CollapsibleFormSection>
 
+      <QrCodeSection cv={cv} onChange={onChange} />
+
       <CollapsibleFormSection id="summary" title="Professional summary" icon="file" badge={cv.summary?.length > 40 ? "Done" : ""}>
-        <FormField label="Professional summary / objective" type="textarea" rows={5} value={cv.summary} onChange={(value) => onChange("summary", value)} placeholder="Example: Reliable logistics assistant with UAE warehouse experience, strong inventory skills, and careful documentation habits." />
+        <InlineTip industry={cv.industry} field="summary" enabled={tipsEnabled} />
+        <label className="block">
+          <span className="form-label">Professional summary / objective</span>
+          <textarea value={cv.summary || ""} onChange={(event) => onChange("summary", event.target.value)} onBlur={(event) => handleBlurTip("summary", event.target.value)} rows={5} className="form-field resize-y" placeholder="Example: Reliable logistics assistant with UAE warehouse experience, strong inventory skills, and careful documentation habits." />
+          <SmartTip message={smartTips.summary} onDismiss={() => clearSmartTip("summary")} />
+        </label>
         <div className="ai-assist-row">
           <button type="button" onClick={() => improveText("summary")} className="btn-ai"><Icon name="sparkle" className="h-3 w-3" /> Improve with AI</button>
           <span className="ai-hint">Make your summary clearer for UAE/GCC employers</span>
@@ -1949,6 +2245,29 @@ function LiveCVPreview({ cv, theme, layout }) {
       {list ? <ul className="mt-2 list-disc space-y-1 pl-5 text-[12px] leading-5 text-slate-700">{lines(content).map((line) => <li key={line}>{line}</li>)}</ul> : <p className="mt-2 whitespace-pre-line text-[12px] leading-5 text-slate-700">{content}</p>}
     </section>
   );
+  const referencesBlock = () => {
+    const references = normalizeReferences(cv.references);
+    if (references.mode === "on-request") return section("References", "References available upon request");
+    if (references.mode !== "listed") return null;
+    const visibleEntries = references.entries.filter((entry) => entry.consentGiven && entry.name && entry.company);
+    if (!visibleEntries.length) return null;
+    return (
+      <section className="references-preview-block">
+        <h3 className="cv-section-title" style={{ color: theme.dark, borderColor: theme.color }}>References</h3>
+        <div className="references-preview-grid">
+          {visibleEntries.map((entry) => (
+            <article key={entry.id} className="reference-preview-card">
+              <p className="font-black text-slate-900">{entry.name}</p>
+              <p>{[entry.jobTitle, entry.company].filter(Boolean).join(", ")}</p>
+              {entry.relationship && <p className="text-slate-500">{entry.relationship}</p>}
+              {entry.phone && <p>{[entry.phoneCode, entry.phone].filter(Boolean).join(" ")}</p>}
+              {entry.email && <p>{entry.email}</p>}
+            </article>
+          ))}
+        </div>
+      </section>
+    );
+  };
   const workEntries = normalizeWorkExperiences(cv);
   const workExperienceSection = (
     <section className="break-inside-avoid">
@@ -1981,7 +2300,7 @@ function LiveCVPreview({ cv, theme, layout }) {
     skills: () => section("Skills", cv.skills),
     certifications: () => section("Certifications", cv.certifications),
     languages: () => section("Languages", cv.languages),
-    references: () => section("References", cv.references),
+    references: () => referencesBlock(),
   };
   const content = (
     <div className={layout === "compact" ? "space-y-3" : "space-y-5"}>
@@ -2009,6 +2328,11 @@ function LiveCVPreview({ cv, theme, layout }) {
           <div className="sidebar-contact mt-7 space-y-3 text-[11px] leading-5 text-white/85">
             {contactLines.map((line) => <p key={line}>{line}</p>)}
           </div>
+          {cv.qrCode?.position === "sidebar" && (
+            <div className="mt-7 flex justify-center">
+              <QrBlock qrCode={cv.qrCode} color="#ffffff" size={80} />
+            </div>
+          )}
         </aside>
         <div className="p-7">{content}</div>
       </article>
@@ -2016,15 +2340,17 @@ function LiveCVPreview({ cv, theme, layout }) {
   }
   return (
     <article className={`cv-paper ${layout === "compact" ? "p-6" : "p-8"}`}>
-      <header className={`flex items-center gap-4 ${layout === "header" ? "rounded p-5 text-white" : "border-b border-slate-200 pb-5"}`} style={layout === "header" ? { background: theme.dark } : {}}>
+      <header className={`relative flex items-center gap-4 ${layout === "header" ? "rounded p-5 pr-24 text-white" : "border-b border-slate-200 pb-5 pr-24"}`} style={layout === "header" ? { background: theme.dark } : {}}>
         {photo("h-20 w-20")}
         <div>
           <h2 className="text-2xl font-black leading-tight">{cv.fullName}</h2>
           <p className={`mt-1 text-sm font-bold ${layout === "header" ? "text-white/90" : "text-blue-700"}`} style={layout === "header" ? {} : { color: theme.color }}>{cv.jobTitle}</p>
           <p className={`mt-3 text-[11px] ${layout === "header" ? "text-white/80" : "text-slate-500"}`}>{contactLines.join(" | ")}</p>
         </div>
+        {cv.qrCode?.position === "header" && <div className="absolute right-4 top-4"><QrBlock qrCode={cv.qrCode} color={layout === "header" ? "#ffffff" : "#1E293B"} /></div>}
       </header>
       <div className="mt-6">{content}</div>
+      {cv.qrCode?.position === "footer" && <div className="mt-6 flex justify-center"><QrBlock qrCode={cv.qrCode} color="#1E293B" /></div>}
     </article>
   );
 }
@@ -2835,6 +3161,7 @@ function getBuilderStepState(cv) {
 }
 
 function BuilderTopBar({ onHome, onDownload, saveStatus }) {
+  const { mode, setMode, cycleMode } = useTheme();
   const isSaving = /saving/i.test(saveStatus);
   return (
     <header className="builder-topbar">
@@ -2843,6 +3170,7 @@ function BuilderTopBar({ onHome, onDownload, saveStatus }) {
         BuildMyCV<span>Now</span>
       </button>
       <div className="builder-topbar-actions">
+        <ThemeToggle mode={mode} setMode={setMode} cycleMode={cycleMode} />
         <span className={isSaving ? "builder-save-badge saving" : "builder-save-badge saved"}>
           <Icon name={isSaving ? "sparkle" : "check"} className="h-3 w-3" />
           {isSaving ? "Saving..." : "Saved"}
@@ -2852,6 +3180,23 @@ function BuilderTopBar({ onHome, onDownload, saveStatus }) {
         </button>
       </div>
     </header>
+  );
+}
+
+function CompletionBar({ completion, onNextStep }) {
+  const color = completion.percent >= 80 ? "#16a34a" : completion.percent >= 40 ? "var(--accent)" : "#d97706";
+  return (
+    <section className="completion-bar" aria-label="CV completion">
+      <div className="completion-label">
+        <strong>Your CV is {completion.percent}% complete</strong>
+        <button type="button" onClick={() => onNextStep(completion.nextSection)}>
+          Next: {completion.nextStep}
+        </button>
+      </div>
+      <div className="completion-track">
+        <div className="completion-fill" style={{ width: `${completion.percent}%`, background: color }} />
+      </div>
+    </section>
   );
 }
 
@@ -2899,7 +3244,6 @@ function BuilderSidebar({ currentStep, onStep, completedSteps, categoryId, onCat
 
 function BuilderPreviewPanel({ cv, theme, layout, onDownload }) {
   const [message, setMessage] = useState("");
-  const [qrOpen, setQrOpen] = useState(false);
   const completeness = getCompleteness(cv);
   const shareUrl = "https://buildmycvnow.com/builder";
   const copyShare = async () => {
@@ -2916,7 +3260,6 @@ function BuilderPreviewPanel({ cv, theme, layout, onDownload }) {
         <span className="preview-live-label"><span className="live-dot" /> Live preview</span>
         <div className="preview-actions-v2">
           <button type="button" onClick={copyShare} className="preview-action-button"><Icon name="share" className="h-3.5 w-3.5" /> Share</button>
-          <button type="button" onClick={() => setQrOpen(true)} className="preview-action-button"><Icon name="qr" className="h-3.5 w-3.5" /> QR</button>
         </div>
       </div>
       <div className="preview-strength">
@@ -2935,17 +3278,6 @@ function BuilderPreviewPanel({ cv, theme, layout, onDownload }) {
           <Icon name="download" className="h-4 w-4" /> Download CV
         </button>
       </div>
-      {qrOpen && (
-        <div className="qr-modal-backdrop" onClick={() => setQrOpen(false)}>
-          <div className="qr-modal" onClick={(event) => event.stopPropagation()}>
-            <h3 className="text-lg font-black text-slate-950">QR export</h3>
-            <div className="mt-4 grid h-44 w-44 place-items-center rounded border border-slate-200 bg-white text-center text-xs font-bold leading-5 text-slate-500">
-              QR placeholder<br />{shareUrl}
-            </div>
-            <button type="button" onClick={() => setQrOpen(false)} className="mt-4 w-full rounded bg-slate-950 px-4 py-3 text-sm font-black text-white">Close</button>
-          </div>
-        </div>
-      )}
     </aside>
   );
 }
@@ -3091,9 +3423,13 @@ function CVBuilderApp({ onHome }) {
   const [pendingTemplateId, setPendingTemplateId] = useState(null);
   const [sectionReorderOpen, setSectionReorderOpen] = useState(false);
   const [storageMessage, setStorageMessage] = useState("");
+  const [completionMessage, setCompletionMessage] = useState("");
+  const [completionModalOpen, setCompletionModalOpen] = useState(false);
   const [userMode, setUserMode] = useState(() => localStorage.getItem("cvforall:user-mode") || "guest");
   const theme = useMemo(() => themes.find((item) => item.id === themeId), [themeId]);
   const coverTheme = useMemo(() => themes.find((item) => item.id === coverThemeId), [coverThemeId]);
+  const completion = useMemo(() => computeCompletion({ ...cv, categoryId }), [cv, categoryId]);
+  const previousCompletionRef = useRef(completion.percent);
   const user = session?.user || null;
   const cloudSavingEnabled = Boolean(user && userMode === "registered");
   const noCloudMode = userMode === "urgent-local" || userMode === "urgent-phone";
@@ -3103,6 +3439,39 @@ function CVBuilderApp({ onHome }) {
     const target = document.getElementById(`builder-section-${id}`);
     if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+  const requestCvDownload = () => {
+    if (completion.percent < 40) {
+      console.log("export_below_threshold", { percent: completion.percent });
+      if (!window.confirm(`Your CV is only ${completion.percent}% complete. Recruiters may reject incomplete CVs. Export anyway?`)) return;
+    }
+    setDownloadTarget("cv");
+  };
+  const handleNextStep = (section) => {
+    console.log("nextstep_clicked", { step: section });
+    if (section === "download") requestCvDownload();
+    else jumpToStep(section);
+  };
+  useEffect(() => {
+    const previous = previousCompletionRef.current;
+    previousCompletionRef.current = completion.percent;
+    if (completion.percent <= previous) return;
+    const fired = JSON.parse(localStorage.getItem("bmcv_milestones") || "[]");
+    const fire = async (percent, message) => {
+      if (fired.includes(percent)) return;
+      localStorage.setItem("bmcv_milestones", JSON.stringify([...fired, percent]));
+      console.log("completion_milestone", { percent });
+      setCompletionMessage(message);
+      window.setTimeout(() => setCompletionMessage(""), 4500);
+      if (percent === 100) {
+        setCompletionModalOpen(true);
+        const confetti = await import("canvas-confetti");
+        (confetti.default || confetti)({ particleCount: 90, spread: 70, origin: { y: 0.25 } });
+      }
+    };
+    if (previous < 50 && completion.percent >= 50) fire(50, "Halfway there. Your CV is taking shape.");
+    if (previous < 80 && completion.percent >= 80) fire(80, "Almost done. Recruiters will see this soon.");
+    if (previous < 100 && completion.percent >= 100) fire(100, "Your CV is complete.");
+  }, [completion.percent]);
   useEffect(() => {
     if (theme?.color) document.documentElement.style.setProperty("--cv-accent", theme.color);
   }, [theme?.color]);
@@ -3117,12 +3486,16 @@ function CVBuilderApp({ onHome }) {
     try {
       const savedOrder = JSON.parse(localStorage.getItem("bmcv_section_order") || "null");
       const savedHidden = JSON.parse(localStorage.getItem("bmcv_hidden_sections") || "null");
+      const savedTips = localStorage.getItem("bmcv_tips_enabled");
       if (Array.isArray(savedOrder) || Array.isArray(savedHidden)) {
         setCv((current) => ({
           ...current,
           sectionOrder: Array.isArray(savedOrder) ? normalizeSectionOrder({ sectionOrder: savedOrder }) : current.sectionOrder,
           hiddenSections: Array.isArray(savedHidden) ? savedHidden.filter((id) => defaultSectionOrder.includes(id)) : current.hiddenSections,
+          tipsEnabled: savedTips === null ? current.tipsEnabled : savedTips === "true",
         }));
+      } else if (savedTips !== null) {
+        setCv((current) => ({ ...current, tipsEnabled: savedTips === "true" }));
       }
     } catch {
       localStorage.removeItem("bmcv_section_order");
@@ -3268,6 +3641,7 @@ function CVBuilderApp({ onHome }) {
     loadTemplateSampleData(id);
   };
   const updateCvField = (key, value) => {
+    if (key === "tipsEnabled") localStorage.setItem("bmcv_tips_enabled", String(Boolean(value)));
     setCv((current) => ({ ...current, [key]: value }));
   };
   const handleImport = (extracted) => {
@@ -3364,7 +3738,8 @@ function CVBuilderApp({ onHome }) {
   };
   return (
     <main className="builder-app-shell">
-      <BuilderTopBar onHome={onHome} saveStatus={saveStatus} onDownload={() => setDownloadTarget(activeBuilder === "cv" ? "cv" : "cover")} />
+      <BuilderTopBar onHome={onHome} saveStatus={saveStatus} onDownload={() => (activeBuilder === "cv" ? requestCvDownload() : setDownloadTarget("cover"))} />
+      {activeBuilder === "cv" && <CompletionBar completion={completion} onNextStep={handleNextStep} />}
       <div className="builder-tabbar">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between">
           <div className="flex gap-2">
@@ -3461,7 +3836,7 @@ function CVBuilderApp({ onHome }) {
             </div>
           </section>
           <div className="builder-right-stack">
-            <BuilderPreviewPanel cv={cv} theme={theme} layout={layoutId} onDownload={() => setDownloadTarget("cv")} />
+            <BuilderPreviewPanel cv={cv} theme={theme} layout={layoutId} onDownload={requestCvDownload} />
             <ATSPanel cv={cv} />
           </div>
         </div>
@@ -3478,7 +3853,7 @@ function CVBuilderApp({ onHome }) {
           <button type="button" onClick={() => setMobileCvView("ats")} className={mobileCvView === "ats" ? "active" : ""}>
             ATS Score
           </button>
-          <button type="button" onClick={() => setDownloadTarget("cv")}>
+          <button type="button" onClick={requestCvDownload}>
             Export
           </button>
         </nav>
@@ -3509,6 +3884,9 @@ function CVBuilderApp({ onHome }) {
         {downloaded && (
           <div className="fixed bottom-20 right-5 z-40 rounded border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-900 shadow-lg">Download confirmed. Your CV file is ready.</div>
         )}
+        {completionMessage && (
+          <div className="fixed bottom-36 right-5 z-40 rounded border border-blue-200 bg-blue-50 p-4 text-sm font-bold text-blue-900 shadow-lg">{completionMessage}</div>
+        )}
         </>
       ) : (
         <CoverLetterBuilder
@@ -3527,6 +3905,18 @@ function CVBuilderApp({ onHome }) {
           onDownload={() => setDownloadTarget("cover")}
           downloaded={coverDownloaded}
         />
+      )}
+      {completionModalOpen && (
+        <div className="mobile-sheet-backdrop" onClick={() => setCompletionModalOpen(false)}>
+          <div className="completion-modal" onClick={(event) => event.stopPropagation()}>
+            <h2>Your CV is complete!</h2>
+            <p>You can download now or keep polishing your wording.</p>
+            <div className="completion-modal-actions">
+              <button type="button" onClick={() => { setCompletionModalOpen(false); requestCvDownload(); }}>Download PDF</button>
+              <button type="button" onClick={() => setCompletionModalOpen(false)}>Keep polishing</button>
+            </div>
+          </div>
+        </div>
       )}
       {downloadTarget === "cv" && <DownloadModal cv={cv} onClose={() => setDownloadTarget(null)} onVerifiedDownload={handleDownload} />}
       {downloadTarget === "cover" && <CoverLetterDownloadModal cv={cv} onClose={() => setDownloadTarget(null)} onVerifiedDownload={handleCoverDownload} />}

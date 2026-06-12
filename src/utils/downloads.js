@@ -1,3 +1,7 @@
+import QRCode from "qrcode";
+import { normalizeQrUrl } from "../lib/validateQrUrl";
+import { sanitizeQrSvg } from "../hooks/useQrSvg";
+
 const escapeHtml = (value = "") =>
   String(value)
     .replaceAll("&", "&amp;")
@@ -68,10 +72,31 @@ const cvPersonalDetails = (cv) =>
   ].filter(Boolean);
 
 const defaultSectionOrder = ["summary", "experience", "education", "skills", "certifications", "languages", "references"];
+const defaultQrCode = { enabled: false, url: "", label: "Scan for LinkedIn", position: "header" };
 
 const normalizeSectionOrder = (cv = {}) => {
   const order = Array.isArray(cv.sectionOrder) ? cv.sectionOrder : [];
   return [...order.filter((id) => defaultSectionOrder.includes(id)), ...defaultSectionOrder.filter((id) => !order.includes(id))];
+};
+
+const normalizeReferences = (references) => {
+  if (!references) return { mode: "on-request", entries: [] };
+  if (typeof references === "string") {
+    return /available upon request/i.test(references) || !references.trim()
+      ? { mode: "on-request", entries: [] }
+      : { mode: "listed", entries: [{ name: references, consentGiven: false }] };
+  }
+  return {
+    mode: references.mode || "on-request",
+    entries: Array.isArray(references.entries) ? references.entries : [],
+  };
+};
+
+const referencesHasContent = (references) => {
+  const normalized = normalizeReferences(references);
+  if (normalized.mode === "on-request") return true;
+  if (normalized.mode !== "listed") return false;
+  return normalized.entries.some((entry) => entry.consentGiven && entry.name && entry.company);
 };
 
 const exportPhotoShapeClass = (shape = "circle") => {
@@ -99,6 +124,7 @@ const normalizeCvWorkExperiences = (cv) => {
 
 const sectionHasContent = (cv = {}, id) => {
   if (id === "experience") return normalizeCvWorkExperiences(cv).some((entry) => [entry.jobTitle, entry.employer, entry.responsibilities].some((value) => String(value || "").trim()));
+  if (id === "references") return referencesHasContent(cv.references);
   return Boolean(String(cv[id] || "").trim());
 };
 
@@ -121,6 +147,23 @@ const workExperienceHtml = (cv) =>
     })
     .join("");
 
+const referencesHtml = (references) => {
+  const normalized = normalizeReferences(references);
+  if (normalized.mode === "on-request") return `<p>References available upon request</p>`;
+  if (normalized.mode !== "listed") return "";
+  const entries = normalized.entries.filter((entry) => entry.consentGiven && entry.name && entry.company);
+  if (!entries.length) return "";
+  return `<div class="references-grid">${entries.map((entry) => `
+    <div class="reference-card">
+      <p><strong>${escapeHtml(entry.name)}</strong></p>
+      <p>${escapeHtml([entry.jobTitle, entry.company].filter(Boolean).join(", "))}</p>
+      ${entry.relationship ? `<p class="muted">${escapeHtml(entry.relationship)}</p>` : ""}
+      ${entry.phone ? `<p>${escapeHtml([entry.phoneCode, entry.phone].filter(Boolean).join(" "))}</p>` : ""}
+      ${entry.email ? `<p>${escapeHtml(entry.email)}</p>` : ""}
+    </div>
+  `).join("")}</div>`;
+};
+
 const cvSectionHtml = (cv, id) => {
   const sections = {
     summary: `<div class="section"><h2>Professional Summary</h2><p>${escapeHtml(cv.summary)}</p></div>`,
@@ -129,10 +172,26 @@ const cvSectionHtml = (cv, id) => {
     skills: `<div class="section"><h2>Skills</h2><p>${escapeHtml(cv.skills)}</p></div>`,
     certifications: `<div class="section"><h2>Certifications</h2><p>${escapeHtml(cv.certifications)}</p></div>`,
     languages: `<div class="section"><h2>Languages</h2><p>${escapeHtml(cv.languages)}</p></div>`,
-    references: `<div class="section"><h2>References</h2><p>${escapeHtml(cv.references)}</p></div>`,
+    references: `<div class="section references-block"><h2>References</h2>${referencesHtml(cv.references)}</div>`,
   };
   return sections[id] || "";
 };
+
+const buildQrSvg = async (qrCode = {}, fallbackUrl = "", color = "#1E293B") => {
+  const config = { ...defaultQrCode, ...qrCode };
+  const normalized = normalizeQrUrl(config.url || fallbackUrl);
+  if (!config.enabled || !normalized.ok) return "";
+  const svg = await QRCode.toString(normalized.url, {
+    type: "svg",
+    errorCorrectionLevel: "M",
+    margin: 0,
+    color: { dark: color, light: "#FFFFFF00" },
+  });
+  return sanitizeQrSvg(svg);
+};
+
+const qrBlockHtml = (svg, label, size = 64) =>
+  svg ? `<div class="qr-block" style="width:${size}px"><div class="qr-svg" style="width:${size}px;height:${size}px">${svg}</div><p>${escapeHtml(label || "Scan for LinkedIn")}</p></div>` : "";
 
 const saveBlob = (blob, filename) => {
   const url = URL.createObjectURL(blob);
@@ -254,6 +313,18 @@ const downloadCvDocx = async (cv, filename) => {
   const sectionHeading = (text) => paragraph(text, { bold: true, size: 24, after: 100 });
   const personalDetails = cvPersonalDetails(cv);
   const workExperiences = normalizeCvWorkExperiences(cv);
+  const referenceParagraphs = () => {
+    const references = normalizeReferences(cv.references);
+    if (references.mode === "on-request") return [paragraph("References available upon request")];
+    if (references.mode !== "listed") return [];
+    return references.entries
+      .filter((entry) => entry.consentGiven && entry.name && entry.company)
+      .flatMap((entry) => [
+        paragraph(entry.name, { bold: true, after: 60 }),
+        paragraph([entry.jobTitle, entry.company, entry.relationship].filter(Boolean).join(" | "), { size: 20, after: 60 }),
+        paragraph([[entry.phoneCode, entry.phone].filter(Boolean).join(" "), entry.email].filter(Boolean).join(" | "), { size: 18, after: 90 }),
+      ]);
+  };
   const sectionChildren = (id) => {
     const sections = {
       summary: [sectionHeading("Professional Summary"), paragraph(cv.summary)],
@@ -269,7 +340,7 @@ const downloadCvDocx = async (cv, filename) => {
       skills: [sectionHeading("Skills"), paragraph(cv.skills)],
       certifications: [sectionHeading("Certifications"), paragraph(cv.certifications)],
       languages: [sectionHeading("Languages"), paragraph(cv.languages)],
-      references: [sectionHeading("References"), paragraph(cv.references)],
+      references: [sectionHeading("References"), ...referenceParagraphs()],
     };
     return sections[id] || [];
   };
@@ -291,7 +362,13 @@ const downloadCvDocx = async (cv, filename) => {
   saveBlob(blob, filename);
 };
 
-export const buildCvHtml = (cv, theme = { color: "#0f66d0", dark: "#0f172a" }, layout = "classic") => `
+export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a" }, layout = "classic") => {
+  const qrConfig = { ...defaultQrCode, ...(cv.qrCode || {}) };
+  const qrSvg = await buildQrSvg(qrConfig, cv.linkedIn || cv.portfolioUrl, layout === "sidebar" && qrConfig.position === "sidebar" ? "#FFFFFF" : "#1E293B");
+  const qrHeader = qrConfig.position === "header" ? qrBlockHtml(qrSvg, qrConfig.label, 64) : "";
+  const qrSidebar = qrConfig.position === "sidebar" ? qrBlockHtml(qrSvg, qrConfig.label, 80) : "";
+  const qrFooter = qrConfig.position === "footer" ? qrBlockHtml(qrSvg, qrConfig.label, 64) : "";
+  return `
   <html>
     <head>
       <meta charset="UTF-8" />
@@ -312,6 +389,13 @@ export const buildCvHtml = (cv, theme = { color: "#0f66d0", dark: "#0f172a" }, l
         .square { border-radius: 5px; }
         .section { break-inside: avoid; page-break-inside: avoid; }
         .experience-item { margin-bottom: 12px; break-inside: avoid; page-break-inside: avoid; }
+        .references-block { break-inside: avoid; page-break-inside: avoid; }
+        .references-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
+        .reference-card { border: 1px solid #e2e8f0; border-radius: 5px; padding: 8px; font-size: 11px; }
+        .muted { color: #64748b; }
+        .qr-block { display: grid; justify-items: center; gap: 3px; text-align: center; color: inherit; }
+        .qr-svg svg { display: block; width: 100%; height: 100%; }
+        .qr-block p { margin: 0; font-size: 8pt; line-height: 1.15; }
         .sidebar-paper { display: grid; grid-template-columns: 38% 62%; min-height: 970px; padding: 0; }
         .sidebar { background: ${theme.dark}; color: #ffffff; padding: 20px 24px 28px; }
         .sidebar-header { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 20px; }
@@ -344,6 +428,7 @@ export const buildCvHtml = (cv, theme = { color: "#0f66d0", dark: "#0f172a" }, l
           <div class="sidebar-contact">
             ${cvContactLines(cv).map((line) => `<p>${escapeHtml(line)}</p>`).join("")}
           </div>
+          ${qrSidebar}
         </aside>
         <main class="main-content">
           ${cvPersonalDetails(cv).length ? `<div class="section"><h2>Personal Details</h2><p>${escapeHtml(cvPersonalDetails(cv).join("\n"))}</p></div>` : ""}
@@ -357,13 +442,16 @@ export const buildCvHtml = (cv, theme = { color: "#0f66d0", dark: "#0f172a" }, l
           <p class="title">${escapeHtml(cv.jobTitle)}</p>
           <p class="contact">${escapeHtml(cvContactLines(cv).join(" | "))}</p>
         </div>
+        ${qrHeader}
       </div>
       ${cvPersonalDetails(cv).length ? `<div class="section"><h2>Personal Details</h2><p>${escapeHtml(cvPersonalDetails(cv).join("\n"))}</p></div>` : ""}
       ${visibleSectionOrder(cv).map((id) => cvSectionHtml(cv, id)).join("")}
+      ${qrFooter}
       `}
     </body>
   </html>
 `;
+};
 
 const initialsForPdf = (name) =>
   String(name || "")
@@ -374,7 +462,7 @@ const initialsForPdf = (name) =>
     .toUpperCase();
 
 export const downloadCvFile = async (cv, type, theme, layout = "classic") => {
-  const html = buildCvHtml(cv, theme, layout);
+  const html = await buildCvHtml(cv, theme, layout);
   const baseName = fileBaseName(cv.fullName, "CV");
   if (type === "word") {
     await downloadCvDocx(cv, `${baseName}.docx`);
