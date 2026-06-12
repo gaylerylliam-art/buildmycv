@@ -1967,10 +1967,13 @@ async function readCvFile(file) {
   throw new Error("Unsupported file type. Please upload a PDF, DOCX, or TXT CV.");
 }
 
-const cvSectionHeading = /^(summary|profile|objective|skills|core\s+competencies|work\s+experience|professional\s+experience|employment\s+history|employment|career\s+history|education|certifications?|licenses?|languages?|references?|projects?)$/i;
+const cvSectionHeading = /^(summary|profile|objective|skills|core\s+competencies|work\s+experience|professional\s+experience|employment\s+history|employment|work\s+history|career\s+history|education|certifications?|certificates?|licenses?|languages?|references?|projects?|contact|hobbies|desired\s+positions?|notice\s+period|marital\s+status|nationality|visa\s+stat(?:us|is)|address|phone|email)$/i;
 const mojibakeDashPattern = "\u00e2\u20ac[\u201c\u201d]";
-const dateRangePattern = new RegExp(`((?:(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\.?\\s+)?(?:19|20)\\d{2})\\s*(?:-|\\u2013|\\u2014|${mojibakeDashPattern}|to|until|till|through)\\s*((?:(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\.?\\s+)?(?:19|20)\\d{2}|present|current|till\\s+date|to\\s+date|now)`, "i");
-const singleDatePattern = /((?:(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+)(?:19|20)\d{2})\s*$/i;
+const monthDatePattern = "(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\.?\\s+(?:\\d{1,2},?\\s+)?(?:19|20)\\d{2}";
+const yearDatePattern = "(?:19|20)\\d{2}";
+const dateValuePattern = `(?:${monthDatePattern}|${yearDatePattern})`;
+const dateRangePattern = new RegExp(`(${dateValuePattern})\\s*(?:-|\\u2013|\\u2014|${mojibakeDashPattern}|to|until|till|through)\\s*(${dateValuePattern}|present|current|till\\s+date|to\\s+date|now)`, "i");
+const singleDatePattern = new RegExp(`(${monthDatePattern})\\s*$`, "i");
 const locationPattern = /\b(abu\s*dhabi|ajman|al\s*ain|bahrain|canada|cebu|chennai|cochin|doha|dubai|gcc|india|kerala|kuwait|lagos|london|mangalore|manila|oman|philippines|qatar|riyadh|saudi|sharjah|singapore|toronto|uae|u\.a\.e\.|united\s+arab\s+emirates|uk|usa)\b/i;
 const jobTitlePattern = /\b(accountant|admin|analyst|assistant|associate|cashier|clerk|controller|coordinator|counsellor|counselor|developer|driver|electrician|engineer|executive|helper|housekeeper|intern|manager|nanny|officer|operator|plumber|receptionist|representative|sales|secretary|supervisor|support|technician|waiter|warehouse|welder)\b/i;
 const employerPattern = /\b(agency|association|bank|company|consultancy|corp|corporation|department|forwarding|fzc|hotel|hypermarket|industries|international|llc|limited|logistics|ltd|mart|restaurant|school|services|shipping|solutions|trading|transport|warehouse)\b/i;
@@ -1993,7 +1996,37 @@ const normalizeImportedDate = (value = "") =>
 
 const isResponsibilityLine = (line) => {
   const cleaned = cleanCvLine(line);
+  if (employerPattern.test(cleaned) && cleaned.length < 120) return false;
+  if (jobTitlePattern.test(cleaned) && cleaned.length < 120 && !/[.!?]$/.test(cleaned)) return false;
   return /^[-*]\s+/.test(cleaned) || responsibilityVerbPattern.test(cleaned.replace(/^[-*]\s*/, "")) || cleaned.length > 70;
+};
+
+const isSidebarOrPersonalLine = (line) =>
+  /^(contact|phone|email|address|visa\s+stat(?:us|is)|notice\s+period|marital\s+status|nationality|hobbies|desired\s+positions?)$/i.test(cleanCvLine(line).replace(/:$/, ""));
+
+const looksLikeContactValue = (line) => {
+  const cleaned = cleanCvLine(line);
+  return /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(cleaned)
+    || /^\+?\d[\d\s().-]{7,}\d$/.test(cleaned)
+    || /^(single|married|filipino|employment\s+visa|visit\s+visa|own\s+visa|gardening|cooking|craft\s+making|entrepreneurship)$/i.test(cleaned)
+    || /^(al\s+barsha|tecom|dubai|uae|united\s+arab\s+emirates)/i.test(cleaned);
+};
+
+const looksLikeSidebarSkillLeak = (line) =>
+  /^-?\s*(microsoft\s+powerpoint|social\s+media\s+management|experience|instagram|facebook)$/i.test(cleanCvLine(line));
+
+const isExperienceMetaLine = (line) => {
+  const cleaned = cleanCvLine(line);
+  if (!cleaned) return false;
+  if (/^accounting\s+software\s*:/i.test(cleaned)) return true;
+  if (employerPattern.test(cleaned) && cleaned.length < 90 && /^[A-Z0-9 &'./()-]+$/.test(cleaned)) return true;
+  if (jobTitlePattern.test(cleaned) && cleaned.length < 90 && !isResponsibilityLine(cleaned)) return true;
+  return false;
+};
+
+const isLikelyMetaContinuation = (line) => {
+  const cleaned = cleanCvLine(line);
+  return cleaned.length < 90 && /^[A-Z0-9 &'./()-]+$/.test(cleaned) && !cvSectionHeading.test(cleaned.replace(/:$/, ""));
 };
 
 const splitEmployerAndLocation = (value = "") => {
@@ -2064,11 +2097,22 @@ const assignExperienceMeta = (beforeMeta, afterMeta, fallbackJobTitle = "") => {
     isCurrent: false,
     responsibilities: "",
   };
-  const before = beforeMeta.map(cleanCvLine).filter(Boolean);
-  const after = afterMeta.map(cleanCvLine).filter(Boolean);
-  const titleCandidate = [...before].reverse().find((line) => jobTitlePattern.test(line) && !employerPattern.test(line)) || before[0] || fallbackJobTitle;
+  const before = beforeMeta.map(cleanCvLine).filter(Boolean).filter((line) => !/^accounting\s+software\s*:/i.test(line));
+  const after = afterMeta.map(cleanCvLine).filter(Boolean).filter((line) => !/^accounting\s+software\s*:/i.test(line));
+  const titleIndex = before.findIndex((line) => jobTitlePattern.test(line) && !employerPattern.test(line));
+  let titleCandidate = "";
+  if (titleIndex >= 0) {
+    const titleParts = [before[titleIndex]];
+    for (let index = titleIndex + 1; index < before.length; index += 1) {
+      if (employerPattern.test(before[index]) || /^accounting\s+software\s*:/i.test(before[index])) break;
+      if (isLikelyMetaContinuation(before[index]) || jobTitlePattern.test(before[index])) titleParts.push(before[index]);
+    }
+    titleCandidate = titleParts.join(" ");
+  }
+  titleCandidate ||= [...before].reverse().find((line) => jobTitlePattern.test(line) && !employerPattern.test(line)) || fallbackJobTitle;
   entry.jobTitle = titleCandidate || fallbackJobTitle || "";
-  const employerCandidates = [...before, ...after].filter((line) => line !== entry.jobTitle && !dateRangePattern.test(line));
+  const employerBeforeTitle = titleIndex > 0 ? before.slice(0, titleIndex).join(" ") : "";
+  const employerCandidates = [employerBeforeTitle, ...before, ...after].filter((line) => line && line !== entry.jobTitle && !entry.jobTitle.includes(line) && !dateRangePattern.test(line));
   const employerCandidate = employerCandidates.find((line) => employerPattern.test(line)) || employerCandidates.find((line) => !isResponsibilityLine(line)) || "";
   const employerLocation = splitEmployerAndLocation(employerCandidate);
   entry.employer = employerLocation.employer;
@@ -2087,7 +2131,9 @@ const extractStructuredWorkExperiences = (experienceText = "", fallbackJobTitle 
     .split("\n")
     .map(cleanCvLine)
     .filter(Boolean)
-    .filter((line) => !cvSectionHeading.test(line));
+    .filter((line) => !cvSectionHeading.test(line.replace(/:$/, "")))
+    .filter((line) => !isSidebarOrPersonalLine(line))
+    .filter((line) => !looksLikeContactValue(line));
   if (!rawLines.length) return [];
 
   const dateIndices = rawLines
@@ -2120,21 +2166,40 @@ const extractStructuredWorkExperiences = (experienceText = "", fallbackJobTitle 
     for (let pointer = index - 1; pointer > previousDateIndex; pointer -= 1) {
       const line = rawLines[pointer];
       if (isResponsibilityLine(line)) break;
+      if (beforeMeta.length && !isExperienceMetaLine(line) && !isLikelyMetaContinuation(line)) break;
       beforeMeta.unshift(line);
-      if (beforeMeta.length >= 3) break;
+      if (beforeMeta.length >= 6) break;
     }
     const afterMeta = [];
     let dutiesStart = index + 1;
     for (let pointer = index + 1; pointer < nextDateIndex; pointer += 1) {
       const line = rawLines[pointer];
       if (isResponsibilityLine(line) || dateRangePattern.test(line)) break;
+      if (beforeMeta.some((item) => jobTitlePattern.test(item) || employerPattern.test(item)) && !isExperienceMetaLine(line)) break;
       afterMeta.push(line);
       dutiesStart = pointer + 1;
       if (afterMeta.length >= 2) break;
     }
-    let duties = rawLines.slice(dutiesStart, nextDateIndex);
-    while (duties.length && !isResponsibilityLine(duties[duties.length - 1])) duties = duties.slice(0, -1);
-    duties = duties.map((line) => line.replace(/^[-*]\s*/, "")).filter(Boolean);
+    let dutiesEnd = nextDateIndex;
+    if (datePosition < dateIndices.length - 1) {
+      let pointer = nextDateIndex - 1;
+      let checked = 0;
+      while (pointer > index && checked < 5) {
+        const candidate = rawLines[pointer];
+        if (isExperienceMetaLine(candidate)) dutiesEnd = pointer;
+        else if (isResponsibilityLine(candidate)) break;
+        pointer -= 1;
+        checked += 1;
+      }
+    }
+    let duties = rawLines.slice(dutiesStart, dutiesEnd);
+    duties = duties
+      .filter((line) => !isExperienceMetaLine(line))
+      .filter((line) => !isSidebarOrPersonalLine(line))
+      .filter((line) => !looksLikeContactValue(line))
+      .filter((line) => !looksLikeSidebarSkillLeak(line))
+      .map((line) => line.replace(/^[-*]\s*/, ""))
+      .filter(Boolean);
     const inlineMeta = parseInlineExperienceHeader(dateLine, match);
     const entry = { ...assignExperienceMeta(beforeMeta, afterMeta, fallbackJobTitle), ...inlineMeta };
     if (!entry.companyLocation) {
@@ -2152,41 +2217,82 @@ const extractStructuredWorkExperiences = (experienceText = "", fallbackJobTitle 
 
 function mockAiExtractCv(text, fileName) {
   const clean = text.replace(/\r/g, "\n").replace(/[ \t]+/g, " ").trim();
-  const lines = clean.split("\n").map((line) => line.trim()).filter(Boolean);
+  const lines = clean.split("\n").map(cleanCvLine).filter(Boolean);
   const email = clean.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];
   const phone = clean.match(/(\+?\d[\d\s().-]{7,}\d)/)?.[0];
   const linkedIn = clean.match(/https?:\/\/(?:www\.)?linkedin\.com\/[^\s)]+/i)?.[0] || clean.match(/linkedin\.com\/[^\s)]+/i)?.[0];
   const urlMatches = clean.match(/https?:\/\/[^\s)]+/gi) || [];
   const portfolioUrl = urlMatches.find((url) => !/linkedin\.com/i.test(url)) || "";
-  const nationality = clean.match(/nationality\s*[:\-]\s*([^\n]+)/i)?.[1]?.trim();
-  const visaStatus = clean.match(/visa\s*(?:status)?\s*[:\-]\s*([^\n]+)/i)?.[1]?.trim();
-  const drivingLicense = clean.match(/(?:driving|driver'?s?)\s+licen[cs]e\s*[:\-]?\s*([^\n]*)/i)?.[0]?.trim();
-  const headingPattern = /summary|profile|objective|skills|core competencies|experience|professional experience|employment|work history|education|certification|certificate|language|reference|contact|nationality|visa|driving|linkedin|portfolio|curriculum|resume|cv/i;
-  const firstLine = lines.find((line) => !line.includes("@") && !headingPattern.test(line) && line.length <= 60 && /[a-z]/i.test(line));
+  const headingPattern = /summary|profile|objective|skills|core competencies|experience|professional experience|employment|work history|education|certification|certificate|language|reference|contact|nationality|visa|driving|linkedin|portfolio|curriculum|resume|cv|desired positions|hobbies|phone|email|address/i;
   const compactText = lines.join("\n");
+
+  const findLabelValue = (labelPatterns, options = {}) => {
+    const labels = Array.isArray(labelPatterns) ? labelPatterns : [labelPatterns];
+    for (let i = 0; i < lines.length; i += 1) {
+      const line = cleanCvLine(lines[i]);
+      const withoutColon = line.replace(/:$/, "");
+      if (!labels.some((pattern) => pattern.test(withoutColon))) continue;
+      const inline = cleanCvLine(line.replace(/^[^:]+:\s*/i, ""));
+      if (inline && inline !== withoutColon && (!options.reject || !options.reject(inline))) return inline;
+      for (let j = i + 1; j < Math.min(lines.length, i + 5); j += 1) {
+        const candidate = cleanCvLine(lines[j]);
+        if (!candidate || cvSectionHeading.test(candidate.replace(/:$/, "")) || /^[A-Z ]+:$/.test(candidate)) continue;
+        if (!options.reject || !options.reject(candidate)) return candidate;
+      }
+    }
+    return "";
+  };
+
+  const address = findLabelValue([/^address$/i]);
+  const nationality = findLabelValue([/^nationality$/i], { reject: (value) => value.length > 35 || isResponsibilityLine(value) });
+  const visaStatus = findLabelValue([/^visa\s+stat(?:us|is)$/i], { reject: (value) => value.length > 45 || isResponsibilityLine(value) });
+  const drivingLicense = findLabelValue([/^(?:driving|driver'?s?)\s+licen[cs]e$/i], { reject: (value) => value.length > 45 });
+  const fullName = lines.find((line, index) => {
+    const words = line.split(/\s+/).filter(Boolean);
+    return index < 60
+      && words.length >= 3
+      && words.length <= 6
+      && /^[A-Z .'-]+$/.test(line)
+      && !headingPattern.test(line)
+      && !jobTitlePattern.test(line)
+      && !employerPattern.test(line)
+      && !/(degree|university|course|software|quickbooks|zoho|sap|office)/i.test(line);
+  });
+  const nameIndex = fullName ? lines.indexOf(fullName) : -1;
+  const jobTitleAfterName = nameIndex >= 0
+    ? lines.slice(nameIndex + 1, nameIndex + 5).find((line) => line.length <= 70 && jobTitlePattern.test(line) && !headingPattern.test(line) && !employerPattern.test(line))
+    : "";
   const section = (names, maxLines = 6) => {
-    const index = lines.findIndex((line) => names.some((name) => new RegExp(`^${name}\\b`, "i").test(line) || line.toLowerCase() === name));
+    const index = lines.findIndex((line) => names.some((name) => new RegExp(`^${name}\\s*:?$`, "i").test(line)));
     if (index === -1) return "";
-    const nextIndex = lines.findIndex((line, lineIndex) => lineIndex > index && /^(summary|profile|objective|skills|core\s+competencies|work\s+experience|professional\s+experience|employment\s+history|employment|career\s+history|work\s+history|education|certifications?|certificates?|languages?|references?)$/i.test(line));
+    const nextIndex = lines.findIndex((line, lineIndex) => lineIndex > index && cvSectionHeading.test(line.replace(/:$/, "")));
     return lines.slice(index + 1, nextIndex === -1 ? Math.min(lines.length, index + 1 + maxLines) : nextIndex).join("\n").trim();
   };
   const skills = section(["skills", "core competencies"], 20);
-  const experience = section(["experience", "professional experience", "employment", "employment history", "work history", "career history"], 120);
-  const education = section(["education"], 14);
-  const certifications = section(["certification", "certificate"], 10);
-  const languages = section(["language"], 8);
+  const experience = section(["work experience", "professional experience", "employment", "employment history", "work history", "career history"], 180);
+  let education = section(["education"], 14);
+  const certifications = section(["certification", "certificate", "certifications", "certificates"], 10);
+  const languages = section(["language", "languages"], 8);
   const summary = section(["summary", "profile", "objective"], 4);
-  const jobTitle = lines.find((line, index) => index > 0 && index < 8 && !line.includes("@") && !phone?.includes(line) && !headingPattern.test(line) && line.length <= 70);
+  const jobTitle = jobTitleAfterName || lines.find((line, index) => index > 0 && index < 12 && !line.includes("@") && !phone?.includes(line) && !headingPattern.test(line) && jobTitlePattern.test(line) && line.length <= 70);
   const summaryFallback = (() => {
-    const stopIndex = lines.findIndex((line) => /^(core\s+competencies|skills|professional\s+experience|work\s+experience|employment|education)$/i.test(line));
+    const stopIndex = lines.findIndex((line) => /^(core\s+competencies|skills|professional\s+experience|work\s+experience|employment|education)$/i.test(line.replace(/:$/, "")));
     const usableLines = lines
-      .slice(1, stopIndex === -1 ? Math.min(lines.length, 8) : stopIndex)
+      .slice(nameIndex >= 0 ? nameIndex + 1 : 1, stopIndex === -1 ? Math.min(lines.length, 10) : stopIndex)
       .filter((line) => line.length > 35)
       .filter((line) => !line.includes("@") && !/linkedin|https?:|^\+?\d/.test(line))
       .filter((line) => !headingPattern.test(line));
     return usableLines.join(" ").trim();
   })();
   const structuredWorkExperiences = extractStructuredWorkExperiences(experience, jobTitle || "");
+  const formattedExperience = structuredWorkExperiences.length ? formatWorkExperiences(structuredWorkExperiences) : experience;
+  if (fullName && education.includes(fullName)) {
+    education = education
+      .split("\n")
+      .slice(0, education.split("\n").findIndex((line) => line === fullName))
+      .join("\n")
+      .trim();
+  }
   const fallbackWorkExperiences = [
     {
       ...createExperienceEntry(),
@@ -2199,19 +2305,21 @@ function mockAiExtractCv(text, fileName) {
       responsibilities: experience || "Please review imported CV and add work experience here.",
     },
   ];
+  const country = /dubai|uae|u\.a\.e\.|united\s+arab\s+emirates/i.test(`${address}\n${clean}`) ? "United Arab Emirates" : "";
   return {
-    fullName: firstLine || fileName.replace(/\.[^.]+$/, "").replaceAll("-", " "),
+    fullName: fullName || fileName.replace(/\.[^.]+$/, "").replaceAll("-", " "),
     jobTitle: jobTitle || "",
     email: email || "",
     phone: phone || "",
+    country,
     nationality: nationality || "",
     visaStatus: visaStatus || "",
     linkedIn: linkedIn || "",
     portfolioUrl,
-    drivingLicense: drivingLicense || "Add driving license status here.",
+    drivingLicense: drivingLicense || "",
     summary: sanitizeCvTextForCoverLetter(summary || summaryFallback || compactText.split("\n").filter((line) => line.length > 40 && !line.includes("@") && !/linkedin/i.test(line)).slice(0, 2).join(" ")) || "Please review imported CV and add a professional summary here.",
     skills: sanitizeCvTextForCoverLetter(skills) || "Please review imported CV and add key skills here.",
-    experience: experience || "Please review imported CV and add work experience here.",
+    experience: formattedExperience || "Please review imported CV and add work experience here.",
     workExperiences: structuredWorkExperiences.length ? structuredWorkExperiences : fallbackWorkExperiences,
     education: education || "Please review imported CV and add education details here.",
     certifications: certifications || "Add certificates or training here.",
