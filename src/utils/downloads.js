@@ -374,7 +374,7 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
       <meta charset="UTF-8" />
       <style>
         * { box-sizing: border-box; }
-        body { margin: 0; padding: 28px; font-family: Arial, sans-serif; color: #111827; line-height: 1.5; background: #ffffff; }
+        body { margin: 0; padding: 28px; padding-bottom: 52px; font-family: Arial, sans-serif; color: #111827; line-height: 1.5; background: #ffffff; }
         h1 { color: #0f172a; margin: 0 0 4px; font-size: 30px; line-height: 1.15; }
         h2 { color: ${theme.dark}; border-bottom: 1px solid ${theme.color}; padding-bottom: 5px; margin: 18px 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0; }
         p { margin: 0 0 8px; }
@@ -410,6 +410,7 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
         .sidebar-title { margin: 8px 0 0; color: rgba(255,255,255,0.88); font-size: 14px; font-weight: 700; }
         .sidebar-contact { margin-top: 28px; color: rgba(255,255,255,0.86); font-size: 11px; line-height: 1.8; text-align: left; }
         .main-content { padding: 28px; }
+        .credit-footer { margin: 24px 0 0; padding-top: 12px; border-top: 1px solid #e5e7eb; color: #9ca3af; font-size: 7pt; text-align: center; }
       </style>
     </head>
     <body>
@@ -448,6 +449,7 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
       ${visibleSectionOrder(cv).map((id) => cvSectionHtml(cv, id)).join("")}
       ${qrFooter}
       `}
+      ${cv.showCredit !== false ? `<p class="credit-footer">CV created free at buildmycvnow.com</p>` : ""}
     </body>
   </html>
 `;

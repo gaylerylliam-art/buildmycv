@@ -8,7 +8,9 @@ import TemplatesSectionV3 from "./components/TemplatesSectionV3";
 import PhotoUploadCrop from "./components/PhotoUploadCrop";
 import ATSPanel from "./components/ATSPanel";
 import { industryOptions, getTips } from "./content/cvTips";
+import { seoJobs } from "./content/programmaticSeo";
 import { computeCompletion } from "./lib/cvCompletion";
+import { logEvent } from "./lib/analytics";
 import { getSmartTip } from "./lib/smartTips";
 import { normalizeQrUrl } from "./lib/validateQrUrl";
 import { useQrSvg } from "./hooks/useQrSvg";
@@ -204,6 +206,7 @@ const initialCv = {
   industry: "general",
   tipsEnabled: true,
   qrCode: defaultQrCode,
+  showCredit: true,
   references: defaultReferences,
   sectionOrder: defaultSectionOrder,
   hiddenSections: [],
@@ -3200,6 +3203,77 @@ function CompletionBar({ completion, onNextStep }) {
   );
 }
 
+function ShareTool({ moment = "download" }) {
+  const [copied, setCopied] = useState(false);
+  const shareText = "I made my CV free with this - no sign-up, ATS-friendly, built for UAE/Gulf jobs:";
+  const urls = {
+    native: "https://buildmycvnow.com?utm_source=share&utm_medium=native",
+    whatsapp: "https://buildmycvnow.com?utm_source=whatsapp&utm_medium=share",
+    facebook: "https://buildmycvnow.com?utm_source=facebook&utm_medium=share",
+    copylink: "https://buildmycvnow.com?utm_source=copylink&utm_medium=share",
+  };
+  const shareNative = async () => {
+    logEvent("share_clicked", { channel: "native", moment });
+    if (navigator.share) {
+      await navigator.share({ title: "Free CV Builder for UAE Jobs", text: shareText, url: urls.native });
+    } else {
+      await navigator.clipboard.writeText(`${shareText} ${urls.copylink}`);
+      setCopied(true);
+    }
+  };
+  const copy = async () => {
+    logEvent("share_clicked", { channel: "copylink", moment });
+    await navigator.clipboard.writeText(`${shareText} ${urls.copylink}`);
+    setCopied(true);
+  };
+  return (
+    <section className="share-tool-card">
+      <h3>Know someone job hunting?</h3>
+      <p>Share this free CV builder for UAE and Gulf jobs.</p>
+      <div className="share-tool-actions">
+        <button type="button" onClick={shareNative}>Share</button>
+        <a onClick={() => logEvent("share_clicked", { channel: "whatsapp", moment })} href={`https://wa.me/?text=${encodeURIComponent(`${shareText} ${urls.whatsapp}`)}`} target="_blank" rel="noreferrer">WhatsApp</a>
+        <a onClick={() => logEvent("share_clicked", { channel: "facebook", moment })} href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(urls.facebook)}`} target="_blank" rel="noreferrer">Facebook</a>
+        <button type="button" onClick={copy}>{copied ? "Copied!" : "Copy link"}</button>
+      </div>
+    </section>
+  );
+}
+
+function EmailCapture({ source = "download", roleInterest = "" }) {
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState("");
+  const submit = async (event) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const response = await fetch("/.netlify/functions/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, source, roleInterest, website: form.get("website") }),
+    });
+    if (!response.ok) {
+      setStatus("Please check your email and try again.");
+      return;
+    }
+    const data = await response.json();
+    logEvent("email_subscribed", { source });
+    setStatus("You are subscribed. Download the checklist below.");
+    if (data.downloadUrl) window.open(data.downloadUrl, "_blank", "noopener,noreferrer");
+  };
+  return (
+    <form onSubmit={submit} className="email-capture-card">
+      <h3>Want the free UAE Job Hunt Checklist?</h3>
+      <p>We will email it to you, plus occasional CV tips. No spam.</p>
+      <input className="hidden" name="website" tabIndex="-1" autoComplete="off" />
+      <div className="email-capture-row">
+        <input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@email.com" />
+        <button>Send me the checklist</button>
+      </div>
+      {status && <p className="email-capture-status">{status}</p>}
+    </form>
+  );
+}
+
 function BuilderSidebar({ currentStep, onStep, completedSteps, categoryId, onCategory, themeId, onTheme }) {
   const prominent = ["hospitality", "it", "supply-chain-logistics", "finance", "engineering", "domestic", "skilled", "education"];
   const sortedCategories = [...categories].sort((a, b) => prominent.indexOf(a.id) - prominent.indexOf(b.id));
@@ -3425,6 +3499,7 @@ function CVBuilderApp({ onHome }) {
   const [storageMessage, setStorageMessage] = useState("");
   const [completionMessage, setCompletionMessage] = useState("");
   const [completionModalOpen, setCompletionModalOpen] = useState(false);
+  const [showSharePrompt, setShowSharePrompt] = useState(() => sessionStorage.getItem("bmcv_share_prompt_seen") !== "1");
   const [userMode, setUserMode] = useState(() => localStorage.getItem("cvforall:user-mode") || "guest");
   const theme = useMemo(() => themes.find((item) => item.id === themeId), [themeId]);
   const coverTheme = useMemo(() => themes.find((item) => item.id === coverThemeId), [coverThemeId]);
@@ -3441,13 +3516,13 @@ function CVBuilderApp({ onHome }) {
   };
   const requestCvDownload = () => {
     if (completion.percent < 40) {
-      console.log("export_below_threshold", { percent: completion.percent });
+      logEvent("export_below_threshold", { percent: completion.percent });
       if (!window.confirm(`Your CV is only ${completion.percent}% complete. Recruiters may reject incomplete CVs. Export anyway?`)) return;
     }
     setDownloadTarget("cv");
   };
   const handleNextStep = (section) => {
-    console.log("nextstep_clicked", { step: section });
+    logEvent("nextstep_clicked", { step: section });
     if (section === "download") requestCvDownload();
     else jumpToStep(section);
   };
@@ -3459,7 +3534,7 @@ function CVBuilderApp({ onHome }) {
     const fire = async (percent, message) => {
       if (fired.includes(percent)) return;
       localStorage.setItem("bmcv_milestones", JSON.stringify([...fired, percent]));
-      console.log("completion_milestone", { percent });
+      logEvent("completion_milestone", { percent });
       setCompletionMessage(message);
       window.setTimeout(() => setCompletionMessage(""), 4500);
       if (percent === 100) {
@@ -3475,6 +3550,26 @@ function CVBuilderApp({ onHome }) {
   useEffect(() => {
     if (theme?.color) document.documentElement.style.setProperty("--cv-accent", theme.color);
   }, [theme?.color]);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const role = params.get("role");
+    const city = params.get("city");
+    logEvent("builder_opened", {
+      source: params.get("utm_source") || "direct",
+      role: role || "",
+      city: city || "",
+    });
+    if (!role) return;
+    const seoJob = seoJobs.find((item) => item.slug === role);
+    if (!seoJob) return;
+    const matchingCategory = categories.find((item) => item.id === seoJob.industry);
+    setCv((current) => ({
+      ...current,
+      jobTitle: current.jobTitle && current.jobTitle !== initialCv.jobTitle ? current.jobTitle : seoJob.title,
+    }));
+    if (matchingCategory) setCategoryId(matchingCategory.id);
+    logEvent("seo_page_to_builder", { role, city: city || "" });
+  }, []);
   useEffect(() => {
     initAnalytics();
     if (!supabase) return;
@@ -3712,11 +3807,14 @@ function CVBuilderApp({ onHome }) {
   };
   const handleDownload = async (type) => {
     await downloadCvFile(cv, type, theme, layoutId);
+    logEvent("cv_downloaded", { format: type, templateId: categoryId, completionPercent: completion.percent });
     setDownloaded(true);
+    if (showSharePrompt) sessionStorage.setItem("bmcv_share_prompt_seen", "1");
     setDownloadTarget(null);
   };
   const handleCoverDownload = async (type) => {
     await downloadCoverLetterFile(coverLetter, cv, type, coverTheme);
+    logEvent("cover_letter_downloaded", { format: type, templateId: categoryId });
     setCoverDownloaded(true);
     setDownloadTarget(null);
   };
@@ -3829,6 +3927,18 @@ function CVBuilderApp({ onHome }) {
                         </button>
                       </section>
                     )}
+                    <label className="mt-4 flex items-start gap-3 rounded border border-slate-200 bg-white p-4">
+                      <input
+                        type="checkbox"
+                        checked={cv.showCredit !== false}
+                        onChange={(event) => updateCvField("showCredit", event.target.checked)}
+                        className="mt-1 h-4 w-4"
+                      />
+                      <span>
+                        <span className="block text-sm font-black text-slate-950">Show "created with" credit on my CV</span>
+                        <span className="mt-1 block text-xs font-bold leading-5 text-slate-500">Default on, freely removable. This keeps the free tool easy to share without adding a watermark.</span>
+                      </span>
+                    </label>
                   </div>
                 </div>
               </section>
@@ -3882,7 +3992,15 @@ function CVBuilderApp({ onHome }) {
           </div>
         )}
         {downloaded && (
-          <div className="fixed bottom-20 right-5 z-40 rounded border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-900 shadow-lg">Download confirmed. Your CV file is ready.</div>
+          <div className="download-success-stack">
+            <div className="rounded border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-900 shadow-lg">Download confirmed. Your CV file is ready.</div>
+            {showSharePrompt && (
+              <div>
+                <ShareTool moment="post_download" />
+                <EmailCapture source="download" roleInterest={cv.jobTitle} />
+              </div>
+            )}
+          </div>
         )}
         {completionMessage && (
           <div className="fixed bottom-36 right-5 z-40 rounded border border-blue-200 bg-blue-50 p-4 text-sm font-bold text-blue-900 shadow-lg">{completionMessage}</div>
@@ -3915,6 +4033,7 @@ function CVBuilderApp({ onHome }) {
               <button type="button" onClick={() => { setCompletionModalOpen(false); requestCvDownload(); }}>Download PDF</button>
               <button type="button" onClick={() => setCompletionModalOpen(false)}>Keep polishing</button>
             </div>
+            <ShareTool moment="completion_100" />
           </div>
         </div>
       )}

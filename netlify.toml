@@ -13,6 +13,12 @@
     Access-Control-Allow-Origin = "*"
 
 [[redirects]]
-  from = "/*"
-  to = "/index.html"
+  from = "https://www.buildmycvnow.com/*"
+  to = "https://buildmycvnow.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/builder/*"
+  to = "/builder/index.html"
   status = 200
