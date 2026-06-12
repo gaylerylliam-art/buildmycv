@@ -36,6 +36,7 @@ const createExperienceEntry = (category = defaultCategory) => ({
   id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
   jobTitle: category.title,
   employer: "Employer name",
+  companyLocation: "",
   fromDate: "",
   toDate: "",
   isCurrent: false,
@@ -48,6 +49,7 @@ const formatWorkExperiences = (entries = []) =>
       [
         entry.jobTitle,
         entry.employer,
+        entry.companyLocation,
         [entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - "),
         entry.responsibilities,
       ]
@@ -67,6 +69,7 @@ const normalizeWorkExperiences = (cv) => {
       ...createExperienceEntry(),
       jobTitle: cv.jobTitle || "",
       employer: "",
+      companyLocation: "",
       responsibilities: cv.experience,
     },
   ];
@@ -1321,13 +1324,17 @@ function WorkExperienceEditor({ cv, onChange }) {
             <div className="field-pair">
               <label>
                 <span className="form-label">Date employed from</span>
-                <input className="form-field" type="month" value={entry.fromDate || ""} onChange={(event) => updateEntry(entry.id, "fromDate", event.target.value)} />
+                <input className="form-field" value={entry.fromDate || ""} onChange={(event) => updateEntry(entry.id, "fromDate", event.target.value)} placeholder="Example: August 2023" />
               </label>
               <label>
                 <span className="form-label">Date employed to</span>
-                <input className="form-field" type="month" value={entry.toDate || ""} disabled={entry.isCurrent} onChange={(event) => updateEntry(entry.id, "toDate", event.target.value)} />
+                <input className="form-field" value={entry.toDate || ""} disabled={entry.isCurrent} onChange={(event) => updateEntry(entry.id, "toDate", event.target.value)} placeholder="Example: March 2023" />
               </label>
             </div>
+            <label className="block">
+              <span className="form-label">Company location</span>
+              <input className="form-field" value={entry.companyLocation || ""} onChange={(event) => updateEntry(entry.id, "companyLocation", event.target.value)} placeholder="Example: Dubai, United Arab Emirates" />
+            </label>
             <label className="mt-3 flex items-center gap-2 text-xs font-bold text-slate-600">
               <input type="checkbox" checked={Boolean(entry.isCurrent)} onChange={(event) => updateEntry(entry.id, "isCurrent", event.target.checked)} />
               I currently work here
@@ -1517,7 +1524,20 @@ async function readCvFile(file) {
     for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
       const page = await pdf.getPage(pageNumber);
       const content = await page.getTextContent();
-      pages.push(content.items.map((item) => item.str).join(" "));
+      const lineMap = new Map();
+      content.items.forEach((item) => {
+        const y = Math.round(item.transform?.[5] || 0);
+        const x = item.transform?.[4] || 0;
+        const current = lineMap.get(y) || [];
+        current.push({ x, text: item.str });
+        lineMap.set(y, current);
+      });
+      const pageText = [...lineMap.entries()]
+        .sort((a, b) => b[0] - a[0])
+        .map(([, items]) => items.sort((a, b) => a.x - b.x).map((item) => item.text).join(" ").replace(/\s+/g, " ").trim())
+        .filter(Boolean)
+        .join("\n");
+      pages.push(pageText);
     }
     const text = pages.join("\n").trim();
     if (!text) {
@@ -1533,6 +1553,135 @@ async function readCvFile(file) {
   throw new Error("Unsupported file type. Please upload a PDF, DOCX, or TXT CV.");
 }
 
+const cvSectionHeading = /^(summary|profile|objective|skills|core\s+competencies|work\s+experience|professional\s+experience|employment\s+history|employment|career\s+history|education|certifications?|licenses?|languages?|references?|projects?)$/i;
+const dateRangePattern = /((?:(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+)?(?:19|20)\d{2})\s*(?:-|–|—|to|until|till|through)\s*((?:(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+)?(?:19|20)\d{2}|present|current|till\s+date|to\s+date|now)/i;
+const locationPattern = /\b(abu\s*dhabi|ajman|al\s*ain|bahrain|canada|cebu|doha|dubai|gcc|india|kuwait|lagos|london|manila|oman|philippines|qatar|riyadh|saudi|sharjah|singapore|toronto|uae|u\.a\.e\.|united\s+arab\s+emirates|uk|usa)\b/i;
+const jobTitlePattern = /\b(accountant|admin|analyst|assistant|associate|cashier|clerk|coordinator|developer|driver|electrician|engineer|executive|helper|housekeeper|manager|nanny|officer|operator|plumber|receptionist|representative|sales|secretary|supervisor|support|technician|waiter|warehouse|welder)\b/i;
+const employerPattern = /\b(agency|association|bank|company|corp|corporation|department|fzc|hotel|industries|llc|limited|logistics|ltd|restaurant|school|services|solutions|trading|transport|warehouse)\b/i;
+const responsibilityVerbPattern = /^(achieved|assisted|checked|cleaned|communicated|conducted|coordinated|created|delivered|developed|drove|ensured|followed|greeted|handled|helped|improved|installed|maintained|managed|monitored|operated|organized|performed|prepared|processed|provided|received|recorded|repaired|reported|resolved|served|supported|supervised|trained|updated|worked)\b/i;
+
+const cleanCvLine = (line) =>
+  String(line || "")
+    .replace(/[•●▪◦]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const normalizeImportedDate = (value = "") =>
+  cleanCvLine(value)
+    .replace(/^[-–—]\s*/, "")
+    .replace(/\btill\s+date\b/i, "Present")
+    .replace(/\bto\s+date\b/i, "Present")
+    .replace(/\bcurrent\b/i, "Present")
+    .replace(/\bnow\b/i, "Present");
+
+const isResponsibilityLine = (line) => {
+  const cleaned = cleanCvLine(line);
+  return /^[-*]\s+/.test(cleaned) || responsibilityVerbPattern.test(cleaned.replace(/^[-*]\s*/, "")) || cleaned.length > 70;
+};
+
+const splitEmployerAndLocation = (value = "") => {
+  const cleaned = cleanCvLine(value).replace(/^[-*]\s*/, "");
+  if (!cleaned) return { employer: "", companyLocation: "" };
+  const separators = [" | ", " - ", " – ", " — "];
+  for (const separator of separators) {
+    if (!cleaned.includes(separator)) continue;
+    const parts = cleaned.split(separator).map((part) => part.trim()).filter(Boolean);
+    if (parts.length >= 2 && locationPattern.test(parts[parts.length - 1])) {
+      return { employer: parts.slice(0, -1).join(separator), companyLocation: parts[parts.length - 1] };
+    }
+  }
+  const commaParts = cleaned.split(",").map((part) => part.trim()).filter(Boolean);
+  if (commaParts.length >= 2 && commaParts.slice(1).some((part) => locationPattern.test(part))) {
+    return { employer: commaParts[0], companyLocation: commaParts.slice(1).join(", ") };
+  }
+  return locationPattern.test(cleaned) && !employerPattern.test(cleaned) && !jobTitlePattern.test(cleaned)
+    ? { employer: "", companyLocation: cleaned }
+    : { employer: cleaned, companyLocation: "" };
+};
+
+const assignExperienceMeta = (beforeMeta, afterMeta, fallbackJobTitle = "") => {
+  const entry = {
+    ...createExperienceEntry(),
+    jobTitle: "",
+    employer: "",
+    companyLocation: "",
+    fromDate: "",
+    toDate: "",
+    isCurrent: false,
+    responsibilities: "",
+  };
+  const before = beforeMeta.map(cleanCvLine).filter(Boolean);
+  const after = afterMeta.map(cleanCvLine).filter(Boolean);
+  const titleCandidate = [...before].reverse().find((line) => jobTitlePattern.test(line) && !employerPattern.test(line)) || before[0] || fallbackJobTitle;
+  entry.jobTitle = titleCandidate || fallbackJobTitle || "";
+  const employerCandidates = [...before, ...after].filter((line) => line !== entry.jobTitle && !dateRangePattern.test(line));
+  const employerCandidate = employerCandidates.find((line) => employerPattern.test(line)) || employerCandidates.find((line) => !isResponsibilityLine(line)) || "";
+  const employerLocation = splitEmployerAndLocation(employerCandidate);
+  entry.employer = employerLocation.employer;
+  entry.companyLocation = employerLocation.companyLocation;
+  const locationCandidate = employerCandidates.find((line) => line !== employerCandidate && locationPattern.test(line));
+  if (!entry.companyLocation && locationCandidate) {
+    const split = splitEmployerAndLocation(locationCandidate);
+    entry.companyLocation = split.companyLocation || split.employer;
+  }
+  return entry;
+};
+
+const extractStructuredWorkExperiences = (experienceText = "", fallbackJobTitle = "") => {
+  const rawLines = String(experienceText || "")
+    .replace(/\r/g, "\n")
+    .split("\n")
+    .map(cleanCvLine)
+    .filter(Boolean)
+    .filter((line) => !cvSectionHeading.test(line));
+  if (!rawLines.length) return [];
+
+  const dateIndices = rawLines
+    .map((line, index) => ({ line, index, match: line.match(dateRangePattern) }))
+    .filter((item) => item.match);
+
+  if (!dateIndices.length) {
+    const duties = rawLines.filter((line) => isResponsibilityLine(line)).map((line) => line.replace(/^[-*]\s*/, ""));
+    const meta = rawLines.filter((line) => !isResponsibilityLine(line)).slice(0, 3);
+    if (!duties.length && !meta.length) return [];
+    return [{
+      ...assignExperienceMeta(meta, [], fallbackJobTitle),
+      responsibilities: (duties.length ? duties : rawLines).join("\n"),
+    }];
+  }
+
+  return dateIndices.map(({ index, match }, datePosition) => {
+    const previousDateIndex = datePosition > 0 ? dateIndices[datePosition - 1].index : -1;
+    const nextDateIndex = datePosition < dateIndices.length - 1 ? dateIndices[datePosition + 1].index : rawLines.length;
+    const beforeMeta = [];
+    for (let pointer = index - 1; pointer > previousDateIndex; pointer -= 1) {
+      const line = rawLines[pointer];
+      if (isResponsibilityLine(line)) break;
+      beforeMeta.unshift(line);
+      if (beforeMeta.length >= 3) break;
+    }
+    const afterMeta = [];
+    let dutiesStart = index + 1;
+    for (let pointer = index + 1; pointer < nextDateIndex; pointer += 1) {
+      const line = rawLines[pointer];
+      if (isResponsibilityLine(line) || dateRangePattern.test(line)) break;
+      afterMeta.push(line);
+      dutiesStart = pointer + 1;
+      if (afterMeta.length >= 2) break;
+    }
+    let duties = rawLines.slice(dutiesStart, nextDateIndex);
+    while (duties.length && !isResponsibilityLine(duties[duties.length - 1])) duties = duties.slice(0, -1);
+    duties = duties.map((line) => line.replace(/^[-*]\s*/, "")).filter(Boolean);
+    const entry = assignExperienceMeta(beforeMeta, afterMeta, fallbackJobTitle);
+    entry.fromDate = normalizeImportedDate(match[1]);
+    entry.toDate = normalizeImportedDate(match[2]);
+    entry.isCurrent = /present/i.test(entry.toDate);
+    if (entry.isCurrent) entry.toDate = "";
+    entry.responsibilities = duties.join("\n") || "Please review imported CV and add responsibilities for this role.";
+    return entry;
+  }).filter((entry) => entry.jobTitle || entry.employer || entry.responsibilities);
+};
+
 function mockAiExtractCv(text, fileName) {
   const clean = text.replace(/\r/g, "\n").replace(/[ \t]+/g, " ").trim();
   const lines = clean.split("\n").map((line) => line.trim()).filter(Boolean);
@@ -1547,19 +1696,32 @@ function mockAiExtractCv(text, fileName) {
   const headingPattern = /summary|profile|objective|skills|experience|employment|work history|education|certification|certificate|language|reference|contact|nationality|visa|driving|linkedin|portfolio|curriculum|resume|cv/i;
   const firstLine = lines.find((line) => !line.includes("@") && !headingPattern.test(line) && line.length <= 60 && /[a-z]/i.test(line));
   const compactText = lines.join("\n");
-  const section = (names) => {
+  const section = (names, maxLines = 6) => {
     const index = lines.findIndex((line) => names.some((name) => new RegExp(`^${name}\\b`, "i").test(line) || line.toLowerCase() === name));
     if (index === -1) return "";
     const nextIndex = lines.findIndex((line, lineIndex) => lineIndex > index && /summary|profile|objective|skills|experience|employment|work history|education|certification|certificate|language|reference/i.test(line));
-    return lines.slice(index + 1, nextIndex === -1 ? index + 6 : nextIndex).join("\n").trim();
+    return lines.slice(index + 1, nextIndex === -1 ? Math.min(lines.length, index + 1 + maxLines) : nextIndex).join("\n").trim();
   };
-  const skills = section(["skills"]);
-  const experience = section(["experience", "employment", "work history"]);
-  const education = section(["education"]);
-  const certifications = section(["certification", "certificate"]);
-  const languages = section(["language"]);
-  const summary = section(["summary", "profile", "objective"]);
+  const skills = section(["skills"], 12);
+  const experience = section(["experience", "professional experience", "employment", "employment history", "work history", "career history"], 120);
+  const education = section(["education"], 14);
+  const certifications = section(["certification", "certificate"], 10);
+  const languages = section(["language"], 8);
+  const summary = section(["summary", "profile", "objective"], 4);
   const jobTitle = lines.find((line, index) => index > 0 && index < 8 && !line.includes("@") && !phone?.includes(line) && !headingPattern.test(line) && line.length <= 70);
+  const structuredWorkExperiences = extractStructuredWorkExperiences(experience, jobTitle || "");
+  const fallbackWorkExperiences = [
+    {
+      ...createExperienceEntry(),
+      jobTitle: jobTitle || "",
+      employer: "",
+      companyLocation: "",
+      fromDate: "",
+      toDate: "",
+      isCurrent: false,
+      responsibilities: experience || "Please review imported CV and add work experience here.",
+    },
+  ];
   return {
     fullName: firstLine || fileName.replace(/\.[^.]+$/, "").replaceAll("-", " "),
     jobTitle: jobTitle || "",
@@ -1573,17 +1735,7 @@ function mockAiExtractCv(text, fileName) {
     summary: summary || compactText.split("\n").filter((line) => line.length > 40).slice(0, 2).join(" "),
     skills: skills || "Please review imported CV and add key skills here.",
     experience: experience || "Please review imported CV and add work experience here.",
-    workExperiences: [
-      {
-        ...createExperienceEntry(),
-        jobTitle: jobTitle || "",
-        employer: "",
-        fromDate: "",
-        toDate: "",
-        isCurrent: false,
-        responsibilities: experience || "Please review imported CV and add work experience here.",
-      },
-    ],
+    workExperiences: structuredWorkExperiences.length ? structuredWorkExperiences : fallbackWorkExperiences,
     education: education || "Please review imported CV and add education details here.",
     certifications: certifications || "Add certificates or training here.",
     languages: languages || "English",
@@ -1685,6 +1837,7 @@ function LiveCVPreview({ cv, theme, layout }) {
               <div>
                 <p className="font-black text-slate-900">{entry.jobTitle || "Job title"}</p>
                 <p className="font-bold text-slate-700">{entry.employer || "Employer name"}</p>
+                {entry.companyLocation && <p className="font-semibold text-slate-500">{entry.companyLocation}</p>}
               </div>
               <p className="font-bold text-slate-500">{[entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - ")}</p>
             </div>
