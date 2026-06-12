@@ -17,10 +17,12 @@ const safeFilename = (value = "BuildMyCVNow-CV.pdf") => {
 const injectPrintCss = (html = "") => {
   const printCss = `
     <style>
-      @page { size: A4; margin: 10mm; }
-      html, body { width: 210mm; min-height: 297mm; background: #ffffff !important; }
-      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .section, .experience-item { break-inside: avoid; page-break-inside: avoid; }
+      @page { size: A4; margin: 0; }
+      html { width: 210mm; min-height: 297mm; background: #ffffff !important; }
+      body { max-width: 210mm; min-height: 297mm; margin: 0 auto; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .section { break-inside: auto; page-break-inside: auto; }
+      .section h2 { break-after: avoid; page-break-after: avoid; }
+      .experience-item, .references-block, .reference-card { break-inside: avoid; page-break-inside: avoid; }
     </style>
   `;
   if (html.includes("</head>")) return html.replace("</head>", `${printCss}</head>`);

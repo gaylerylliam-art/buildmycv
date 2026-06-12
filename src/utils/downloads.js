@@ -14,7 +14,7 @@ const joinLines = (value = "") =>
   value
     .split("\n")
     .filter(Boolean)
-    .map((line) => `<li>${escapeHtml(line.trim())}</li>`)
+    .map((line) => `<li>${escapeHtml(String(line).trim().replace(/^[-•●▪◦*]\s*/, ""))}</li>`)
     .join("");
 
 const fileBaseName = (fullName, suffix) => {
@@ -62,6 +62,9 @@ const cvContactLines = (cv) =>
     cv.linkedIn ? `LinkedIn: ${cv.linkedIn}` : "",
     cv.portfolioUrl ? `Portfolio: ${cv.portfolioUrl}` : "",
   ].filter(Boolean);
+
+const inlineContactHtml = (lines = []) =>
+  lines.map((line) => `<span>${escapeHtml(line)}</span>`).join("<span class=\"contact-separator\">|</span>");
 
 const cvPersonalDetails = (cv) =>
   [
@@ -374,20 +377,24 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
       <meta charset="UTF-8" />
       <style>
         * { box-sizing: border-box; }
-        body { margin: 0; padding: 28px; padding-bottom: 52px; font-family: Arial, sans-serif; color: #111827; line-height: 1.5; background: #ffffff; }
+        html { background: #ffffff; }
+        body { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 12mm; font-family: Arial, sans-serif; font-size: 12px; color: #111827; line-height: 1.45; background: #ffffff; overflow-wrap: anywhere; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         h1 { color: #0f172a; margin: 0 0 4px; font-size: 30px; line-height: 1.15; }
         h2 { color: ${theme.dark}; border-bottom: 1px solid ${theme.color}; padding-bottom: 5px; margin: 18px 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0; }
-        p { margin: 0 0 8px; }
+        p { margin: 0 0 8px; white-space: pre-line; }
         ul { margin: 0; padding-left: 18px; }
-        li { margin-bottom: 4px; }
-        .header { display: flex; gap: 16px; align-items: center; border-bottom: 3px solid ${theme.color}; padding-bottom: 16px; margin-bottom: 14px; }
-        .contact { color: #4b5563; font-size: 12px; }
+        li { margin-bottom: 4px; break-inside: auto; page-break-inside: auto; }
+        .header { display: flex; gap: 14px; align-items: center; border-bottom: 3px solid ${theme.color}; padding-bottom: 14px; margin-bottom: 12px; min-width: 0; }
+        .header-main { flex: 1 1 auto; min-width: 0; }
+        .contact { display: flex; flex-wrap: wrap; gap: 2px 7px; align-items: center; color: #4b5563; font-size: 11px; line-height: 1.35; overflow-wrap: anywhere; }
+        .contact-separator { color: #cbd5e1; }
         .title { color: ${theme.color}; font-weight: 700; }
-        .photo { width: 96px; height: 96px; object-fit: cover; flex: 0 0 auto; }
+        .photo { width: 86px; height: 86px; object-fit: cover; flex: 0 0 auto; }
         .round { border-radius: 999px; }
         .rounded { border-radius: 14px; }
         .square { border-radius: 5px; }
-        .section { break-inside: avoid; page-break-inside: avoid; }
+        .section { break-inside: auto; page-break-inside: auto; }
+        .section h2 { break-after: avoid; page-break-after: avoid; }
         .experience-item { margin-bottom: 12px; break-inside: avoid; page-break-inside: avoid; }
         .references-block { break-inside: avoid; page-break-inside: avoid; }
         .references-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
@@ -409,7 +416,7 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
         .sidebar-name { margin: 0; color: #ffffff; font-size: 24px; line-height: 1.15; }
         .sidebar-title { margin: 8px 0 0; color: rgba(255,255,255,0.88); font-size: 14px; font-weight: 700; }
         .sidebar-contact { margin-top: 28px; color: rgba(255,255,255,0.86); font-size: 11px; line-height: 1.8; text-align: left; }
-        .main-content { padding: 28px; }
+        .main-content { padding: 24px; min-width: 0; }
         .credit-footer { margin: 24px 0 0; padding-top: 12px; border-top: 1px solid #e5e7eb; color: #9ca3af; font-size: 7pt; text-align: center; }
       </style>
     </head>
@@ -438,10 +445,10 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
       </div>` : `
       <div class="header">
         ${cv.profilePhoto ? `<img class="photo ${exportPhotoShapeClass(cv.photoShape)}" src="${cv.profilePhoto}" alt="Profile photo" />` : ""}
-        <div>
+        <div class="header-main">
           <h1>${escapeHtml(cv.fullName)}</h1>
           <p class="title">${escapeHtml(cv.jobTitle)}</p>
-          <p class="contact">${escapeHtml(cvContactLines(cv).join(" | "))}</p>
+          <p class="contact">${inlineContactHtml(cvContactLines(cv))}</p>
         </div>
         ${qrHeader}
       </div>
