@@ -131,11 +131,11 @@ function criticalCss() {
 }
 
 function header() {
-  return `<nav class="nav"><div class="nav-inner"><a class="brand" href="/">BuildMyCV<span>Now</span></a><div class="nav-links"><a href="/templates">Templates</a><a href="/cv-examples">CV Examples</a><a href="/for-ofw">For OFWs</a><a href="/blog">Blog</a><a href="/faq">FAQ</a><a class="cta" href="/builder">Build My CV Now</a></div></div></nav>`;
+  return `<nav class="nav"><div class="nav-inner"><a class="brand" href="/">BuildMyCV<span>Now</span></a><div class="nav-links"><a href="/templates">Templates</a><a href="/cv-examples">CV Examples</a><a href="/blog">Blog</a><a href="/faq">FAQ</a><a class="cta" href="/builder">Build My CV Now</a></div></div></nav>`;
 }
 
 function footer() {
-  return `<footer class="footer"><div class="wrap"><p><strong>BuildMyCVNow</strong> â€” Free CV Builder for Job Seekers Worldwide</p><p><a href="/about">About</a> Â· <a href="/privacy">Privacy</a> Â· <a href="/terms">Terms</a> Â· <a href="/faq">FAQ</a> Â· <a href="/blog">Blog</a> Â· <a href="/for-ofw">For OFWs</a></p><p>Â© 2026 BuildMyCVNow. All rights reserved.</p></div></footer>`;
+  return `<footer class="footer"><div class="wrap"><p><strong>BuildMyCVNow</strong> â€” Free CV Builder for Job Seekers Worldwide</p><p><a href="/about">About</a> Â· <a href="/privacy">Privacy</a> Â· <a href="/terms">Terms</a> Â· <a href="/faq">FAQ</a> Â· <a href="/blog">Blog</a></p><p>Â© 2026 BuildMyCVNow. All rights reserved.</p></div></footer>`;
 }
 
 function ctaCard(text = "Build your free CV") {
@@ -158,7 +158,7 @@ writePage("/", layout({
   description: "Build a professional, ATS-friendly CV in 5 minutes. Free templates for local, remote, and international jobs. No sign-up needed.",
   canonical: baseUrl,
   jsonLd: [webAppSchema, faqSchema, orgSchema],
-  body: `<main><section class="hero"><div class="wrap hero-grid"><div><h1>Free CV Builder for Job Seekers Worldwide - ATS-Friendly, No Sign-Up</h1><p class="lead">Build a professional CV in 5 minutes. Templates designed for local jobs, overseas applications, remote roles, and global hiring markets. 100% free â€” no hidden paywall, no watermark.</p><p><a class="cta" href="/builder">Build My CV Now â€” Free</a> <a class="btn secondary" href="/cv-examples">See CV examples</a></p><p class="trust">No sign-up required Â· ATS-friendly Â· Free PDF download</p></div><div class="template-thumb"><h3>Finished global CV preview</h3><p class="muted">Professional Summary</p><p>Reliable applicant with ATS-friendly format, clear skills, work experience, and contact details for international recruiters.</p></div></div></section><div class="proof">Trusted by job seekers worldwide | Useful for local, overseas, and remote applications | 12,000+ CVs started</div>${howItWorks()}${gulfDepthSection()}${whySection()}${templatesPreview()}${comparisonSection()}${faqSection()}${ofwHomeSection()}<section class="section cta-band"><div class="wrap"><h2>Ready to build your CV?</h2><p>Free forever, no sign-up, and built for job applications anywhere.</p><a class="cta" href="/builder">Start free now</a></div></section></main>`,
+  body: `<main><section class="hero"><div class="wrap hero-grid"><div><h1>Free CV Builder for Job Seekers Worldwide - ATS-Friendly, No Sign-Up</h1><p class="lead">Build a professional CV in 5 minutes. Templates designed for local jobs, overseas applications, remote roles, and global hiring markets. 100% free â€” no hidden paywall, no watermark.</p><p><a class="cta" href="/builder">Build My CV Now â€” Free</a> <a class="btn secondary" href="/cv-examples">See CV examples</a></p><p class="trust">No sign-up required Â· ATS-friendly Â· Free PDF download</p></div><div class="template-thumb"><h3>Finished global CV preview</h3><p class="muted">Professional Summary</p><p>Reliable applicant with ATS-friendly format, clear skills, work experience, and contact details for international recruiters.</p></div></div></section><div class="proof">Trusted by job seekers worldwide | Useful for local, overseas, and remote applications | 12,000+ CVs started</div>${howItWorks()}${gulfDepthSection()}${whySection()}${templatesPreview()}${comparisonSection()}${faqSection()}<section class="section cta-band"><div class="wrap"><h2>Ready to build your CV?</h2><p>Free forever, no sign-up, and built for job applications anywhere.</p><a class="cta" href="/builder">Start free now</a></div></section></main>`,
 }));
 
 function howItWorks() {
@@ -197,10 +197,6 @@ function comparisonSection() {
     ["Works offline after load", "Local draft mode available in browser", "Usually cloud-only"],
   ];
   return `<section class="section"><div class="wrap"><h2>How BuildMyCVNow compares</h2><div class="card"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;border-bottom:1px solid #e2e8f0;padding:10px">Feature</th><th style="text-align:left;border-bottom:1px solid #e2e8f0;padding:10px">BuildMyCVNow</th><th style="text-align:left;border-bottom:1px solid #e2e8f0;padding:10px">Typical CV builders</th></tr></thead><tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td style="border-bottom:1px solid #e2e8f0;padding:10px">${cell}</td>`).join("")}</tr>`).join("")}</tbody></table><p class="muted">Comparison based on common practices of popular CV builders as of ${new Date().getFullYear()}.</p></div></div></section>`;
-}
-
-function ofwHomeSection() {
-  return `<section class="section"><div class="wrap"><h2>Para sa mga kababayan - built with OFWs in mind</h2><p class="lead">Libre talaga. Walang hidden fees, walang sign-up.</p><p>The Filipino community is a major part of the Gulf workforce, and many applicants are building a CV for overseas work for the first time. BuildMyCVNow gives simple guidance for first-time OFW applicants and reminds job seekers to be careful with job-offer scams: legit employers never ask you to pay for a job offer.</p><div class="grid grid-3"><a class="card" data-ofw-link="no-experience" href="/blog/cv-no-experience-dubai"><h3>CV for first-timers</h3><p>No experience yet? Learn what to write first.</p></a><a class="card" data-ofw-link="scam-warning" href="/for-ofw#scam-warning"><h3>Job scam warning signs</h3><p>Check red flags before trusting an offer.</p></a><a class="card" data-ofw-link="ofw-roles" href="/for-ofw#ofw-roles"><h3>CV examples for OFW roles</h3><p>Hospitality, retail, healthcare, driver, and household roles.</p></a></div></div></section>`;
 }
 
 function templatesPreview() {
