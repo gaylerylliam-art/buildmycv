@@ -51,6 +51,7 @@ import {
   isSupabaseConfigured,
   listUserCvs,
   loadLatestDraftForUser,
+  MAX_SAVED_CVS,
   saveCvForUser,
   saveDraftForUser,
   submitContactMessage,
@@ -1118,7 +1119,7 @@ function PrivacyPage({ onStart }) {
       <section className="mx-auto max-w-4xl px-5 py-14">
         <PolicyCard title="Privacy Policy">
           <p>BuildMyCVNow may collect the information needed to create, save, and email CVs when you choose account mode, including name, email address, phone number, country, nationality, visa status, job history, education, skills, uploaded CV text, profile photos, saved drafts, and email delivery metadata.</p>
-          <p>Download-only users keep CV data in browser state or localStorage so they can finish their CV quickly. This information is not intentionally saved to Supabase unless the user signs in and chooses cloud saving. Download-only users should download their file before closing the browser.</p>
+          <p>Download-only users keep CV data in browser state or localStorage so they can finish their CV quickly. This information is not intentionally saved to Supabase unless the user signs in and chooses cloud saving. Download-only users should download their file before refreshing the page or closing the browser.</p>
           <p>Registered users can save CV drafts, uploaded files, profile photos, and CV versions with Supabase Auth, Supabase Database, and Supabase Storage under their authenticated account. Row Level Security should be used so users can only access their own records.</p>
           <p>BuildMyCVNow may use Google Analytics to understand page usage, Google reCAPTCHA to reduce spam, and Google AdSense to display advertising. These services may use cookies or similar technologies to measure traffic, protect forms, serve ads, and personalize ads where allowed.</p>
           <p>Users can request access, correction, export, or deletion of stored personal data by using the Contact page. Users should avoid uploading or entering sensitive document numbers unless a trusted employer or agency specifically requires them outside BuildMyCVNow.</p>
@@ -2917,6 +2918,7 @@ function DownloadModal({ onClose, onVerifiedDownload, onSignIn, canEmailCopy = f
 function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
   const [mode, setMode] = useState("signin");
   const [form, setForm] = useState({ name: "", email: "" });
+  const [emailOtp, setEmailOtp] = useState("");
   const [phoneForm, setPhoneForm] = useState({ phone: "", otp: "", challenge: null, mockOtp: "" });
   const [phoneOtpSent, setPhoneOtpSent] = useState(false);
   const [message, setMessage] = useState(isSupabaseConfigured ? "" : "Add VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY or REACT_APP_SUPABASE_URL/REACT_APP_SUPABASE_ANON_KEY to .env to enable login.");
@@ -2953,7 +2955,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
         email: form.email,
         options: {
           ...options,
-          shouldCreateUser: true,
+          shouldCreateUser: mode === "signup",
           captchaToken,
         },
       });
@@ -2963,6 +2965,27 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
       setMessage("Email verification sent. Open the link or enter the OTP from your inbox to continue. Check spam if it does not arrive.");
     } catch (error) {
       setMessage(error.message || "Authentication failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  const verifyEmailOtp = async (event) => {
+    event.preventDefault();
+    if (!supabase || !lastSignupEmail || !emailOtp.trim()) return;
+    setLoading(true);
+    setMessage("Verifying email OTP...");
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email: lastSignupEmail,
+        token: emailOtp.trim(),
+        type: "email",
+      });
+      if (error) throw error;
+      trackEvent("email_otp_verified");
+      onRegisteredMode();
+      onClose();
+    } catch (error) {
+      setMessage(error.message || "Invalid OTP. Please check the code and try again.");
     } finally {
       setLoading(false);
     }
@@ -3043,7 +3066,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-2xl font-black text-slate-950">{mode === "signin" ? "Email login" : "Create account"}</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">Use free download-only mode, or verify your email to save CVs online and receive generated CV copies.</p>
+            <p className="mt-2 text-sm leading-6 text-slate-600">Use free download-only mode with no online storage, or verify your email to save up to 10 CVs online and receive generated CV copies.</p>
           </div>
           <button onClick={onClose} className="text-2xl leading-none text-slate-500">x</button>
         </div>
@@ -3055,7 +3078,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
             Continue with mobile OTP
           </button>
           <p className="rounded bg-amber-50 p-3 text-xs font-bold leading-5 text-amber-900">
-            Free download-only mode: no account, no online CV, local browser only, instant PDF/DOCX download.
+            Free download-only mode: no account, no online CV, local browser only. Download before refreshing, closing the browser, or clearing site data.
           </p>
         </div>
         <div className="mt-4">
@@ -3105,6 +3128,28 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
           </button>
         </form>
         )}
+        {lastSignupEmail && mode !== "phone" && (
+          <form onSubmit={verifyEmailOtp} className="mt-3 grid gap-3 rounded border border-blue-100 bg-blue-50 p-3">
+            <p className="text-xs font-bold leading-5 text-blue-900">
+              Enter the OTP code sent to {lastSignupEmail}. This verifies the account before online saving and email CV delivery.
+            </p>
+            <label>
+              <span className="form-label">Email OTP code</span>
+              <input
+                className="form-field"
+                inputMode="numeric"
+                maxLength={6}
+                value={emailOtp}
+                onChange={(event) => setEmailOtp(event.target.value)}
+                placeholder="6-digit code"
+                required
+              />
+            </label>
+            <button disabled={loading || !emailOtp.trim()} className="rounded bg-blue-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
+              Verify email and continue
+            </button>
+          </form>
+        )}
         {GOOGLE_AUTH_ENABLED ? (
           <button disabled={!isSupabaseConfigured} onClick={signInWithGoogle} className="mt-3 w-full rounded border border-blue-600 px-5 py-3 font-bold text-blue-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400">
             Continue with Google
@@ -3127,7 +3172,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
 
 function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDraft, onLoadDraft, onExportData, onClearLocalDraft, onDeleteAllData, onDeleteAccount, draftStatus }) {
   const [items, setItems] = useState([]);
-  const [message, setMessage] = useState(user ? "Load your saved CVs." : "Login to save and manage up to 5 CVs.");
+  const [message, setMessage] = useState(user ? "Load your saved CVs." : `Login to save and manage up to ${MAX_SAVED_CVS} CVs.`);
   const refresh = async () => {
     if (!user) return;
     try {
@@ -3190,7 +3235,7 @@ function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDra
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="panel-title">My CVs dashboard</h3>
-          <p className="mt-1 text-[11px] font-bold text-slate-500">{items.length} saved version{items.length === 1 ? "" : "s"} of 5</p>
+          <p className="mt-1 text-[11px] font-bold text-slate-500">{items.length} saved version{items.length === 1 ? "" : "s"} of {MAX_SAVED_CVS}</p>
         </div>
         <button onClick={saveCurrent} className="rounded bg-green-600 px-3 py-2 text-xs font-black text-white">Save</button>
       </div>
@@ -4208,7 +4253,7 @@ function CVBuilderApp({ onHome }) {
     if (!noCloudMode || downloaded || coverDownloaded) return;
     const warnBeforeLeave = (event) => {
       event.preventDefault();
-      event.returnValue = "Your CV will not be saved online. Download your file before closing the browser.";
+      event.returnValue = "Your CV will not be saved online. Download your file before refreshing or closing the browser.";
     };
     window.addEventListener("beforeunload", warnBeforeLeave);
     return () => window.removeEventListener("beforeunload", warnBeforeLeave);
@@ -4347,6 +4392,17 @@ function CVBuilderApp({ onHome }) {
       setCoverLetter(localDraft);
     }
   };
+  const saveGeneratedCvOnline = async () => {
+    if (!user?.id || !cloudSavingEnabled) return null;
+    try {
+      const saved = await saveCvForUser({ userId: user.id, cv, categoryId, themeId, layoutId });
+      setDraftStatus(`Generated CV saved online. ${MAX_SAVED_CVS} CV limit applies.`);
+      return saved;
+    } catch (error) {
+      setDraftStatus(error.message || "Generated CV downloaded, but online saving failed.");
+      return null;
+    }
+  };
   const handleDownload = async (type) => {
     const emailGeneratedCv = async (format) => {
       if (!user?.email || !session?.access_token) {
@@ -4366,9 +4422,13 @@ function CVBuilderApp({ onHome }) {
       return result;
     };
     if (type === "email") {
+      await saveGeneratedCvOnline();
       return emailGeneratedCv("pdf");
     }
     await downloadCvFile(cv, type, theme, layoutId);
+    if (cloudSavingEnabled) {
+      await saveGeneratedCvOnline();
+    }
     if (user?.email && session?.access_token) {
       emailGeneratedCv(type).catch((error) => setDraftStatus(error.message || "CV downloaded, but email copy could not be sent."));
     }
@@ -4472,7 +4532,7 @@ function CVBuilderApp({ onHome }) {
       {noCloudMode && (
         <section className="border-b border-amber-200 bg-amber-50 px-5 py-3">
           <div className="mx-auto max-w-7xl text-sm font-bold leading-6 text-amber-950">
-            Your CV will not be saved online. Download your file before closing the browser.
+            Your CV will not be saved online. Download your file before refreshing this page, closing the browser, or clearing site data.
           </div>
         </section>
       )}
@@ -4541,7 +4601,7 @@ function CVBuilderApp({ onHome }) {
                       <section className="rounded border border-amber-200 bg-amber-50 p-4">
                         <h3 className="panel-title text-amber-950">Download-only mode</h3>
                         <p className="mt-2 text-xs font-bold leading-5 text-amber-900">
-                          Cloud saving is off. Your CV stays in this browser only and will not be saved to Supabase.
+                          Cloud saving is off. Your CV stays in this browser only and will not be saved to Supabase. Download it before refreshing or closing the browser.
                         </p>
                         <button onClick={() => setAuthOpen(true)} className="mt-3 w-full rounded border border-amber-300 bg-white px-4 py-3 text-sm font-black text-amber-900 hover:bg-amber-100">
                           Sign in to save online

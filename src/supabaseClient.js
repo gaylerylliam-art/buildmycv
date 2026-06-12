@@ -15,6 +15,8 @@ export const supabase = isSupabaseConfigured
     })
   : null;
 
+export const MAX_SAVED_CVS = 10;
+
 export async function submitContactMessage({ name, email, message }) {
   const response = await fetch("/.netlify/functions/contact", {
     method: "POST",
@@ -52,8 +54,8 @@ export async function saveCvForUser({ userId, cv, categoryId, themeId, layoutId 
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId);
   if (countError) throw countError;
-  if ((count || 0) >= 5) {
-    throw new Error("You can save up to 5 CVs. Delete one before saving another.");
+  if ((count || 0) >= MAX_SAVED_CVS) {
+    throw new Error(`You can save up to ${MAX_SAVED_CVS} CVs. Delete one before saving another.`);
   }
   const { data, error } = await supabase
     .from("cvs")
@@ -144,6 +146,14 @@ export async function deleteAllUserDrafts(userId) {
 
 export async function duplicateUserCv(item) {
   if (!supabase || !item) return null;
+  const { count, error: countError } = await supabase
+    .from("cvs")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", item.user_id);
+  if (countError) throw countError;
+  if ((count || 0) >= MAX_SAVED_CVS) {
+    throw new Error(`You can save up to ${MAX_SAVED_CVS} CVs. Delete one before duplicating another.`);
+  }
   const { data, error } = await supabase
     .from("cvs")
     .insert({
