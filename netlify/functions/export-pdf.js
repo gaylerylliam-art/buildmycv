@@ -1,4 +1,3 @@
-import chromium from "@sparticuz/chromium";
 import puppeteer from "puppeteer-core";
 
 const headers = {
@@ -48,6 +47,8 @@ export const handler = async (event) => {
       return { statusCode: 400, headers, body: "HTML is required." };
     }
 
+    const chromiumModule = await import("@sparticuz/chromium");
+    const chromium = chromiumModule.default || chromiumModule;
     const executablePath = await chromium.executablePath();
     if (!executablePath) {
       throw new Error("Chromium executable path is unavailable in this Netlify runtime.");
