@@ -67,6 +67,12 @@ const cvPersonalDetails = (cv) =>
     cv.expectedSalaryEnabled && cv.expectedSalary ? `Expected Salary: ${cv.expectedSalary}` : "",
   ].filter(Boolean);
 
+const exportPhotoShapeClass = (shape = "circle") => {
+  if (shape === "circle" || shape === "round") return "round";
+  if (shape === "rounded") return "rounded";
+  return "square";
+};
+
 const normalizeCvWorkExperiences = (cv) => {
   if (Array.isArray(cv.workExperiences) && cv.workExperiences.length) {
     return cv.workExperiences;
@@ -246,6 +252,7 @@ export const buildCvHtml = (cv, theme = { color: "#0f66d0", dark: "#0f172a" }, l
         .title { color: ${theme.color}; font-weight: 700; }
         .photo { width: 96px; height: 96px; object-fit: cover; flex: 0 0 auto; }
         .round { border-radius: 999px; }
+        .rounded { border-radius: 14px; }
         .square { border-radius: 5px; }
         .section { break-inside: avoid; page-break-inside: avoid; }
         .experience-item { margin-bottom: 12px; break-inside: avoid; page-break-inside: avoid; }
@@ -255,6 +262,7 @@ export const buildCvHtml = (cv, theme = { color: "#0f66d0", dark: "#0f172a" }, l
         .photo-container { width: 100%; display: flex; justify-content: center; margin-bottom: 20px; }
         .profile-photo { width: 170px; height: 170px; object-fit: cover; display: block; background: rgba(255,255,255,0.14); border: 3px solid rgba(255,255,255,0.22); }
         .profile-photo.round { border-radius: 50%; }
+        .profile-photo.rounded { border-radius: 16px; }
         .profile-photo.square { border-radius: 12px; }
         .profile-photo.placeholder { display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: 900; }
         .name-block { text-align: center; }
@@ -270,7 +278,7 @@ export const buildCvHtml = (cv, theme = { color: "#0f66d0", dark: "#0f172a" }, l
         <aside class="sidebar">
           <div class="sidebar-header">
             <div class="photo-container">
-              ${cv.profilePhoto ? `<img class="profile-photo ${cv.photoShape === "round" ? "round" : "square"}" src="${cv.profilePhoto}" alt="Profile photo" />` : `<div class="profile-photo placeholder ${cv.photoShape === "round" ? "round" : "square"}">${escapeHtml(initialsForPdf(cv.fullName))}</div>`}
+              ${cv.profilePhoto ? `<img class="profile-photo ${exportPhotoShapeClass(cv.photoShape)}" src="${cv.profilePhoto}" alt="Profile photo" />` : `<div class="profile-photo placeholder ${exportPhotoShapeClass(cv.photoShape)}">${escapeHtml(initialsForPdf(cv.fullName))}</div>`}
             </div>
             <div class="name-block">
               <h1 class="sidebar-name">${escapeHtml(cv.fullName)}</h1>
@@ -293,7 +301,7 @@ export const buildCvHtml = (cv, theme = { color: "#0f66d0", dark: "#0f172a" }, l
         </main>
       </div>` : `
       <div class="header">
-        ${cv.profilePhoto ? `<img class="photo ${cv.photoShape === "round" ? "round" : "square"}" src="${cv.profilePhoto}" alt="Profile photo" />` : ""}
+        ${cv.profilePhoto ? `<img class="photo ${exportPhotoShapeClass(cv.photoShape)}" src="${cv.profilePhoto}" alt="Profile photo" />` : ""}
         <div>
           <h1>${escapeHtml(cv.fullName)}</h1>
           <p class="title">${escapeHtml(cv.jobTitle)}</p>

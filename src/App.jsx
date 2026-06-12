@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { categories, layouts, themes } from "./data/categories";
 import TemplatesSectionV3 from "./components/TemplatesSectionV3";
+import PhotoUploadCrop from "./components/PhotoUploadCrop";
 import {
   coverLetterFonts,
   coverLetterLayouts,
@@ -75,6 +76,12 @@ const normalizeWorkExperiences = (cv) => {
   ];
 };
 
+const photoShapeClass = (shape = "circle", roundedClass = "rounded-xl") => {
+  if (shape === "circle" || shape === "round") return "rounded-full";
+  if (shape === "rounded") return roundedClass;
+  return "rounded-none";
+};
+
 const hasUserEnteredCvData = (cv) => {
   const meaningfulFields = [
     "fullName",
@@ -122,7 +129,7 @@ const initialCv = {
   expectedSalary: "",
   references: "Available upon request",
   profilePhoto: "",
-  photoShape: "round",
+  photoShape: "circle",
 };
 
 const createCoverLetterFromCv = (cv, categoryId) => {
@@ -1129,75 +1136,16 @@ function ExistingCVImporter({ onImport }) {
 }
 
 function ProfilePhotoUploader({ cv, onChange }) {
-  const [message, setMessage] = useState("Upload a square photo only. Max size: 2 MB.");
-  const handlePhoto = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setMessage("Please upload an image file.");
-      event.target.value = "";
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      setMessage("Photo is too large. Please choose an image under 2 MB.");
-      event.target.value = "";
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const image = new Image();
-      image.onload = () => {
-        if (image.width !== image.height) {
-          setMessage("Photo must be a 1:1 square image. Please crop it before uploading.");
-          event.target.value = "";
-          return;
-        }
-        onChange("profilePhoto", reader.result);
-        setMessage("Photo added. Choose round or square display below.");
-        event.target.value = "";
-      };
-      image.onerror = () => setMessage("Could not read the photo. Please try another image.");
-      image.src = reader.result;
-    };
-    reader.readAsDataURL(file);
-  };
   return (
-    <section className="rounded border border-slate-200 bg-white p-4">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <div className={`profile-photo-preview ${cv.photoShape === "round" ? "rounded-full" : "rounded"}`}>
-          {cv.profilePhoto ? (
-            <img src={cv.profilePhoto} alt="Profile preview" />
-          ) : (
-            <Icon name="camera" className="h-8 w-8 text-slate-400" />
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <h3 className="panel-title">Profile photo</h3>
-          <p className="mt-1 text-sm leading-6 text-slate-600">Square 1:1 image only, up to 2 MB.</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded bg-slate-950 px-4 py-3 text-sm font-bold text-white">
-              <Icon name="camera" className="h-4 w-4" /> Upload photo
-              <input className="hidden" type="file" accept="image/*" onChange={handlePhoto} />
-            </label>
-            {["round", "square"].map((shape) => (
-              <button
-                key={shape}
-                onClick={() => onChange("photoShape", shape)}
-                className={`rounded border px-4 py-3 text-sm font-bold capitalize ${cv.photoShape === shape ? "border-green-600 bg-green-50 text-green-700" : "border-slate-200 text-slate-700"}`}
-              >
-                {shape}
-              </button>
-            ))}
-            {cv.profilePhoto && (
-              <button onClick={() => onChange("profilePhoto", "")} className="rounded border border-red-200 px-4 py-3 text-sm font-bold text-red-600">
-                Remove
-              </button>
-            )}
-          </div>
-          <p className="mt-3 text-xs font-bold leading-5 text-slate-500">{message}</p>
-        </div>
-      </div>
-    </section>
+    <PhotoUploadCrop
+      value={cv.profilePhoto}
+      shape={cv.photoShape === "round" ? "circle" : cv.photoShape}
+      onPhotoSaved={(dataUrl, shape) => {
+        onChange("photoShape", shape);
+        onChange("profilePhoto", dataUrl);
+      }}
+      onPhotoRemoved={() => onChange("profilePhoto", "")}
+    />
   );
 }
 
@@ -1962,7 +1910,7 @@ function LiveCVPreview({ cv, theme, layout }) {
   ].filter(Boolean);
   const photo = (size = "h-16 w-16") =>
     cv.profilePhoto ? (
-      <img src={cv.profilePhoto} alt={`${cv.fullName} profile`} className={`${size} object-cover ${cv.photoShape === "round" ? "rounded-full" : "rounded"}`} />
+      <img src={cv.profilePhoto} alt={`${cv.fullName} profile`} className={`${size} object-cover ${photoShapeClass(cv.photoShape, "rounded-xl")}`} />
     ) : null;
   const section = (title, content, list = false) => (
     <section className="break-inside-avoid">
@@ -2014,9 +1962,9 @@ function LiveCVPreview({ cv, theme, layout }) {
           <div className="sidebar-header">
             <div className="photo-container">
               {cv.profilePhoto ? (
-                <img src={cv.profilePhoto} alt={`${cv.fullName} profile`} className={`profile-photo ${cv.photoShape === "round" ? "round" : "square"}`} />
+                <img src={cv.profilePhoto} alt={`${cv.fullName} profile`} className={`profile-photo ${cv.photoShape === "circle" || cv.photoShape === "round" ? "round" : cv.photoShape === "rounded" ? "rounded" : "square"}`} />
               ) : (
-                <div className={`profile-photo placeholder ${cv.photoShape === "round" ? "round" : "square"}`}>{initials(cv.fullName)}</div>
+                <div className={`profile-photo placeholder ${cv.photoShape === "circle" || cv.photoShape === "round" ? "round" : cv.photoShape === "rounded" ? "rounded" : "square"}`}>{initials(cv.fullName)}</div>
               )}
             </div>
             <div className="name-block">
