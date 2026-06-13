@@ -60,8 +60,11 @@ const homeHtml = readBuiltHtml("/");
 const homeText = stripTags(homeHtml);
 if (!homeText.includes(HOME_H1)) failures.push(`/: missing shared homepage H1 "${HOME_H1}"`);
 if (/â€|Â·/.test(homeHtml)) failures.push("/: contains mojibake byte sequences");
-if (!/<img[^>]+src=["']\/assets\/heygen-demo-poster\.svg["'][^>]+width=["']960["'][^>]+height=["']540["']/i.test(homeHtml)) {
-  failures.push("/: missing static video poster facade with explicit dimensions");
+if (!/<video[^>]+class=["'][^"']*static-video-player[^"']*["'][^>]+controls[^>]*>/i.test(homeHtml) || !/<source[^>]+src=["']https:\/\/resource2\.heygen\.ai\/video\/transcode\//i.test(homeHtml)) {
+  failures.push("/: missing embedded static video player");
+}
+if (/app\.heygen\.com\/videos/i.test(homeHtml)) {
+  failures.push("/: should not link visitors away to the HeyGen video page");
 }
 for (const href of ["/about", "/contact", "/privacy", "/terms", "/faq", "/blog"]) {
   if (!homeHtml.includes(`href="${href}"`)) failures.push(`/: missing footer link ${href}`);

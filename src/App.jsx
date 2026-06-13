@@ -771,7 +771,7 @@ function LandingPage({ onStart }) {
                 loop
                 onPlay={() => setPlaying(true)}
                 onPause={() => setPlaying(false)}
-                controls={playing}
+                controls
               />
               {!playing && (
                 <button type="button" className="play-overlay" onClick={toggleVideo} aria-label="Play CV builder demo">
@@ -1195,7 +1195,6 @@ function SiteFooter({ onStart }) {
   );
 }
 
-const HEYGEN_DEMO_PAGE_URL = "https://app.heygen.com/videos/buildmycvnow-landscape-boost-37034e74791e4040830908c8fe32f8a0";
 const HEYGEN_DEMO_VIDEO_URL = "https://resource2.heygen.ai/video/transcode/37034e74791e4040830908c8fe32f8a0/v45300492faf240b39a88f9905a3267a9/1920x1080_caption.mp4";
 const HEYGEN_DEMO_POSTER_URL = "https://dynamic.heygen.ai/aws_pacific/avatar_tmp/021c62749e9c473098175a3fcc2354c1/v45300492faf240b39a88f9905a3267a9/37034e74791e4040830908c8fe32f8a0.jpeg";
 
@@ -1211,9 +1210,9 @@ function IPhonePortraitDisplay({ onStart }) {
               </span>
               BuildMyCV<span className="text-green-600">Now</span>
             </span>
-            <a href={HEYGEN_DEMO_PAGE_URL} target="_blank" rel="noreferrer" className="rounded bg-green-600 px-3 py-2 text-xs font-black text-white">
-              Open video
-            </a>
+            <span className="rounded bg-green-50 px-3 py-2 text-xs font-black text-green-700">
+              Watch below
+            </span>
           </div>
           <div className="landing-video-frame">
             <video controls playsInline preload="metadata" poster={HEYGEN_DEMO_POSTER_URL} aria-label="How to create and download your CV for free">
@@ -1222,7 +1221,7 @@ function IPhonePortraitDisplay({ onStart }) {
             </video>
           </div>
           <p className="mt-3 text-xs font-bold leading-5 text-slate-500">
-            Watch the short guide here or open it in a new tab if your browser blocks playback.
+            Watch the short guide here without leaving BuildMyCVNow.
           </p>
         </div>
         <div>
@@ -1242,8 +1241,8 @@ function IPhonePortraitDisplay({ onStart }) {
             <button onClick={onStart} className="rounded bg-green-600 px-6 py-4 font-bold text-white hover:bg-green-700">
               Try the CV builder
             </button>
-            <a href={HEYGEN_DEMO_PAGE_URL} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded border border-blue-600 px-6 py-4 font-bold text-blue-700 hover:bg-blue-50">
-              Open video
+            <a href="#how-it-works" className="inline-flex items-center justify-center rounded border border-blue-600 px-6 py-4 font-bold text-blue-700 hover:bg-blue-50">
+              Watch demo on this page
             </a>
           </div>
         </div>
