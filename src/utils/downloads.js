@@ -93,6 +93,8 @@ const cvPersonalDetails = (cv) =>
 
 const defaultSectionOrder = ["summary", "experience", "education", "skills", "educationProjects", "certifications", "languages", "references"];
 const defaultQrCode = { enabled: false, url: "", label: "Scan for LinkedIn", position: "header" };
+const PDF_PAGE_MARGIN_IN = 1;
+const DOCX_PAGE_MARGIN_TWIPS = 1440;
 const isArabicLanguage = (language = "") => /arabic|عربي|العربية/i.test(String(language || ""));
 
 const normalizeSectionOrder = (cv = {}) => {
@@ -309,7 +311,7 @@ const downloadPdfFromHtml = async (html, filename) => {
     await html2pdf()
       .set({
         filename,
-        margin: 0.35,
+        margin: PDF_PAGE_MARGIN_IN,
         image: { type: "jpeg", quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
         jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
@@ -338,6 +340,7 @@ const downloadCoverLetterDocx = async (letter, cv, filename) => {
         }),
       ],
     });
+  const bodyParagraph = (text = "") => paragraph(text, { alignment: AlignmentType.JUSTIFIED });
   const contactLines = [
     `${cv.email} | ${cv.phone} | ${cv.country}`,
     cleanLetter.linkedIn ? `LinkedIn: ${cleanLetter.linkedIn}` : "",
@@ -347,7 +350,16 @@ const downloadCoverLetterDocx = async (letter, cv, filename) => {
   const doc = new Document({
     sections: [
       {
-        properties: {},
+        properties: {
+          page: {
+            margin: {
+              top: DOCX_PAGE_MARGIN_TWIPS,
+              right: DOCX_PAGE_MARGIN_TWIPS,
+              bottom: DOCX_PAGE_MARGIN_TWIPS,
+              left: DOCX_PAGE_MARGIN_TWIPS,
+            },
+          },
+        },
         children: [
           paragraph(cv.fullName, { bold: true, size: 32, after: 80 }),
           ...contactLines.map((line) => paragraph(line, { size: 18, after: 70 })),
@@ -355,11 +367,11 @@ const downloadCoverLetterDocx = async (letter, cv, filename) => {
           paragraph(cleanLetter.companyName),
           paragraph(cleanLetter.companyAddress),
           paragraph(`Dear ${cleanLetter.hiringManager || "Hiring Manager"},`),
-          paragraph(cleanLetter.opening),
-          paragraph(cleanLetter.body),
-          cleanLetter.qualifications ? paragraph(cleanLetter.qualifications) : paragraph("", { after: 0 }),
-          cleanLetter.value ? paragraph(cleanLetter.value) : paragraph("", { after: 0 }),
-          paragraph(cleanLetter.closing),
+          bodyParagraph(cleanLetter.opening),
+          bodyParagraph(cleanLetter.body),
+          cleanLetter.qualifications ? bodyParagraph(cleanLetter.qualifications) : paragraph("", { after: 0 }),
+          cleanLetter.value ? bodyParagraph(cleanLetter.value) : paragraph("", { after: 0 }),
+          bodyParagraph(cleanLetter.closing),
           paragraph("Sincerely,", { after: 80 }),
           paragraph(cv.fullName, { bold: true }),
           paragraph("", { alignment: AlignmentType.LEFT, after: 0 }),
@@ -461,7 +473,12 @@ const downloadCvDocx = async (cv, filename, theme = { color: "#0f66d0", dark: "#
       {
         properties: {
           page: {
-            margin: { top: 720, right: 720, bottom: 720, left: 720 },
+            margin: {
+              top: DOCX_PAGE_MARGIN_TWIPS,
+              right: DOCX_PAGE_MARGIN_TWIPS,
+              bottom: DOCX_PAGE_MARGIN_TWIPS,
+              left: DOCX_PAGE_MARGIN_TWIPS,
+            },
           },
         },
         children: [
@@ -493,8 +510,9 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
       <meta charset="UTF-8" />
       <style>
         * { box-sizing: border-box; }
+        @page { size: A4; margin: 1in; }
         html { background: #ffffff; }
-        body { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 10mm 11mm; font-family: Arial, sans-serif; font-size: 11px; color: #111827; line-height: 1.38; background: #ffffff; overflow-wrap: anywhere; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        body { width: auto; min-height: auto; margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 11px; color: #111827; line-height: 1.38; background: #ffffff; overflow-wrap: anywhere; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         body.rtl { direction: rtl; text-align: right; }
         body.rtl ul { padding-left: 0; padding-right: 18px; }
         h1 { color: #0f172a; margin: 0 0 3px; font-size: 26px; line-height: 1.12; }
@@ -521,7 +539,7 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
         .qr-block { display: grid; justify-items: center; gap: 3px; text-align: center; color: inherit; }
         .qr-svg svg { display: block; width: 100%; height: 100%; }
         .qr-block p { margin: 0; font-size: 8pt; line-height: 1.15; }
-        .sidebar-paper { display: grid; grid-template-columns: 38% 62%; min-height: 970px; padding: 0; }
+        .sidebar-paper { display: grid; grid-template-columns: 38% 62%; min-height: calc(297mm - 2in); padding: 0; }
         .sidebar { background: ${theme.dark}; color: #ffffff; padding: 20px 24px 28px; }
         .sidebar-header { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 20px; }
         .photo-container { width: 100%; display: flex; justify-content: center; margin-bottom: 20px; }
@@ -606,9 +624,11 @@ export const buildCoverLetterHtml = (letter, cv, theme = { color: "#0f66d0", dar
       <meta charset="UTF-8" />
       <style>
         * { box-sizing: border-box; }
-        body { margin: 0; padding: 34px; font-family: Arial, sans-serif; color: #111827; line-height: 1.65; background: #ffffff; }
+        @page { size: A4; margin: 1in; }
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; color: #111827; line-height: 1.65; background: #ffffff; }
         h1 { color: #0f172a; margin: 0 0 4px; font-size: 28px; }
         p { margin: 0 0 14px; }
+        .letter-body { text-align: justify; }
         .header { border-bottom: 3px solid ${theme.color}; padding-bottom: 16px; margin-bottom: 22px; }
         .muted { color: #4b5563; font-size: 12px; }
         .section { margin-top: 18px; }
@@ -627,11 +647,11 @@ export const buildCoverLetterHtml = (letter, cv, theme = { color: "#0f66d0", dar
         <p>${escapeHtml(cleanLetter.companyAddress)}</p>
       </div>
       <p class="section">Dear ${escapeHtml(cleanLetter.hiringManager || "Hiring Manager")},</p>
-      <p>${escapeHtml(cleanLetter.opening).replaceAll("\n", "<br />")}</p>
-      <p>${escapeHtml(cleanLetter.body).replaceAll("\n", "<br />")}</p>
-      ${cleanLetter.qualifications ? `<p>${escapeHtml(cleanLetter.qualifications).replaceAll("\n", "<br />")}</p>` : ""}
-      ${cleanLetter.value ? `<p>${escapeHtml(cleanLetter.value).replaceAll("\n", "<br />")}</p>` : ""}
-      <p>${escapeHtml(cleanLetter.closing).replaceAll("\n", "<br />")}</p>
+      <p class="letter-body">${escapeHtml(cleanLetter.opening).replaceAll("\n", "<br />")}</p>
+      <p class="letter-body">${escapeHtml(cleanLetter.body).replaceAll("\n", "<br />")}</p>
+      ${cleanLetter.qualifications ? `<p class="letter-body">${escapeHtml(cleanLetter.qualifications).replaceAll("\n", "<br />")}</p>` : ""}
+      ${cleanLetter.value ? `<p class="letter-body">${escapeHtml(cleanLetter.value).replaceAll("\n", "<br />")}</p>` : ""}
+      <p class="letter-body">${escapeHtml(cleanLetter.closing).replaceAll("\n", "<br />")}</p>
       <p class="section">Sincerely,</p>
       <p class="signature">${escapeHtml(cv.fullName)}</p>
     </body>
