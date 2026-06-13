@@ -2976,14 +2976,15 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
     setLoading(true);
     setMessage("Verifying email OTP...");
     try {
-      const { error } = await supabase.auth.verifyOtp({
+      const { data, error } = await supabase.auth.verifyOtp({
         email: lastSignupEmail,
         token: emailOtp.trim(),
         type: "email",
       });
       if (error) throw error;
       trackEvent("email_otp_verified");
-      onRegisteredMode();
+      const result = await onRegisteredMode(data?.session || null, { saveCurrentCv: true });
+      setMessage(result?.message || "Email verified. Your account is ready and this CV is saved online.");
       onClose();
     } catch (error) {
       setMessage(error.message || "Invalid OTP. Please check the code and try again.");
@@ -3084,7 +3085,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
         </div>
         <div className="mt-4">
           <p className="mb-2 text-xs font-black uppercase text-slate-500">Email verified account mode</p>
-          <p className="mb-3 text-xs font-bold leading-5 text-slate-500">Email account mode stores generated CVs online and applies a {MAX_DAILY_GENERATED_CVS} CV daily generation limit.</p>
+          <p className="mb-3 text-xs font-bold leading-5 text-slate-500">Email account mode stores generated CVs online and applies a {MAX_DAILY_GENERATED_CVS} CV daily generation limit. After OTP verification, this CV is saved to My CVs automatically.</p>
           <div className="grid grid-cols-2 gap-2">
           {[
             ["signin", "Email login"],
@@ -3136,7 +3137,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
         {lastSignupEmail && mode !== "phone" && (
           <form onSubmit={verifyEmailOtp} className="mt-3 grid gap-3 rounded border border-blue-100 bg-blue-50 p-3">
             <p className="text-xs font-bold leading-5 text-blue-900">
-              Open the sign-in link sent to {lastSignupEmail}. If your Supabase email template includes a numeric OTP, you can enter it here to verify before online saving and email CV delivery.
+              Open the sign-in link sent to {lastSignupEmail}. If your Supabase email template includes a numeric OTP, enter it here to create/sign in to the account and save this CV online.
             </p>
             <label>
               <span className="form-label">Email OTP code</span>
@@ -3151,7 +3152,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
               />
             </label>
             <button disabled={loading || !emailOtp.trim()} className="rounded bg-blue-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
-              Verify email and continue
+              Verify email and save CV
             </button>
           </form>
         )}
@@ -4501,8 +4502,26 @@ function CVBuilderApp({ onHome }) {
     setUserMode(method === "phone" ? "urgent-phone" : "urgent-local");
     setAuthOpen(false);
   };
-  const startRegisteredMode = () => {
+  const startRegisteredMode = async (verifiedSession = null, options = {}) => {
     setUserMode("registered");
+    const activeSession = verifiedSession || session || (await supabase?.auth.getSession().then(({ data }) => data.session).catch(() => null));
+    if (activeSession) setSession(activeSession);
+    if (!options.saveCurrentCv) return { saved: false, message: "Account mode is active." };
+    const userId = activeSession?.user?.id;
+    if (!userId) {
+      setDraftStatus("Account verified, but the CV was not saved yet. Please use Save in My CVs.");
+      return { saved: false, message: "Account verified. Please use Save in My CVs to store this CV online." };
+    }
+    try {
+      await saveCvForUser({ userId, cv, categoryId, themeId, layoutId });
+      setDraftStatus(`Account verified. This CV is saved online and visible in My CVs. Daily limit: ${MAX_DAILY_GENERATED_CVS}.`);
+      trackEvent("save_cv_after_email_otp");
+      return { saved: true, message: "Email verified. Your account is ready and this CV is saved online." };
+    } catch (error) {
+      const message = error.message || "Account verified, but this CV could not be saved online.";
+      setDraftStatus(message);
+      return { saved: false, message };
+    }
   };
   return (
     <main className="builder-app-shell">
