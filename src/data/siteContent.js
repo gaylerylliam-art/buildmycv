@@ -7,7 +7,7 @@ export const faqs = [
   ["Can I create a portfolio website?", "BuildMyCVNow is built around a CV to portfolio to personal website workflow so job seekers can create a stronger online professional profile."],
   ["Can I add a profile photo?", "Yes. You can upload a square 1:1 image up to 2 MB and choose round or square display."],
   ["Is OTP required before download?", "Yes. Download-only users verify by email OTP before unlocking free downloads. If EmailJS is not fully configured, the app may show test-mode messaging during setup."],
-  ["Can I save CVs online?", "Yes. Registered users can save up to 10 CVs online for 15 days. Download your files regularly because expired online CVs may be deleted automatically."],
+  ["Can I save CVs online?", "Yes. Registered users can save up to 10 CVs online for 14 days and can generate/save up to 10 CVs per day. Download your files regularly because expired online CVs may be deleted automatically."],
 ];
 
 export const careerTips = [

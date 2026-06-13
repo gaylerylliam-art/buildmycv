@@ -158,17 +158,33 @@ summary {
   color: var(--brand);
 }
 
+.nav-signin,
 .nav-cta,
 .nav-mobile-cta {
   border: 0;
   border-radius: var(--radius-md);
-  background: var(--brand);
-  color: #ffffff;
   cursor: pointer;
   font-size: 0.82rem;
   font-weight: 700;
   padding: 0.58rem 1.1rem;
   transition: background 150ms ease, transform 150ms ease;
+}
+
+.nav-signin {
+  border: 1px solid var(--border);
+  background: #ffffff;
+  color: var(--text-primary);
+}
+
+.nav-cta,
+.nav-mobile-cta {
+  background: var(--brand);
+  color: #ffffff;
+}
+
+.nav-signin:hover {
+  background: #f8fafc;
+  transform: translateY(-1px);
 }
 
 .nav-cta:hover,
@@ -2302,6 +2318,7 @@ summary {
   }
 
   .nav-links,
+  .nav-signin,
   .nav-cta {
     display: none;
   }

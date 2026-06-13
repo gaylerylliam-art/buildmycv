@@ -16,7 +16,7 @@ export const supabase = isSupabaseConfigured
   : null;
 
 export const SAVED_CV_LIMIT = 10;
-export const SAVED_CV_RETENTION_DAYS = 15;
+export const SAVED_CV_RETENTION_DAYS = 14;
 
 export async function submitContactMessage({ name, email, message }) {
   const response = await fetch("/.netlify/functions/contact", {
@@ -58,6 +58,17 @@ export async function saveCvForUser({ userId, cv, categoryId, themeId, layoutId 
   if (countError) throw countError;
   if ((count || 0) >= SAVED_CV_LIMIT) {
     throw new Error(`You can save up to ${SAVED_CV_LIMIT} CVs. Delete one before saving another.`);
+  }
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const { count: todayCount, error: todayCountError } = await supabase
+    .from("cvs")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .gte("created_at", startOfToday.toISOString());
+  if (todayCountError) throw todayCountError;
+  if ((todayCount || 0) >= SAVED_CV_LIMIT) {
+    throw new Error(`You can generate and save up to ${SAVED_CV_LIMIT} CVs per day. Please try again tomorrow.`);
   }
   const expiresAt = new Date(Date.now() + SAVED_CV_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
   const row = {
@@ -162,6 +173,15 @@ export async function duplicateUserCv(item) {
   const { count, error: countError } = await supabase.from("cvs").select("id", { count: "exact", head: true }).eq("user_id", item.user_id);
   if (countError) throw countError;
   if ((count || 0) >= SAVED_CV_LIMIT) throw new Error(`You can save up to ${SAVED_CV_LIMIT} CVs. Delete one before duplicating another.`);
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const { count: todayCount, error: todayCountError } = await supabase
+    .from("cvs")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", item.user_id)
+    .gte("created_at", startOfToday.toISOString());
+  if (todayCountError) throw todayCountError;
+  if ((todayCount || 0) >= SAVED_CV_LIMIT) throw new Error(`You can generate and save up to ${SAVED_CV_LIMIT} CVs per day. Please try again tomorrow.`);
   const expiresAt = new Date(Date.now() + SAVED_CV_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
   const row = {
     user_id: item.user_id,

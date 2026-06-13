@@ -563,7 +563,7 @@ function CookieNotice() {
   );
 }
 
-function Header({ onStart }) {
+function Header({ onStart, onSignIn }) {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -586,6 +586,11 @@ function Header({ onStart }) {
           <Link to="/#how-it-works" className="nav-link">How it works</Link>
           <Link to="/blog" className="nav-link">Blog</Link>
         </nav>
+        {onSignIn && (
+          <button onClick={onSignIn} className="nav-signin">
+            Sign In / Sign Up
+          </button>
+        )}
         <button onClick={onStart} className="nav-cta">
           Create and download CV for free
         </button>
@@ -1098,12 +1103,12 @@ function PolicySections() {
       <PolicyCard id="privacy" title="Privacy Policy">
         <p>BuildMyCVNow has two modes. In download-only mode, users can create a free CV without an account and verify by email OTP before downloading. In account mode, users can sign in and save CV versions online for a limited time.</p>
         <p>Download-only CV content stays in the browser and is not intentionally saved to Supabase. The email address entered for OTP may be processed by EmailJS only to send or verify the download code.</p>
-        <p>Registered users can save up to 10 CVs online. Saved CVs are stored with Supabase under the user account for up to 15 days, then are designed to expire so users are encouraged to download their own records.</p>
+        <p>Registered users can save up to 10 CVs online and generate/save up to 10 CVs per day. Saved CVs are stored with Supabase under the user account for up to 14 days, then are designed to expire so users are encouraged to download their own records.</p>
         <p>Google Analytics, reCAPTCHA, and AdSense may use cookies or similar technologies when enabled. Ads are intended to support the free service without interfering with CV creation.</p>
       </PolicyCard>
       <PolicyCard id="terms" title="Terms & Conditions">
         <p>BuildMyCVNow provides free CV-building tools, templates, OTP-protected downloads, saved-CV account features, and career tips for general guidance.</p>
-        <p>Users own the CV information they enter and must keep it honest, accurate, and lawful. Users are responsible for downloading their own CV copies, especially in download-only mode and before the 15-day account storage period ends.</p>
+        <p>Users own the CV information they enter and must keep it honest, accurate, and lawful. Users are responsible for downloading their own CV copies, especially in download-only mode and before the 14-day account storage period ends.</p>
         <p>The service does not guarantee job interviews, job offers, visa approval, agency acceptance, or employer selection. Templates, AI suggestions, and tips must be reviewed and adapted to the user&apos;s real experience.</p>
       </PolicyCard>
     </section>
@@ -1204,7 +1209,7 @@ function PrivacyPage({ onStart }) {
           <p>BuildMyCVNow may collect the information needed to create, verify, save, and download CVs, including name, email address, phone number, country, nationality, visa status, job history, education, skills, uploaded CV text, profile photos, saved drafts, saved CV versions, and download verification details.</p>
           <p><strong>Download-only mode:</strong> Users can create and download a CV without creating an account. The CV data stays in browser state or localStorage and is not intentionally saved to Supabase. Before download, the user may verify by email OTP. The email address entered for OTP may be processed by EmailJS only to send or verify the code. Users should download their file before closing the browser because no online copy is kept in this mode.</p>
           <p><strong>Registered account mode:</strong> Users can sign up or sign in with email/password, passwordless email OTP, or another enabled Supabase Auth provider. Registered users can save and manage up to 10 CVs online. Saved CVs, drafts, and related profile photo data may be stored with Supabase Auth, Supabase Database, and Supabase Storage under the authenticated account.</p>
-          <p><strong>Retention:</strong> Online saved CVs are stored for up to 15 days. After that period, saved CV records are designed to expire and may be automatically deleted. Users are responsible for downloading and keeping their own copies before the storage period ends. Browser-local drafts may also be lost if the user clears browser storage, changes device, or uses private browsing.</p>
+          <p><strong>Retention:</strong> Online saved CVs are stored for up to 14 days. After that period, saved CV records are designed to expire and may be automatically deleted. Users are responsible for downloading and keeping their own copies before the storage period ends. Browser-local drafts may also be lost if the user clears browser storage, changes device, or uses private browsing.</p>
           <p><strong>Service providers:</strong> BuildMyCVNow may use Supabase for authentication, database, and storage; EmailJS for email messages and email OTP; OpenAI or similar AI services for optional writing assistance and CV parsing; Google Analytics for traffic measurement; Google reCAPTCHA for spam protection; and Google AdSense for advertising. These providers may process limited data needed to deliver their service.</p>
           <p><strong>Advertising and cookies:</strong> Ad areas support the free service. When Google AdSense, Google Analytics, or reCAPTCHA are enabled, Google and its partners may use cookies or similar technologies to measure traffic, protect forms, serve ads, and personalize ads where allowed by law and user settings.</p>
           <p><strong>User rights:</strong> Users can request access, correction, export, or deletion of stored personal data by using the Contact page. Users should avoid uploading or entering unnecessary sensitive information, passport numbers, national ID numbers, medical details, or private family information unless they intentionally choose to include it in their CV.</p>
@@ -1227,7 +1232,7 @@ function TermsPage({ onStart }) {
         <PolicyCard title="Terms of Use">
           <p><strong>Last updated:</strong> June 13, 2026.</p>
           <p><strong>Free download-only use:</strong> Users may create and download a CV for free without creating an account. Before downloading, users must complete email OTP verification when requested. Download-only mode does not save CVs online, so users must download their file before closing the browser.</p>
-          <p><strong>Registered account use:</strong> Users may create a free account to save and manage CVs online. Each account may save up to 10 CVs. Saved CVs are kept for up to 15 days and may be automatically deleted after that period. Users are responsible for downloading their own files before expiry.</p>
+          <p><strong>Registered account use:</strong> Users may create a free account to save and manage CVs online. Each account may save up to 10 CVs and generate/save up to 10 CVs per day. Saved CVs are kept for up to 14 days and may be automatically deleted after that period. Users are responsible for downloading their own files before expiry.</p>
           <p><strong>User responsibility:</strong> Users are responsible for the accuracy, honesty, and completeness of the information they enter into BuildMyCVNow. Do not include false work history, certificates, education, licenses, salaries, visa status, references, or employer details.</p>
           <p><strong>CV ownership:</strong> Users own the CV content they create. BuildMyCVNow provides templates, formatting tools, download tools, AI assistance, and general guidance, but the user's personal information and work history remain their responsibility.</p>
           <p><strong>AI and imported CVs:</strong> AI-assisted parsing, grammar checks, rephrasing, and suggested wording may contain mistakes. Users must review, approve, edit, or reject suggestions before using them in a CV or cover letter.</p>
@@ -2787,7 +2792,6 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
   const [details, setDetails] = useState({ name: cv.fullName, email: cv.email, country: cv.country, phone: cv.phone });
   const [otp, setOtp] = useState("");
   const [otpChallenge, setOtpChallenge] = useState(null);
-  const [mockOtp, setMockOtp] = useState("");
   const [verified, setVerified] = useState(false);
   const [actionStatus, setActionStatus] = useState("");
   const runDownloadAction = async (type) => {
@@ -2804,7 +2808,6 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
     setActionStatus("Sending OTP to your email...");
     setVerified(false);
     setOtp("");
-    setMockOtp("");
     setOtpChallenge(null);
     try {
       const response = await fetch("/.netlify/functions/emailOtp", {
@@ -2815,7 +2818,6 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.message || "Could not send OTP.");
       setOtpChallenge(result.challenge);
-      setMockOtp(result.mockOtp || "");
       setActionStatus(result.message || "OTP sent. Enter the code to unlock downloads.");
     } catch (error) {
       setActionStatus(error.message || "Could not send OTP. Please try again.");
@@ -2868,7 +2870,6 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
         {otpChallenge && (
           <div className="mt-5 rounded border border-green-200 bg-green-50 p-4">
             <p className="text-sm font-bold text-green-900">Enter the 6-digit OTP sent to your email.</p>
-            {mockOtp && <p className="mt-1 text-xs font-bold text-amber-800">Test mode OTP: {mockOtp}</p>}
             <div className="mt-3 flex gap-2">
               <input value={otp} onChange={(event) => setOtp(event.target.value)} inputMode="numeric" maxLength={6} className="form-field" placeholder="Enter 6-digit OTP" />
               <button onClick={verify} className="rounded bg-green-600 px-5 py-3 font-bold text-white">Verify</button>
@@ -2885,7 +2886,7 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
             </button>
           ) : (
             <p className="rounded bg-blue-50 p-3 text-xs font-bold leading-5 text-blue-900 sm:col-span-2">
-              Sign in with email if you want BuildMyCVNow to send a CV copy to your inbox.
+              Sign in or create an account if you want BuildMyCVNow to save CVs online and email generated CV copies.
             </p>
           )}
         </div>
@@ -2898,7 +2899,7 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
 function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
   const [mode, setMode] = useState("signin");
   const [form, setForm] = useState({ name: "", email: "", password: "" });
-  const [accountOtp, setAccountOtp] = useState({ name: "", email: "", token: "", sent: false });
+  const [accountOtp, setAccountOtp] = useState({ name: "", email: "", phone: "", token: "", sent: false, channel: "email" });
   const [message, setMessage] = useState(isSupabaseConfigured ? "" : "Add VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY or REACT_APP_SUPABASE_URL/REACT_APP_SUPABASE_ANON_KEY to .env to enable login.");
   const [loading, setLoading] = useState(false);
   const [lastSignupEmail, setLastSignupEmail] = useState("");
@@ -3000,9 +3001,9 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
         },
       });
       if (error) throw error;
-      setAccountOtp((current) => ({ ...current, sent: true, token: "" }));
+      setAccountOtp((current) => ({ ...current, sent: true, token: "", channel: "email" }));
       trackEvent("account_email_otp_sent");
-      setMessage("Account OTP sent. Check your email inbox and spam folder, then enter the code here.");
+      setMessage("Account email sent. If your email contains a 6-digit OTP, enter it here. If Supabase sends a sign-in link, click that link to open your account.");
     } catch (error) {
       setMessage(error.message || "Could not send account OTP.");
     } finally {
@@ -3030,6 +3031,47 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
       setLoading(false);
     }
   };
+  const sendAccountMobileOtp = async (event) => {
+    event.preventDefault();
+    if (!supabase) return;
+    setLoading(true);
+    setMessage("Sending mobile OTP...");
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        phone: accountOtp.phone,
+        options: { shouldCreateUser: true },
+      });
+      if (error) throw error;
+      setAccountOtp((current) => ({ ...current, sent: true, token: "", channel: "mobile" }));
+      trackEvent("account_mobile_otp_sent");
+      setMessage("Mobile OTP sent. Enter the SMS code here.");
+    } catch (error) {
+      setMessage(error.message || "Could not send mobile OTP. Check that phone OTP is enabled in Supabase.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  const verifyAccountMobileOtp = async (event) => {
+    event.preventDefault();
+    if (!supabase) return;
+    setLoading(true);
+    setMessage("Verifying mobile OTP...");
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        phone: accountOtp.phone,
+        token: accountOtp.token,
+        type: "sms",
+      });
+      if (error) throw error;
+      onRegisteredMode();
+      trackEvent("account_mobile_otp_verified");
+      onClose();
+    } catch (error) {
+      setMessage(error.message || "Invalid mobile OTP.");
+    } finally {
+      setLoading(false);
+    }
+  };
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4">
       <div className="w-full max-w-md rounded bg-white p-6 shadow-soft">
@@ -3050,13 +3092,21 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
         </div>
         <div className="mt-4">
           <p className="mb-2 text-xs font-black uppercase text-slate-500">Sign in / Create account to save online</p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {[
             ["signin", "Login"],
             ["signup", "Sign up"],
             ["accountOtp", "Email OTP"],
+            ["mobileOtp", "Mobile OTP"],
           ].map(([id, label]) => (
-            <button key={id} onClick={() => setMode(id)} className={`rounded px-4 py-3 text-sm font-black ${mode === id ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-700"}`}>
+            <button
+              key={id}
+              onClick={() => {
+                setMode(id);
+                setAccountOtp((current) => ({ ...current, token: "", sent: false, channel: id === "mobileOtp" ? "mobile" : "email" }));
+              }}
+              className={`rounded px-4 py-3 text-sm font-black ${mode === id ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-700"}`}
+            >
               {label}
             </button>
           ))}
@@ -3084,7 +3134,26 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
               {loading ? "Please wait..." : accountOtp.sent ? "Verify OTP and open account" : "Send email OTP"}
             </button>
             <p className="rounded bg-blue-50 p-3 text-xs font-bold leading-5 text-blue-800">
-              Free account mode lets you save up to 10 CVs online. Saved CVs expire after 15 days, so download copies for your records.
+              Free account mode lets you save up to 10 CVs online and generate/save up to 10 CVs per day. Saved CVs expire after 14 days.
+            </p>
+          </form>
+        ) : mode === "mobileOtp" ? (
+          <form onSubmit={accountOtp.sent && accountOtp.channel === "mobile" ? verifyAccountMobileOtp : sendAccountMobileOtp} className="mt-5 grid gap-3">
+            <label>
+              <span className="form-label">Registered mobile number</span>
+              <input className="form-field" type="tel" value={accountOtp.phone} onChange={(event) => setAccountOtp({ ...accountOtp, phone: event.target.value })} placeholder="+971501234567" required disabled={accountOtp.sent && accountOtp.channel === "mobile"} />
+            </label>
+            {accountOtp.sent && accountOtp.channel === "mobile" && (
+              <label>
+                <span className="form-label">Mobile OTP code</span>
+                <input className="form-field" inputMode="numeric" maxLength={6} value={accountOtp.token} onChange={(event) => setAccountOtp({ ...accountOtp, token: event.target.value })} required />
+              </label>
+            )}
+            <button disabled={!isSupabaseConfigured || loading} className="rounded bg-green-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
+              {loading ? "Please wait..." : accountOtp.sent && accountOtp.channel === "mobile" ? "Verify mobile OTP and open account" : "Send mobile OTP"}
+            </button>
+            <p className="rounded bg-blue-50 p-3 text-xs font-bold leading-5 text-blue-800">
+              Mobile OTP requires phone auth and an SMS provider to be enabled in Supabase.
             </p>
           </form>
         ) : (
@@ -3523,11 +3592,11 @@ function CoverLetterPreview({ cv, letter, theme, fontId, layoutId }) {
           <p>{letter.companyAddress}</p>
         </div>
         <p>Dear {letter.hiringManager || "Hiring Manager"},</p>
-        <p className="whitespace-pre-line">{cleanLetter.opening}</p>
-        <p className="whitespace-pre-line">{cleanLetter.body}</p>
-        {cleanLetter.qualifications && <p className="whitespace-pre-line">{cleanLetter.qualifications}</p>}
-        {cleanLetter.value && <p className="whitespace-pre-line">{cleanLetter.value}</p>}
-        <p className="whitespace-pre-line">{cleanLetter.closing}</p>
+        <p className="whitespace-pre-line text-justify">{cleanLetter.opening}</p>
+        <p className="whitespace-pre-line text-justify">{cleanLetter.body}</p>
+        {cleanLetter.qualifications && <p className="whitespace-pre-line text-justify">{cleanLetter.qualifications}</p>}
+        {cleanLetter.value && <p className="whitespace-pre-line text-justify">{cleanLetter.value}</p>}
+        <p className="whitespace-pre-line text-justify">{cleanLetter.closing}</p>
         <div>
           <p>Sincerely,</p>
           <p className="mt-2 font-black text-slate-950" style={{ color: theme.dark }}>{cv.fullName}</p>
@@ -3544,7 +3613,7 @@ function CoverLetterDownloadModal({ cv, onClose, onVerifiedDownload }) {
       onClose={onClose}
       onVerifiedDownload={onVerifiedDownload}
       title="Verify to download cover letter"
-      description="Enter your contact details to unlock your free cover letter download. This uses the same mock OTP flow as the CV."
+      description="Enter your contact details to receive an email OTP before unlocking your free cover letter download."
       label="Cover letter downloads"
     />
   );
@@ -4076,6 +4145,15 @@ function CVBuilderApp({ onHome }) {
     }
     setDownloadTarget("cv");
   };
+  useEffect(() => {
+    if (window.location.hash === "#signin") {
+      setAuthOpen(true);
+    }
+  }, []);
+  const dismissSharePrompt = () => {
+    sessionStorage.setItem("bmcv_share_prompt_seen", "1");
+    setShowSharePrompt(false);
+  };
   const handleNextStep = (section) => {
     logEvent("nextstep_clicked", { step: section });
     if (section === "download") requestCvDownload();
@@ -4429,7 +4507,7 @@ function CVBuilderApp({ onHome }) {
             {cloudSavingEnabled ? (
               <button onClick={signOut} className="rounded border border-slate-300 px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50">Logout</button>
             ) : (
-              <button onClick={() => setAuthOpen(true)} className="rounded border border-blue-600 px-3 py-2 text-xs font-black text-blue-700 hover:bg-blue-50">Access</button>
+              <button onClick={() => setAuthOpen(true)} className="rounded border border-blue-600 px-3 py-2 text-xs font-black text-blue-700 hover:bg-blue-50">Sign In / Sign Up</button>
             )}
           </div>
         </div>
@@ -4566,7 +4644,16 @@ function CVBuilderApp({ onHome }) {
           <div className="download-success-stack">
             <div className="rounded border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-900 shadow-lg">Download confirmed. Your CV file is ready.</div>
             {showSharePrompt && (
-              <div>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={dismissSharePrompt}
+                  className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-base font-black leading-none text-slate-600 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  aria-label="Close job hunting popup"
+                  title="Close"
+                >
+                  x
+                </button>
                 <ShareTool moment="post_download" />
                 <EmailCapture source="download" roleInterest={cv.jobTitle} />
               </div>
@@ -4646,6 +4733,7 @@ export default function App() {
   const location = useLocation();
   const isBuilderHash = ["#builder", "#cover-letter"].includes(location.hash);
   const goToBuilder = () => navigate("/builder");
+  const goToSignIn = () => navigate("/builder#signin");
   const goHome = () => navigate("/");
 
   useEffect(() => {
@@ -4685,7 +4773,7 @@ export default function App() {
           path="/"
           element={
             <>
-              <Header onStart={goToBuilder} />
+              <Header onStart={goToBuilder} onSignIn={goToSignIn} />
               <LandingPage onStart={goToBuilder} onUpload={goToBuilder} />
             </>
           }

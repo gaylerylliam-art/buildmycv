@@ -45,6 +45,6 @@ export const homepageFaqs = [
   },
   {
     question: "Is my data safe?",
-    answer: "You can use download-only mode if you do not want cloud saving. In that mode your CV stays in your browser, and your email address is processed only for OTP verification before download. If you sign in to save CVs, your data is stored using Supabase under your account for up to 15 days.",
+    answer: "You can use download-only mode if you do not want cloud saving. In that mode your CV stays in your browser, and your email address is processed only for OTP verification before download. If you sign in to save CVs, your data is stored using Supabase under your account for up to 14 days.",
   },
 ];

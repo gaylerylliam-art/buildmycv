@@ -11,7 +11,7 @@ create table if not exists public.cvs (
   profile_photo_path text,
   share_slug text unique,
   is_public boolean not null default false,
-  expires_at timestamptz not null default (now() + interval '15 days'),
+  expires_at timestamptz not null default (now() + interval '14 days'),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -26,7 +26,7 @@ create table if not exists public.cv_drafts (
 );
 
 alter table public.cvs
-add column if not exists expires_at timestamptz not null default (now() + interval '15 days');
+add column if not exists expires_at timestamptz not null default (now() + interval '14 days');
 
 create index if not exists cvs_user_expires_at_idx
 on public.cvs (user_id, expires_at);
@@ -93,5 +93,5 @@ with check (auth.uid() = user_id);
 grant select, insert, update, delete on public.cvs to authenticated;
 grant select, insert, update, delete on public.cv_drafts to authenticated;
 
-comment on column public.cvs.expires_at is 'Saved CVs are retained online for 15 days so users are encouraged to download their own copies.';
-comment on function public.delete_expired_cvs() is 'Deletes CV records after their 15-day online retention period. Schedule daily with Supabase if pg_cron is enabled.';
+comment on column public.cvs.expires_at is 'Saved CVs are retained online for 14 days so users are encouraged to download their own copies.';
+comment on function public.delete_expired_cvs() is 'Deletes CV records after their 14-day online retention period. Schedule daily with Supabase if pg_cron is enabled.';

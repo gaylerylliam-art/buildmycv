@@ -21,7 +21,7 @@ create table if not exists public.cvs (
   profile_photo_path text,
   share_slug text unique,
   is_public boolean not null default false,
-  expires_at timestamptz not null default (now() + interval '15 days'),
+  expires_at timestamptz not null default (now() + interval '14 days'),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

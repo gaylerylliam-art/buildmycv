@@ -71,12 +71,18 @@ export const handler = async (event) => {
     const challenge = { email, expires, signature: signChallenge({ email, otp, expires }) };
     try {
       const emailSent = await sendEmailOtp({ email, otp, name: payload.name });
+      if (!emailSent) {
+        return json(503, {
+          ok: false,
+          emailSent: false,
+          message: "Email OTP delivery is not configured yet. Add EMAILJS_SERVICE_ID, EMAILJS_OTP_TEMPLATE_ID, and EMAILJS_PUBLIC_KEY in Netlify, or use account Sign In / Sign Up.",
+        });
+      }
       return json(200, {
         ok: true,
         emailSent,
         challenge,
-        mockOtp: emailSent ? undefined : otp,
-        message: emailSent ? "OTP sent to your email address." : "OTP generated. Configure EmailJS OTP variables in Netlify to send it by email.",
+        message: "OTP sent to your email address.",
       });
     } catch (error) {
       return json(502, {
