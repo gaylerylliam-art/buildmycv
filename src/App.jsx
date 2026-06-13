@@ -3290,6 +3290,15 @@ const builderSteps = [
   { id: "summary", label: "Summary" },
 ];
 
+const cvBuildGuideSteps = [
+  { step: "Step 1", title: "Choose a template" },
+  { step: "Step 2", title: "Upload your existing CV", note: "Optional" },
+  { step: "Step 3", title: "Fill in your personal information" },
+  { step: "Step 4", title: "Add work experience and education" },
+  { step: "Step 5", title: "Review your CV strength score" },
+  { step: "Step 6", title: "Download your CV as PDF" },
+];
+
 function getBuilderStepState(cv) {
   return {
     personal: Boolean(cv.fullName && cv.email && cv.phone && cv.country),
@@ -3320,6 +3329,47 @@ function BuilderTopBar({ onHome, onDownload, saveStatus }) {
         </button>
       </div>
     </header>
+  );
+}
+
+function BuilderHeaderGuide({ cloudSavingEnabled, noCloudMode }) {
+  const saveReminder = cloudSavingEnabled
+    ? "Signed in: use Save in My CVs before refreshing if you want an online copy of this CV version."
+    : noCloudMode
+      ? "Download-only mode: your CV is not saved online. Download your file before refreshing or closing the browser."
+      : "Save online by signing in, or download your CV before refreshing. Unsaved browser data may return to the default ready-to-fill form.";
+
+  return (
+    <section className="border-b border-slate-200 bg-white px-4 py-5" aria-label="How to build your CV">
+      <div className="mx-auto max-w-7xl">
+        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-lg font-black text-slate-950">How to Build Your CV</h2>
+            <p className="mt-1 text-sm font-bold text-slate-500">Follow these steps from template choice to download.</p>
+          </div>
+          <span className="inline-flex w-fit items-center rounded-full bg-blue-50 px-3 py-2 text-xs font-black text-blue-800">
+            Free CV download with email OTP
+          </span>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+          {cvBuildGuideSteps.map((item) => (
+            <article key={item.step} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <p className="text-[11px] font-black uppercase tracking-wide text-blue-700">{item.step}</p>
+              <h3 className="mt-2 text-sm font-black leading-5 text-slate-950">{item.title}</h3>
+              {item.note && <p className="mt-1 text-xs font-bold text-slate-500">{item.note}</p>}
+            </article>
+          ))}
+        </div>
+        <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_1.25fr]">
+          <p className="rounded-lg bg-emerald-50 px-4 py-3 text-sm font-black leading-6 text-emerald-900">
+            Tip: You can switch templates at any time without losing your data.
+          </p>
+          <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm font-black leading-6 text-amber-950">
+            Important: {saveReminder}
+          </p>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -4016,6 +4066,7 @@ function CVBuilderApp({ onHome }) {
           </div>
         </div>
       </div>
+      {activeBuilder === "cv" && <BuilderHeaderGuide cloudSavingEnabled={cloudSavingEnabled} noCloudMode={noCloudMode} />}
       {noCloudMode && (
         <section className="border-b border-amber-200 bg-amber-50 px-5 py-3">
           <div className="mx-auto max-w-7xl text-sm font-bold leading-6 text-amber-950">
