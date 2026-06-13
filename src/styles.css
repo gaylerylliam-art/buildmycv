@@ -148,9 +148,14 @@ summary {
 }
 
 .nav-link {
+  background: transparent;
+  border: 0;
   color: var(--text-secondary);
+  cursor: pointer;
+  font-family: inherit;
   font-size: 0.82rem;
   font-weight: 600;
+  padding: 0;
   text-decoration: none;
 }
 

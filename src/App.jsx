@@ -51,7 +51,7 @@ import {
   isSupabaseConfigured,
   listUserCvs,
   loadLatestDraftForUser,
-  MAX_SAVED_CVS,
+  MAX_DAILY_GENERATED_CVS,
   saveCvForUser,
   saveDraftForUser,
   submitContactMessage,
@@ -612,7 +612,7 @@ function CookieNotice() {
   );
 }
 
-function Header({ onStart }) {
+function Header({ onStart, onSignIn }) {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -634,12 +634,13 @@ function Header({ onStart }) {
           <Link to="/#templates" className="nav-link">Templates</Link>
           <Link to="/#how-it-works" className="nav-link">How it works</Link>
           <Link to="/blog" className="nav-link">Blog</Link>
+          {onSignIn && <button onClick={onSignIn} className="nav-link">Sign In</button>}
         </nav>
         <button onClick={onStart} className="nav-cta">
-          Build my CV - it's free
+          Create and download CV for free
         </button>
       </div>
-      <button onClick={onStart} className="nav-mobile-cta" aria-label="Build my CV">
+      <button onClick={onStart} className="nav-mobile-cta" aria-label="Create and download CV for free">
         CV
       </button>
     </header>
@@ -759,7 +760,7 @@ function LandingPage({ onStart }) {
             <div className="global-hero-cta-row">
               <button type="button" onClick={onStart} className="global-hero-primary">
                 <Icon name="file" className="h-4 w-4" />
-                Build my CV - it's free
+                Create and download CV for free
               </button>
               <a href="/templates" className="global-hero-secondary">Browse templates <Icon name="arrow" className="h-4 w-4" /></a>
             </div>
@@ -2962,7 +2963,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
       if (error) throw error;
       trackEvent(mode === "signup" ? "signup" : "login", { method: "email_otp" });
       setLastSignupEmail(form.email);
-      setMessage("Email verification sent. Open the link or enter the OTP from your inbox to continue. Check spam if it does not arrive.");
+      setMessage("Email verification sent. Open the sign-in link from your inbox, or enter the OTP code if your Supabase email template includes one. Check spam if it does not arrive.");
     } catch (error) {
       setMessage(error.message || "Authentication failed.");
     } finally {
@@ -3032,7 +3033,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
       setPhoneForm({ ...phoneForm, challenge: result.challenge, mockOtp: "" });
       setPhoneOtpSent(true);
       trackEvent("phone_otp_sent");
-      setMessage("OTP sent to your mobile number. Enter the SMS code to continue.");
+      setMessage("OTP sent to your mobile number. This continues in download-only mode unless SMS login is connected to Supabase Auth.");
     } catch (error) {
       setMessage(error.message || "Could not send mobile OTP.");
     } finally {
@@ -3066,7 +3067,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-2xl font-black text-slate-950">{mode === "signin" ? "Email login" : "Create account"}</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">Use free download-only mode with no online storage, or verify your email to save up to 10 CVs online and receive generated CV copies.</p>
+            <p className="mt-2 text-sm leading-6 text-slate-600">Use free download-only mode with no online storage, or verify your email to save generated CVs online and receive CV copies.</p>
           </div>
           <button onClick={onClose} className="text-2xl leading-none text-slate-500">x</button>
         </div>
@@ -3075,7 +3076,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
             Continue without cloud saving
           </button>
           <button onClick={() => setMode("phone")} className={`rounded px-4 py-3 text-sm font-black ${mode === "phone" ? "bg-slate-950 text-white" : "bg-blue-50 text-blue-800"}`}>
-            Continue with mobile OTP
+            Receive OTP on mobile
           </button>
           <p className="rounded bg-amber-50 p-3 text-xs font-bold leading-5 text-amber-900">
             Free download-only mode: no account, no online CV, local browser only. Download before refreshing, closing the browser, or clearing site data.
@@ -3083,6 +3084,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
         </div>
         <div className="mt-4">
           <p className="mb-2 text-xs font-black uppercase text-slate-500">Email verified account mode</p>
+          <p className="mb-3 text-xs font-bold leading-5 text-slate-500">Email account mode stores generated CVs online and applies a {MAX_DAILY_GENERATED_CVS} CV daily generation limit.</p>
           <div className="grid grid-cols-2 gap-2">
           {[
             ["signin", "Email login"],
@@ -3096,6 +3098,9 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
         </div>
         {mode === "phone" ? (
           <form onSubmit={phoneOtpSent ? verifyPhoneOtp : sendPhoneOtp} className="mt-5 grid gap-3">
+            <p className="rounded bg-blue-50 p-3 text-xs font-bold leading-5 text-blue-800">
+              Mobile OTP is available for quick local access. To save CVs online and view previous downloads, use email account mode.
+            </p>
             <label>
               <span className="form-label">Mobile number</span>
               <input className="form-field" type="tel" value={phoneForm.phone} onChange={(event) => setPhoneForm({ ...phoneForm, phone: event.target.value })} placeholder="+971501234567" required />
@@ -3107,7 +3112,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
               </label>
             )}
             <button disabled={loading} className="rounded bg-green-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
-              {loading ? "Please wait..." : phoneOtpSent ? "Verify OTP and continue" : "Send OTP"}
+              {loading ? "Please wait..." : phoneOtpSent ? "Verify OTP and continue locally" : "Send mobile OTP"}
             </button>
           </form>
         ) : (
@@ -3124,14 +3129,14 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
           </label>
           {isRecaptchaConfigured && <p className="text-xs font-bold text-slate-500">Protected by Google reCAPTCHA.</p>}
           <button disabled={!isSupabaseConfigured || loading} className="rounded bg-green-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
-            {loading ? "Please wait..." : mode === "signin" ? "Send email OTP" : "Create account by email"}
+            {loading ? "Please wait..." : mode === "signin" ? "Send email verification" : "Create account by email"}
           </button>
         </form>
         )}
         {lastSignupEmail && mode !== "phone" && (
           <form onSubmit={verifyEmailOtp} className="mt-3 grid gap-3 rounded border border-blue-100 bg-blue-50 p-3">
             <p className="text-xs font-bold leading-5 text-blue-900">
-              Enter the OTP code sent to {lastSignupEmail}. This verifies the account before online saving and email CV delivery.
+              Open the sign-in link sent to {lastSignupEmail}. If your Supabase email template includes a numeric OTP, you can enter it here to verify before online saving and email CV delivery.
             </p>
             <label>
               <span className="form-label">Email OTP code</span>
@@ -3172,7 +3177,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
 
 function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDraft, onLoadDraft, onExportData, onClearLocalDraft, onDeleteAllData, onDeleteAccount, draftStatus }) {
   const [items, setItems] = useState([]);
-  const [message, setMessage] = useState(user ? "Load your saved CVs." : `Login to save and manage up to ${MAX_SAVED_CVS} CVs.`);
+  const [message, setMessage] = useState(user ? "Load your saved CVs." : `Login to save generated CVs online. Daily limit: ${MAX_DAILY_GENERATED_CVS}.`);
   const refresh = async () => {
     if (!user) return;
     try {
@@ -3235,7 +3240,7 @@ function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDra
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="panel-title">My CVs dashboard</h3>
-          <p className="mt-1 text-[11px] font-bold text-slate-500">{items.length} saved version{items.length === 1 ? "" : "s"} of {MAX_SAVED_CVS}</p>
+          <p className="mt-1 text-[11px] font-bold text-slate-500">{items.length} saved version{items.length === 1 ? "" : "s"}. Daily generation limit: {MAX_DAILY_GENERATED_CVS}</p>
         </div>
         <button onClick={saveCurrent} className="rounded bg-green-600 px-3 py-2 text-xs font-black text-white">Save</button>
       </div>
@@ -4102,6 +4107,11 @@ function CVBuilderApp({ onHome }) {
     sessionStorage.setItem("bmcv_share_prompt_seen", "1");
     setShowSharePrompt(false);
   };
+  useEffect(() => {
+    if (window.location.hash !== "#signin") return;
+    setAuthOpen(true);
+    window.history.replaceState(null, "", "/builder");
+  }, []);
   const handleNextStep = (section) => {
     logEvent("nextstep_clicked", { step: section });
     if (section === "download") requestCvDownload();
@@ -4394,14 +4404,9 @@ function CVBuilderApp({ onHome }) {
   };
   const saveGeneratedCvOnline = async () => {
     if (!user?.id || !cloudSavingEnabled) return null;
-    try {
-      const saved = await saveCvForUser({ userId: user.id, cv, categoryId, themeId, layoutId });
-      setDraftStatus(`Generated CV saved online. ${MAX_SAVED_CVS} CV limit applies.`);
-      return saved;
-    } catch (error) {
-      setDraftStatus(error.message || "Generated CV downloaded, but online saving failed.");
-      return null;
-    }
+    const saved = await saveCvForUser({ userId: user.id, cv, categoryId, themeId, layoutId });
+    setDraftStatus(`Generated CV saved online. ${MAX_DAILY_GENERATED_CVS} CV daily limit applies.`);
+    return saved;
   };
   const handleDownload = async (type) => {
     const emailGeneratedCv = async (format) => {
@@ -4425,10 +4430,10 @@ function CVBuilderApp({ onHome }) {
       await saveGeneratedCvOnline();
       return emailGeneratedCv("pdf");
     }
-    await downloadCvFile(cv, type, theme, layoutId);
     if (cloudSavingEnabled) {
       await saveGeneratedCvOnline();
     }
+    await downloadCvFile(cv, type, theme, layoutId);
     if (user?.email && session?.access_token) {
       emailGeneratedCv(type).catch((error) => setDraftStatus(error.message || "CV downloaded, but email copy could not be sent."));
     }
@@ -4756,6 +4761,7 @@ export default function App() {
   const location = useLocation();
   const isBuilderHash = ["#builder", "#cover-letter"].includes(location.hash);
   const goToBuilder = () => navigate("/builder");
+  const goToSignIn = () => navigate("/builder#signin");
   const goHome = () => navigate("/");
 
   useEffect(() => {
@@ -4795,7 +4801,7 @@ export default function App() {
           path="/"
           element={
             <>
-              <Header onStart={goToBuilder} />
+              <Header onStart={goToBuilder} onSignIn={goToSignIn} />
               <LandingPage onStart={goToBuilder} />
             </>
           }

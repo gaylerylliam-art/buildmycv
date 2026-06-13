@@ -15,7 +15,23 @@ export const supabase = isSupabaseConfigured
     })
   : null;
 
-export const MAX_SAVED_CVS = 10;
+export const MAX_DAILY_GENERATED_CVS = 10;
+
+function startOfTodayIso() {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  return start.toISOString();
+}
+
+async function countUserCvsGeneratedToday(userId) {
+  const { count, error } = await supabase
+    .from("cvs")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .gte("created_at", startOfTodayIso());
+  if (error) throw error;
+  return count || 0;
+}
 
 export async function submitContactMessage({ name, email, message }) {
   const response = await fetch("/.netlify/functions/contact", {
@@ -49,13 +65,9 @@ export async function uploadProfilePhoto(userId, dataUrl) {
 
 export async function saveCvForUser({ userId, cv, categoryId, themeId, layoutId }) {
   if (!supabase || !userId) throw new Error("Supabase is not configured.");
-  const { count, error: countError } = await supabase
-    .from("cvs")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", userId);
-  if (countError) throw countError;
-  if ((count || 0) >= MAX_SAVED_CVS) {
-    throw new Error(`You can save up to ${MAX_SAVED_CVS} CVs. Delete one before saving another.`);
+  const generatedToday = await countUserCvsGeneratedToday(userId);
+  if (generatedToday >= MAX_DAILY_GENERATED_CVS) {
+    throw new Error(`Daily limit reached. You can generate and save up to ${MAX_DAILY_GENERATED_CVS} CVs per day. Please try again tomorrow.`);
   }
   const { data, error } = await supabase
     .from("cvs")
@@ -146,13 +158,9 @@ export async function deleteAllUserDrafts(userId) {
 
 export async function duplicateUserCv(item) {
   if (!supabase || !item) return null;
-  const { count, error: countError } = await supabase
-    .from("cvs")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", item.user_id);
-  if (countError) throw countError;
-  if ((count || 0) >= MAX_SAVED_CVS) {
-    throw new Error(`You can save up to ${MAX_SAVED_CVS} CVs. Delete one before duplicating another.`);
+  const generatedToday = await countUserCvsGeneratedToday(item.user_id);
+  if (generatedToday >= MAX_DAILY_GENERATED_CVS) {
+    throw new Error(`Daily limit reached. You can generate and save up to ${MAX_DAILY_GENERATED_CVS} CVs per day. Please try again tomorrow.`);
   }
   const { data, error } = await supabase
     .from("cvs")
