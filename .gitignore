@@ -6,3 +6,4 @@ npm-debug.log*
 *.local
 qa-*.png
 scripts/publish-github-rest.ps1
+.codex-backup-before-github-sync-*/
