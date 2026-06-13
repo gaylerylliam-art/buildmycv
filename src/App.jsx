@@ -93,8 +93,59 @@ const createExperienceEntry = (category = defaultCategory) => ({
   responsibilities: category.experience,
 });
 
+const monthLookup = {
+  jan: 1,
+  january: 1,
+  feb: 2,
+  february: 2,
+  mar: 3,
+  march: 3,
+  apr: 4,
+  april: 4,
+  may: 5,
+  jun: 6,
+  june: 6,
+  jul: 7,
+  july: 7,
+  aug: 8,
+  august: 8,
+  sep: 9,
+  sept: 9,
+  september: 9,
+  oct: 10,
+  october: 10,
+  nov: 11,
+  november: 11,
+  dec: 12,
+  december: 12,
+};
+
+const parseExperienceDateValue = (value = "") => {
+  const text = String(value || "").trim().toLowerCase();
+  if (!text) return 0;
+  if (/present|current|till\s*date|to\s*date|ongoing|now/.test(text)) return 999999;
+  const year = text.match(/\b(19|20)\d{2}\b/)?.[0];
+  if (!year) return 0;
+  const numericMonth = text.match(/\b(0?[1-9]|1[0-2])\s*[/-]\s*(?:\d{2}|\d{4})\b/)?.[1];
+  const monthWord = text.match(/\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/)?.[0];
+  const month = numericMonth ? Number(numericMonth) : monthLookup[monthWord] || 12;
+  return Number(year) * 12 + month;
+};
+
+const sortWorkExperiences = (entries = []) =>
+  [...entries]
+    .map((entry, index) => ({
+      entry,
+      index,
+      sortValue: entry.isCurrent
+        ? 999999
+        : Math.max(parseExperienceDateValue(entry.toDate), parseExperienceDateValue(entry.fromDate)),
+    }))
+    .sort((a, b) => (b.sortValue - a.sortValue) || (a.index - b.index))
+    .map(({ entry }) => entry);
+
 const formatWorkExperiences = (entries = []) =>
-  entries
+  sortWorkExperiences(entries)
     .map((entry) =>
       [
         entry.jobTitle,
@@ -147,7 +198,7 @@ const visibleSectionOrder = (cv = {}) => {
 
 const normalizeWorkExperiences = (cv) => {
   if (Array.isArray(cv.workExperiences) && cv.workExperiences.length) {
-    return cv.workExperiences.map((entry) => ({ ...createExperienceEntry(), ...entry }));
+    return sortWorkExperiences(cv.workExperiences.map((entry) => ({ ...createExperienceEntry(), ...entry })));
   }
   if (!cv.experience) return [createExperienceEntry()];
   return [
@@ -2115,7 +2166,7 @@ const extractStructuredWorkExperiences = (experienceText = "", fallbackJobTitle 
     }];
   }
 
-  return dateIndices.map(({ line: dateLine, index, match, isSingleDate }, datePosition) => {
+  const entries = dateIndices.map(({ line: dateLine, index, match, isSingleDate }, datePosition) => {
     const previousDateIndex = datePosition > 0 ? dateIndices[datePosition - 1].index : -1;
     const nextDateIndex = datePosition < dateIndices.length - 1 ? dateIndices[datePosition + 1].index : rawLines.length;
     const beforeMeta = [];
@@ -2150,6 +2201,7 @@ const extractStructuredWorkExperiences = (experienceText = "", fallbackJobTitle 
     entry.responsibilities = duties.join("\n") || "Please review imported CV and add responsibilities for this role.";
     return entry;
   }).filter((entry) => entry.jobTitle || entry.employer || entry.responsibilities);
+  return sortWorkExperiences(entries);
 };
 
 function mockAiExtractCv(text, fileName) {
@@ -2446,9 +2498,25 @@ function LiveCVPreview({ cv, theme, layout }) {
       {cv.qrCode?.position === "header" && <div className="absolute right-4 top-4"><QrBlock qrCode={cv.qrCode} color={layout === "header" ? "#ffffff" : "#1E293B"} /></div>}
     </header>
   );
+  const renderContinuationHeader = () => (
+    <header className="cv-continuation-header" style={{ borderColor: theme.color }}>
+      <div>
+        <h2>{cv.fullName || "Candidate Name"}</h2>
+        <p>{cv.jobTitle || "Job title"}</p>
+      </div>
+      <p>{[cv.email, cv.phone, cv.country].filter(Boolean).join(" | ")}</p>
+    </header>
+  );
   return (
     <div className="cv-page-stack" aria-label={`${pages.length} page CV preview`}>
-      {pages.map((pageBlocks, pageIndex) => layout === "sidebar" ? (
+      {pages.map((pageBlocks, pageIndex) => pageIndex > 0 ? (
+        <article key={pageIndex} className={`cv-paper cv-paper-page ${layout === "compact" ? "p-6" : "p-8"}`}>
+          {renderContinuationHeader()}
+          <div className="mt-6">{renderPageContent(pageBlocks)}</div>
+          {cv.qrCode?.position === "footer" && pageIndex === pages.length - 1 && <div className="mt-6 flex justify-center"><QrBlock qrCode={cv.qrCode} color="#1E293B" /></div>}
+          <p className="cv-page-number">Page {pageIndex + 1} of {pages.length}</p>
+        </article>
+      ) : layout === "sidebar" ? (
         <article key={pageIndex} className="cv-paper cv-paper-page grid grid-cols-[0.38fr_0.62fr] overflow-hidden p-0">
           {renderSidebar(pageIndex)}
           <div className="p-7">

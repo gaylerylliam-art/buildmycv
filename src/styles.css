@@ -2373,6 +2373,38 @@ summary {
   font-weight: 800;
 }
 
+.cv-continuation-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  border-bottom: 2px solid;
+  padding-bottom: 0.85rem;
+}
+
+.cv-continuation-header h2 {
+  color: #0f172a;
+  font-size: 1.35rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.cv-continuation-header div p {
+  margin-top: 0.25rem;
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.cv-continuation-header > p {
+  max-width: 48%;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.5;
+  text-align: right;
+}
+
 @supports not (zoom: 1) {
   .cv-page-stack {
     transform: scale(var(--preview-zoom, 0.56));
