@@ -895,14 +895,15 @@ function PolicySections() {
   return (
     <section className="mx-auto grid max-w-7xl gap-6 px-5 py-14 lg:grid-cols-2">
       <PolicyCard id="privacy" title="Privacy Policy">
-        <p>BuildMyCVNow is designed to collect only the information needed to create, save, and download a CV, including name, email, CV content, uploaded CV text, profile photos, and contact details.</p>
-        <p>Users who sign in can save CV data with Supabase Auth, database, and storage. Download-only users keep CV data local in the browser and should download their file before closing the page.</p>
-        <p>Ad areas are placeholders for Google AdSense. When ads are enabled, Google and partners may use cookies or similar technologies according to their own policies.</p>
+        <p>BuildMyCVNow has two modes. In download-only mode, users can create a free CV without an account and verify by email OTP or SMS OTP before downloading. In account mode, users can sign in and save CV versions online for a limited time.</p>
+        <p>Download-only CV content stays in the browser and is not intentionally saved to Supabase. OTP contact details may be processed by EmailJS or Twilio only to send or verify the download code.</p>
+        <p>Registered users can save up to 10 CVs online. Saved CVs are stored with Supabase under the user account for up to 15 days, then are designed to expire so users are encouraged to download their own records.</p>
+        <p>Google Analytics, reCAPTCHA, and AdSense may use cookies or similar technologies when enabled. Ads are intended to support the free service without interfering with CV creation.</p>
       </PolicyCard>
       <PolicyCard id="terms" title="Terms & Conditions">
-        <p>BuildMyCVNow provides free CV-building tools, templates, and career tips for general guidance. Users remain responsible for checking the accuracy of their CV before sending it to employers.</p>
-        <p>Users own the CV information they enter and should only add honest work history, education, skills, certificates, and references.</p>
-        <p>The service does not guarantee job interviews, job offers, or employer acceptance. Templates and tips should be adapted honestly to each user&apos;s real experience.</p>
+        <p>BuildMyCVNow provides free CV-building tools, templates, OTP-protected downloads, saved-CV account features, and career tips for general guidance.</p>
+        <p>Users own the CV information they enter and must keep it honest, accurate, and lawful. Users are responsible for downloading their own CV copies, especially in download-only mode and before the 15-day account storage period ends.</p>
+        <p>The service does not guarantee job interviews, job offers, visa approval, agency acceptance, or employer selection. Templates, AI suggestions, and tips must be reviewed and adapted to the user&apos;s real experience.</p>
       </PolicyCard>
     </section>
   );
@@ -998,11 +999,14 @@ function PrivacyPage({ onStart }) {
       <StaticHero title="Privacy Policy" description="This policy explains what BuildMyCVNow may collect and how user CV data should be handled." />
       <section className="mx-auto max-w-4xl px-5 py-14">
         <PolicyCard title="Privacy Policy">
-          <p>BuildMyCVNow may collect the information needed to create, save, and download CVs, including name, email address, phone number, country, nationality, visa status, job history, education, skills, uploaded CV text, profile photos, saved drafts, and download verification details.</p>
-          <p>Download-only users keep CV data in browser state or localStorage so they can finish their CV quickly. This information is not intentionally saved to Supabase unless the user signs in and chooses cloud saving. Download-only users should download their file before closing the browser.</p>
-          <p>Registered users can save CV drafts, uploaded files, profile photos, and CV versions with Supabase Auth, Supabase Database, and Supabase Storage under their authenticated account. Row Level Security should be used so users can only access their own records.</p>
-          <p>BuildMyCVNow may use Google Analytics to understand page usage, Google reCAPTCHA to reduce spam, and Google AdSense to display advertising. These services may use cookies or similar technologies to measure traffic, protect forms, serve ads, and personalize ads where allowed.</p>
-          <p>Users can request access, correction, export, or deletion of stored personal data by using the Contact page. Users should avoid uploading or entering sensitive document numbers unless a trusted employer or agency specifically requires them outside BuildMyCVNow.</p>
+          <p>BuildMyCVNow may collect the information needed to create, verify, save, and download CVs, including name, email address, phone number, country, nationality, visa status, job history, education, skills, uploaded CV text, profile photos, saved drafts, saved CV versions, and download verification details.</p>
+          <p><strong>Download-only mode:</strong> Users can create and download a CV without creating an account. The CV data stays in browser state or localStorage and is not intentionally saved to Supabase. Before download, the user may verify by email OTP or SMS OTP. The email address or phone number entered for OTP may be processed by EmailJS or Twilio only to send or verify the code. Users should download their file before closing the browser because no online copy is kept in this mode.</p>
+          <p><strong>Registered account mode:</strong> Users can sign up or sign in with email/password, passwordless email OTP, or another enabled Supabase Auth provider. Registered users can save and manage up to 10 CVs online. Saved CVs, drafts, and related profile photo data may be stored with Supabase Auth, Supabase Database, and Supabase Storage under the authenticated account.</p>
+          <p><strong>Retention:</strong> Online saved CVs are stored for up to 15 days. After that period, saved CV records are designed to expire and may be automatically deleted. Users are responsible for downloading and keeping their own copies before the storage period ends. Browser-local drafts may also be lost if the user clears browser storage, changes device, or uses private browsing.</p>
+          <p><strong>Service providers:</strong> BuildMyCVNow may use Supabase for authentication, database, and storage; EmailJS for email messages and email OTP; Twilio for SMS OTP; OpenAI or similar AI services for optional writing assistance and CV parsing; Google Analytics for traffic measurement; Google reCAPTCHA for spam protection; and Google AdSense for advertising. These providers may process limited data needed to deliver their service.</p>
+          <p><strong>Advertising and cookies:</strong> Ad areas support the free service. When Google AdSense, Google Analytics, or reCAPTCHA are enabled, Google and its partners may use cookies or similar technologies to measure traffic, protect forms, serve ads, and personalize ads where allowed by law and user settings.</p>
+          <p><strong>User rights:</strong> Users can request access, correction, export, or deletion of stored personal data by using the Contact page. Users should avoid uploading or entering unnecessary sensitive information, passport numbers, national ID numbers, medical details, or private family information unless they intentionally choose to include it in their CV.</p>
+          <p><strong>Security:</strong> BuildMyCVNow uses account-based access controls and Supabase Row Level Security for saved CV records. No online service can guarantee perfect security, so users should keep their login details private and download their own records for safekeeping.</p>
         </PolicyCard>
       </section>
     </PageShell>
@@ -1019,12 +1023,14 @@ function TermsPage({ onStart }) {
       <StaticHero title="Terms of Use" description="Please use BuildMyCVNow honestly and review your CV carefully before sending it to employers." />
       <section className="mx-auto max-w-4xl px-5 py-14">
         <PolicyCard title="Terms of Use">
-          <p>Users are responsible for the accuracy, honesty, and completeness of the information they enter into BuildMyCVNow. Do not include false work history, certificates, or references.</p>
-          <p>Users own the CV content they create. BuildMyCVNow provides templates, formatting tools, and guidance, but the user's personal information and work history remain their responsibility.</p>
-          <p>BuildMyCVNow does not guarantee interviews, job offers, visa approval, agency acceptance, or employer selection. The app is a CV creation and career guidance tool only.</p>
-          <p>Users should review all generated CVs and cover letters before sending them to employers. Suggested wording is general guidance and may need to be edited for the user's real experience, country, and job application.</p>
-          <p>Users should download and keep copies of important documents. Download-only mode does not save CVs online, and browser data can be lost if cache or localStorage is cleared.</p>
-          <p>Users must not misuse forms, upload harmful files, attempt to access another user's records, or use the service for spam, fraud, or misleading job applications.</p>
+          <p><strong>Free download-only use:</strong> Users may create and download a CV for free without creating an account. Before downloading, users must complete OTP verification by email or SMS when requested. Download-only mode does not save CVs online, so users must download their file before closing the browser.</p>
+          <p><strong>Registered account use:</strong> Users may create a free account to save and manage CVs online. Each account may save up to 10 CVs. Saved CVs are kept for up to 15 days and may be automatically deleted after that period. Users are responsible for downloading their own files before expiry.</p>
+          <p><strong>User responsibility:</strong> Users are responsible for the accuracy, honesty, and completeness of the information they enter into BuildMyCVNow. Do not include false work history, certificates, education, licenses, salaries, visa status, references, or employer details.</p>
+          <p><strong>CV ownership:</strong> Users own the CV content they create. BuildMyCVNow provides templates, formatting tools, download tools, AI assistance, and general guidance, but the user's personal information and work history remain their responsibility.</p>
+          <p><strong>AI and imported CVs:</strong> AI-assisted parsing, grammar checks, rephrasing, and suggested wording may contain mistakes. Users must review, approve, edit, or reject suggestions before using them in a CV or cover letter.</p>
+          <p><strong>No employment guarantee:</strong> BuildMyCVNow does not guarantee interviews, job offers, visa approval, agency acceptance, employer selection, salary offers, or background-check results. The app is a CV creation and career guidance tool only.</p>
+          <p><strong>Acceptable use:</strong> Users must not misuse forms, abuse OTP requests, upload harmful files, attempt to access another user's records, interfere with the service, scrape data, or use the service for spam, fraud, scams, impersonation, or misleading job applications.</p>
+          <p><strong>Service availability:</strong> BuildMyCVNow may change templates, limits, storage periods, provider integrations, or features to keep the service free, secure, and reliable. Third-party services such as Supabase, EmailJS, Twilio, Google, and AI providers may also affect availability.</p>
         </PolicyCard>
       </section>
     </PageShell>

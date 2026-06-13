@@ -4,7 +4,8 @@ export const faqs = [
   ["Can I use it on mobile?", "Yes. The layout adapts for mobile, tablet, and desktop screens."],
   ["Can I edit after uploading an existing CV?", "Yes. Uploaded CV details are filled into the form, and every field remains editable."],
   ["Can I add a profile photo?", "Yes. You can upload a square 1:1 image up to 2 MB and choose round or square display."],
-  ["Is OTP real?", "For now it is mock OTP logic, so developers can connect SMS or email later."],
+  ["Is OTP required before download?", "Yes. Download-only users can verify by email OTP or SMS OTP before unlocking free downloads. If a provider is not fully configured, the app may show test-mode messaging during setup."],
+  ["Can I save CVs online?", "Yes. Registered users can save up to 10 CVs online for 15 days. Download your files regularly because expired online CVs may be deleted automatically."],
 ];
 
 export const careerTips = [

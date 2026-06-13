@@ -5,7 +5,7 @@ export const homepageFaqs = [
   },
   {
     question: "Do I need to sign up to download my CV?",
-    answer: "No. You can build and download a CV without creating an account. Signing in is only useful if you want to save drafts online and manage multiple CV versions later.",
+    answer: "No. You can build and download a CV without creating an account. Download-only users verify by email OTP or SMS OTP before download. Signing in is useful if you want to save and manage CV versions online.",
   },
   {
     question: "Can I use BuildMyCVNow outside the UAE or GCC?",
@@ -37,6 +37,6 @@ export const homepageFaqs = [
   },
   {
     question: "Is my data safe?",
-    answer: "You can use download-only mode if you do not want cloud saving. In that mode your CV stays in your browser. If you sign in to save drafts, your data is stored using Supabase under your account.",
+    answer: "You can use download-only mode if you do not want cloud saving. In that mode your CV stays in your browser, and only OTP contact details are processed for verification. If you sign in to save CVs, your data is stored using Supabase under your account for up to 15 days.",
   },
 ];
