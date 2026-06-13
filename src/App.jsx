@@ -879,7 +879,7 @@ function LandingPage({ onStart }) {
 }
 
 function ContactSection() {
-  const [status, setStatus] = useState("Messages are forwarded to gaylerylliam@gmail.com.");
+  const [status, setStatus] = useState("Messages are forwarded to info@buildmycvnow.com.");
   const [sending, setSending] = useState(false);
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -896,7 +896,7 @@ function ContactSection() {
       trackEvent("contact_form_sent");
       form.reset();
       setStatus(result.forwarded
-        ? "Message sent successfully to gaylerylliam@gmail.com. We will reply as soon as possible."
+        ? "Message sent successfully to info@buildmycvnow.com. We will reply as soon as possible."
         : "Message received, but EmailJS forwarding is not configured yet in Netlify.");
     } catch (error) {
       trackEvent("contact_form_failed");
@@ -911,10 +911,10 @@ function ContactSection() {
         <div>
           <h2 className="text-3xl font-black text-slate-950">Contact Us</h2>
           <p className="mt-4 text-lg leading-8 text-slate-600">
-            Questions, feedback, and partnership messages are welcome. This form forwards every message to gaylerylliam@gmail.com and can also keep a secure Supabase copy for follow-up.
+            Questions, feedback, and partnership messages are welcome. This form forwards every message to info@buildmycvnow.com and can also keep a secure Supabase copy for follow-up.
           </p>
           <div className="mt-6 rounded bg-white p-5 text-sm leading-6 text-slate-600 ring-1 ring-slate-200">
-            <p><strong className="text-slate-950">Email forwarding:</strong> gaylerylliam@gmail.com</p>
+            <p><strong className="text-slate-950">Contact email:</strong> <a className="text-green-700 underline" href="mailto:info@buildmycvnow.com">info@buildmycvnow.com</a></p>
             <p><strong className="text-slate-950">Response time:</strong> 1-2 business days</p>
           </div>
         </div>

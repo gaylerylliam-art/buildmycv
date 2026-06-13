@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
-const CONTACT_TO_EMAIL = process.env.CONTACT_TO_EMAIL || "gaylerylliam@gmail.com";
+const CONTACT_TO_EMAIL = process.env.CONTACT_TO_EMAIL || "info@buildmycvnow.com";
 const hits = new Map();
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

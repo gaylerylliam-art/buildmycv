@@ -28,7 +28,7 @@ const sendEmailOtp = async ({ email, otp, name }) => {
       template_params: {
         to_email: email,
         from_name: "BuildMyCVNow",
-        reply_to: process.env.CONTACT_TO_EMAIL || "gaylerylliam@gmail.com",
+        reply_to: process.env.CONTACT_TO_EMAIL || "info@buildmycvnow.com",
         subject: "Your BuildMyCVNow download OTP",
         name: name || "Job seeker",
         otp,

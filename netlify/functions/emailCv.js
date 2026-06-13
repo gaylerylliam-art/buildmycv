@@ -81,7 +81,7 @@ const sendEmail = async ({ toEmail, cv }) => {
       template_params: {
         to_email: toEmail,
         from_name: "BuildMyCVNow",
-        reply_to: process.env.CONTACT_TO_EMAIL || "gaylerylliam@gmail.com",
+        reply_to: process.env.CONTACT_TO_EMAIL || "info@buildmycvnow.com",
         subject: `Your BuildMyCVNow CV - ${cv.fullName || "CV"}`,
         cv_name: cv.fullName || "Your CV",
         cv_text: cvText(cv),
