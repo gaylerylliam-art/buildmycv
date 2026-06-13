@@ -148,14 +148,9 @@ summary {
 }
 
 .nav-link {
-  background: transparent;
-  border: 0;
   color: var(--text-secondary);
-  cursor: pointer;
-  font-family: inherit;
   font-size: 0.82rem;
   font-weight: 600;
-  padding: 0;
   text-decoration: none;
 }
 
@@ -3605,26 +3600,14 @@ summary {
   color-scheme: light;
 }
 
-.builder-app-shell .cv-paper .text-slate-950,
 .builder-app-shell .cv-paper .text-slate-900,
-.builder-app-shell .letter-paper .text-slate-950,
 .builder-app-shell .letter-paper .text-slate-900 {
   color: #0f172a !important;
-}
-
-.builder-app-shell .cv-paper .text-slate-800,
-.builder-app-shell .letter-paper .text-slate-800 {
-  color: #1e293b !important;
 }
 
 .builder-app-shell .cv-paper .text-slate-700,
 .builder-app-shell .letter-paper .text-slate-700 {
   color: #334155 !important;
-}
-
-.builder-app-shell .cv-paper .text-slate-600,
-.builder-app-shell .letter-paper .text-slate-600 {
-  color: #475569 !important;
 }
 
 .builder-app-shell .cv-paper .text-slate-500,

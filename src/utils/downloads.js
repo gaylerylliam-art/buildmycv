@@ -182,23 +182,8 @@ const normalizeCvWorkExperiences = (cv) => {
   ];
 };
 
-const normalizeCvEducationEntries = (cv) => {
-  if (Array.isArray(cv.educationEntries) && cv.educationEntries.length) {
-    return cv.educationEntries;
-  }
-  const lines = String(cv.education || "").split("\n").map((line) => line.trim()).filter(Boolean);
-  if (!lines.length) return [];
-  const entries = [];
-  for (let index = 0; index < lines.length; index += 3) {
-    const [qualification = "", school = "", dates = ""] = lines.slice(index, index + 3);
-    entries.push({ id: `legacy-${index}`, qualification, school, fromDate: dates, toDate: "", location: "", details: "" });
-  }
-  return entries;
-};
-
 const sectionHasContent = (cv = {}, id) => {
   if (id === "experience") return normalizeCvWorkExperiences(cv).some((entry) => [entry.jobTitle, entry.employer, entry.responsibilities].some((value) => cleanExportText(value)));
-  if (id === "education") return normalizeCvEducationEntries(cv).some((entry) => [entry.qualification, entry.school, entry.location, entry.fromDate, entry.toDate, entry.details].some((value) => cleanExportText(value)));
   if (id === "references") return referencesHasContent(cv.references);
   return Boolean(cleanExportText(cv[id]));
 };
@@ -219,30 +204,9 @@ const workExperienceHtml = (cv) =>
       if (![jobTitle, employer, location, dates, responsibilities].some(Boolean)) return "";
       return `
         <div class="experience-item">
-          ${jobTitle ? `<p><strong>Position:</strong> ${escapeHtml(jobTitle)}</p>` : ""}
-          ${employer ? `<p><strong>Company:</strong> ${escapeHtml(employer)}</p>` : ""}
-          ${location ? `<p><strong>Location:</strong> ${escapeHtml(location)}</p>` : ""}
-          ${dates ? `<p><strong>Duration:</strong> ${escapeHtml(dates)}</p>` : ""}
+          ${jobTitle ? `<p><strong>${escapeHtml(jobTitle)}</strong></p>` : ""}
+          ${[employer, location, dates].filter(Boolean).length ? `<p>${escapeHtml([employer, location, dates].filter(Boolean).join(" | "))}</p>` : ""}
           ${responsibilities ? `<ul>${joinLines(responsibilities)}</ul>` : ""}
-        </div>
-      `;
-    })
-    .join("");
-
-const educationHtml = (cv) =>
-  normalizeCvEducationEntries(cv)
-    .map((entry) => {
-      const qualification = cleanExportText(entry.qualification);
-      const school = cleanExportText(entry.school);
-      const location = cleanExportText(entry.location);
-      const details = cleanExportText(entry.details);
-      const dates = [cleanExportText(entry.fromDate), cleanExportText(entry.toDate)].filter(Boolean).join(" - ");
-      if (![qualification, school, location, dates, details].some(Boolean)) return "";
-      return `
-        <div class="education-item">
-          ${qualification ? `<p><strong>${escapeHtml(qualification)}</strong></p>` : ""}
-          ${[school, location, dates].filter(Boolean).length ? `<p>${escapeHtml([school, location, dates].filter(Boolean).join(" | "))}</p>` : ""}
-          ${details ? `<p>${escapeHtml(details)}</p>` : ""}
         </div>
       `;
     })
@@ -269,7 +233,7 @@ const cvSectionHtml = (cv, id) => {
   const sections = {
     summary: `<div class="section"><h2>Professional Summary</h2><p>${escapeHtml(cleanExportText(cv.summary))}</p></div>`,
     experience: `<div class="section"><h2>Work Experience</h2>${workExperienceHtml(cv)}</div>`,
-    education: `<div class="section"><h2>Education</h2>${educationHtml(cv)}</div>`,
+    education: `<div class="section"><h2>Education</h2><p>${escapeHtml(cleanExportText(cv.education))}</p></div>`,
     skills: `<div class="section"><h2>Skills</h2><p>${escapeHtml(cleanExportText(cv.skills))}</p></div>`,
     certifications: `<div class="section"><h2>Certifications</h2><p>${escapeHtml(cleanExportText(cv.certifications))}</p></div>`,
     languages: `<div class="section"><h2>Languages</h2><p>${escapeHtml(cleanExportText(cv.languages))}</p></div>`,
@@ -305,11 +269,11 @@ const saveBlob = (blob, filename) => {
   URL.revokeObjectURL(url);
 };
 
-const downloadPdfFromServer = async ({ cv, theme, layout, filename }) => {
+const downloadPdfFromServer = async (html, filename) => {
   const response = await fetch("/.netlify/functions/export-pdf", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ cv, theme, layout, filename }),
+    body: JSON.stringify({ html, filename }),
   });
 
   if (!response.ok) {
@@ -322,9 +286,9 @@ const downloadPdfFromServer = async ({ cv, theme, layout, filename }) => {
   saveBlob(blob, filename);
 };
 
-const downloadPdfFromHtml = async (html, filename, cv, theme, layout) => {
+const downloadPdfFromHtml = async (html, filename) => {
   try {
-    await downloadPdfFromServer({ cv, theme, layout, filename });
+    await downloadPdfFromServer(html, filename);
     return;
   } catch (error) {
     console.warn("Server PDF export unavailable; using browser fallback.", error);
@@ -468,32 +432,19 @@ const downloadCvDocx = async (cv, filename, theme = { color: "#0f66d0", dark: "#
       experience: [
         sectionHeading("Work Experience"),
         ...workExperiences.flatMap((entry) => {
-          const jobTitle = cleanExportText(entry.jobTitle);
-          const employer = cleanExportText(entry.employer);
-          const location = cleanExportText(entry.companyLocation);
-          const duration = [entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - ");
+          const meta = [
+            cleanExportText(entry.employer),
+            cleanExportText(entry.companyLocation),
+            [entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - "),
+          ].filter(Boolean).join(" | ");
           return [
-            jobTitle ? paragraph(`Position: ${jobTitle}`, { bold: true, after: 40, keepNext: true }) : null,
-            employer ? paragraph(`Company: ${employer}`, { size: 20, after: 40, color: "475569", keepNext: true }) : null,
-            location ? paragraph(`Location: ${location}`, { size: 20, after: 40, color: "475569", keepNext: true }) : null,
-            duration ? paragraph(`Duration: ${duration}`, { size: 20, after: 60, color: "475569", keepNext: true }) : null,
+            cleanExportText(entry.jobTitle) ? paragraph(cleanExportText(entry.jobTitle), { bold: true, after: 50, keepNext: true }) : null,
+            meta ? paragraph(meta, { size: 20, after: 60, color: "475569", keepNext: true }) : null,
             ...cleanExportText(entry.responsibilities).split("\n").map((line) => line.trim().replace(/^[-•●▪◦*]\s*/, "")).filter(Boolean).map((line) => paragraph(line, { bullet: true, after: 45 })),
           ].filter(Boolean);
         }),
       ],
-      education: [
-        sectionHeading("Education"),
-        ...normalizeCvEducationEntries(cv).flatMap((entry) => {
-          const qualification = cleanExportText(entry.qualification);
-          const meta = [cleanExportText(entry.school), cleanExportText(entry.location), [cleanExportText(entry.fromDate), cleanExportText(entry.toDate)].filter(Boolean).join(" - ")].filter(Boolean).join(" | ");
-          const details = cleanExportText(entry.details);
-          return [
-            qualification ? paragraph(qualification, { bold: true, after: 50, keepNext: true }) : null,
-            meta ? paragraph(meta, { size: 20, after: 50, color: "475569", keepNext: true }) : null,
-            details ? paragraph(details, { after: 80 }) : null,
-          ].filter(Boolean);
-        }),
-      ],
+      education: [sectionHeading("Education"), paragraph(cleanExportText(cv.education))],
       skills: [sectionHeading("Skills"), paragraph(cleanExportText(cv.skills))],
       certifications: [sectionHeading("Certifications"), paragraph(cleanExportText(cv.certifications))],
       languages: [sectionHeading("Languages"), paragraph(cleanExportText(cv.languages))],
@@ -556,7 +507,6 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
         .section { break-inside: auto; page-break-inside: auto; }
         .section h2 { break-after: avoid; page-break-after: avoid; }
         .experience-item { margin-bottom: 9px; break-inside: avoid; page-break-inside: avoid; }
-        .education-item { margin-bottom: 8px; break-inside: avoid; page-break-inside: avoid; }
         .references-block { break-inside: avoid; page-break-inside: avoid; }
         .references-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
         .reference-card { border: 1px solid #e2e8f0; border-radius: 5px; padding: 8px; font-size: 11px; }
@@ -578,6 +528,7 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
         .sidebar-title { margin: 8px 0 0; color: rgba(255,255,255,0.88); font-size: 14px; font-weight: 700; }
         .sidebar-contact { margin-top: 28px; color: rgba(255,255,255,0.86); font-size: 11px; line-height: 1.8; text-align: left; }
         .main-content { padding: 20px; min-width: 0; }
+        .credit-footer { margin: 24px 0 0; padding-top: 12px; border-top: 1px solid #e5e7eb; color: #9ca3af; font-size: 7pt; text-align: center; }
       </style>
     </head>
     <body>
@@ -616,6 +567,7 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
       ${visibleSectionOrder(cv).map((id) => cvSectionHtml(cv, id)).join("")}
       ${qrFooter}
       `}
+      ${cv.showCredit !== false ? `<p class="credit-footer">CV created free at buildmycvnow.com</p>` : ""}
     </body>
   </html>
 `;
@@ -636,7 +588,7 @@ export const downloadCvFile = async (cv, type, theme, layout = "classic") => {
     return;
   }
   const html = await buildCvHtml(cv, theme, layout);
-  await downloadPdfFromHtml(html, `${baseName}.pdf`, cv, theme, layout);
+  await downloadPdfFromHtml(html, `${baseName}.pdf`);
 };
 
 export const buildCoverLetterHtml = (letter, cv, theme = { color: "#0f66d0", dark: "#0f172a" }) => {

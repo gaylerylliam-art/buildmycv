@@ -145,7 +145,7 @@ function criticalCss() {
 }
 
 function header() {
-  return `<nav class="nav"><div class="nav-inner"><a class="brand" href="/">BuildMyCV<span>Now</span></a><div class="nav-links"><a href="/#templates">Templates</a><a href="/#how-it-works">How it works</a><a href="/blog">Blog</a><a href="/faq">FAQ</a><a href="/builder#signin">Sign In</a><a class="cta" href="/builder">Create and download CV for free</a></div></div></nav>`;
+  return `<nav class="nav"><div class="nav-inner"><a class="brand" href="/">BuildMyCV<span>Now</span></a><div class="nav-links"><a href="/#templates">Templates</a><a href="/#how-it-works">How it works</a><a href="/blog">Blog</a><a href="/faq">FAQ</a><a class="cta" href="/builder">Build my CV - it's free</a></div></div></nav>`;
 }
 
 function footer() {
@@ -166,7 +166,7 @@ function staticHomepage() {
     ${staticFeaturesSection()}
     ${staticTestimonialsSection()}
     ${faqSection()}
-    <section class="section static-final-cta"><div class="wrap"><h2>Ready to build your CV?</h2><p class="lead" style="color:#e0f2fe">Free forever. No sign-up. Download as PDF in minutes.</p><p><a class="cta" href="/builder">Create and download CV for free</a></p></div></section>
+    <section class="section static-final-cta"><div class="wrap"><h2>Ready to build your CV?</h2><p class="lead" style="color:#e0f2fe">Free forever. No sign-up. Download as PDF in minutes.</p><p><a class="cta" href="/builder">Build my CV - it's free</a></p></div></section>
   </main>`;
 }
 
@@ -176,7 +176,7 @@ function staticHero() {
     ["Amina Nwosu", "Hotel Manager", "F&B Ops, Hospitality, PMS", "#16a34a"],
     ["Sarah Chen", "Admin Supervisor", "MS Office, Scheduling, Reports", "#185fa5"],
   ];
-  return `<section class="static-hero"><div class="wrap static-hero-grid"><div><div class="static-eyebrow">${HOME_EYEBROW.toUpperCase()}</div><h1 class="static-headline">${HOME_H1.replace(". ", ".<br>")}</h1><p class="static-subhead">${HOME_SUBHEAD}</p><div class="static-actions"><a class="cta" href="/builder">Create and download CV for free</a><a class="btn secondary" href="/templates">Browse templates</a></div><div class="static-trust">${HOME_TRUST_ITEMS.map((item) => `<span>${item}</span>`).join("")}</div></div><div class="static-cv-stage" aria-label="Sample CV previews">${cards.map(([name, role, skills, color]) => `<article class="static-cv-card" aria-label="${name} ${role} CV preview"><div class="static-cv-top" style="background:${color}"><strong>${name}</strong><span>${role}</span></div><div class="static-cv-body"><span class="static-badge">ATS-ready</span><p><strong>Professional Summary</strong></p><p>Clear, recruiter-friendly CV layout with global job details.</p><div class="static-line"></div><div class="static-line" style="width:80%"></div><p class="muted">${skills}</p></div></article>`).join("")}<div class="static-pills">${HOME_CITY_PILLS.map((city) => `<span class="static-pill">${city}</span>`).join("")}</div></div></div></section>`;
+  return `<section class="static-hero"><div class="wrap static-hero-grid"><div><div class="static-eyebrow">${HOME_EYEBROW.toUpperCase()}</div><h1 class="static-headline">${HOME_H1.replace(". ", ".<br>")}</h1><p class="static-subhead">${HOME_SUBHEAD}</p><div class="static-actions"><a class="cta" href="/builder">Build my CV - it's free</a><a class="btn secondary" href="/templates">Browse templates</a></div><div class="static-trust">${HOME_TRUST_ITEMS.map((item) => `<span>${item}</span>`).join("")}</div></div><div class="static-cv-stage" aria-label="Sample CV previews">${cards.map(([name, role, skills, color]) => `<article class="static-cv-card" aria-label="${name} ${role} CV preview"><div class="static-cv-top" style="background:${color}"><strong>${name}</strong><span>${role}</span></div><div class="static-cv-body"><span class="static-badge">ATS-ready</span><p><strong>Professional Summary</strong></p><p>Clear, recruiter-friendly CV layout with global job details.</p><div class="static-line"></div><div class="static-line" style="width:80%"></div><p class="muted">${skills}</p></div></article>`).join("")}<div class="static-pills">${HOME_CITY_PILLS.map((city) => `<span class="static-pill">${city}</span>`).join("")}</div></div></div></section>`;
 }
 
 function staticVideoSection() {

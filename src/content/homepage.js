@@ -30,8 +30,8 @@ export const HOME_VIDEO = {
   description: "A short BuildMyCVNow walkthrough showing how to choose a template, add details, preview, and download a free CV.",
   duration: "PT1M15S",
   uploadDate: "2026-06-12",
-  url: "https://buildmycvnow.com/assets/buildmycvnow-demo.mp4",
-  poster: "https://buildmycvnow.com/assets/cv-video-thumb.jpg",
+  url: "https://app.heygen.com/videos/buildmycvnow-landscape-boost-37034e74791e4040830908c8fe32f8a0",
+  poster: "https://buildmycvnow.com/assets/heygen-demo-poster.svg",
 };
 
 export const HOME_PROOF_CARDS = [

@@ -17,9 +17,7 @@ const sendSms = async ({ phone, otp }) => {
   const sid = process.env.TWILIO_ACCOUNT_SID;
   const token = process.env.TWILIO_AUTH_TOKEN;
   const from = process.env.TWILIO_FROM_NUMBER;
-  if (!sid || !token || !from) {
-    throw new Error("Mobile OTP is not configured yet. Please use email verification or download-only mode.");
-  }
+  if (!sid || !token || !from) return false;
 
   const params = new URLSearchParams();
   params.set("To", phone);
@@ -37,7 +35,19 @@ const sendSms = async ({ phone, otp }) => {
 
   if (!response.ok) {
     const detail = await response.text();
-    throw new Error(`Could not send SMS OTP: ${detail || response.statusText}`);
+    let providerError = {};
+    try {
+      providerError = JSON.parse(detail || "{}");
+    } catch {
+      providerError = {};
+    }
+    const code = providerError.code ? ` Twilio code: ${providerError.code}.` : "";
+    const message = providerError.code === 21612
+      ? "Twilio cannot send SMS to this mobile number from the configured sender. Enable the destination country in Twilio geo permissions or use a Twilio sender that supports this route."
+      : providerError.message || detail || response.statusText;
+    const error = new Error(`${message}${code}`);
+    error.providerCode = providerError.code;
+    throw error;
   }
   return true;
 };
@@ -62,17 +72,24 @@ export const handler = async (event) => {
     const otp = String(Math.floor(100000 + Math.random() * 900000));
     const expires = Date.now() + 10 * 60 * 1000;
     const challenge = { phone, expires, signature: signChallenge({ phone, otp, expires }) };
+    let smsSent = false;
     try {
-      await sendSms({ phone, otp });
+      smsSent = await sendSms({ phone, otp });
     } catch (error) {
-      return json(503, { ok: false, message: error.message || "Mobile OTP is not available." });
+      return json(502, {
+        ok: false,
+        smsSent: false,
+        providerCode: error.providerCode,
+        message: error.message || "Could not send SMS OTP. Please try email sign-in or contact support.",
+      });
     }
 
     return json(200, {
       ok: true,
-      smsSent: true,
+      smsSent,
       challenge,
-      message: "OTP sent to your mobile number.",
+      mockOtp: smsSent ? undefined : otp,
+      message: smsSent ? "OTP sent to your mobile number." : "OTP generated. Configure Twilio in Netlify to send it by SMS.",
     });
   }
 

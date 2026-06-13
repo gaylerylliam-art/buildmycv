@@ -44,14 +44,10 @@ import { initAnalytics, trackEvent } from "./utils/analytics";
 import { getRecaptchaToken, isRecaptchaConfigured } from "./utils/recaptcha";
 import {
   deleteUserCv,
-  deleteAllUserCvs,
-  deleteAllUserDrafts,
-  deleteSignedInAccount,
   duplicateUserCv,
   isSupabaseConfigured,
   listUserCvs,
   loadLatestDraftForUser,
-  MAX_DAILY_GENERATED_CVS,
   saveCvForUser,
   saveDraftForUser,
   submitContactMessage,
@@ -95,16 +91,6 @@ const createExperienceEntry = (category = defaultCategory) => ({
   responsibilities: category.experience,
 });
 
-const createEducationEntry = () => ({
-  id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
-  qualification: "",
-  school: "",
-  location: "",
-  fromDate: "",
-  toDate: "",
-  details: "",
-});
-
 const formatWorkExperiences = (entries = []) =>
   entries
     .map((entry) =>
@@ -120,41 +106,6 @@ const formatWorkExperiences = (entries = []) =>
     )
     .filter(Boolean)
     .join("\n\n");
-
-const formatEducationEntries = (entries = []) =>
-  entries
-    .map((entry) =>
-      [
-        entry.qualification,
-        entry.school,
-        entry.location,
-        [entry.fromDate, entry.toDate].filter(Boolean).join(" - "),
-        entry.details,
-      ]
-        .filter(Boolean)
-        .join("\n")
-    )
-    .filter(Boolean)
-    .join("\n\n");
-
-const hasImportValue = (value) => {
-  if (Array.isArray(value)) return value.length > 0;
-  return Boolean(String(value || "").trim());
-};
-
-const mergeImportedCvData = (fallback = {}, ai = {}) => {
-  const merged = { ...fallback };
-  Object.entries(ai || {}).forEach(([key, value]) => {
-    if (hasImportValue(value)) merged[key] = value;
-  });
-  if (Array.isArray(merged.workExperiences) && merged.workExperiences.length) {
-    merged.experience = formatWorkExperiences(merged.workExperiences);
-  }
-  if (Array.isArray(merged.educationEntries) && merged.educationEntries.length) {
-    merged.education = formatEducationEntries(merged.educationEntries);
-  }
-  return merged;
-};
 
 const normalizeSectionOrder = (cv = {}) => {
   const order = Array.isArray(cv.sectionOrder) ? cv.sectionOrder : [];
@@ -183,7 +134,6 @@ const referencesHasContent = (references) => {
 
 const sectionHasContent = (cv = {}, id) => {
   if (id === "experience") return normalizeWorkExperiences(cv).some((entry) => [entry.jobTitle, entry.employer, entry.responsibilities].some((value) => String(value || "").trim()));
-  if (id === "education") return normalizeEducationEntries(cv).some((entry) => [entry.qualification, entry.school, entry.location, entry.fromDate, entry.toDate, entry.details].some((value) => String(value || "").trim()));
   if (id === "references") return referencesHasContent(cv.references);
   return Boolean(String(cv[id] || "").trim());
 };
@@ -207,54 +157,6 @@ const normalizeWorkExperiences = (cv) => {
       responsibilities: cv.experience,
     },
   ];
-};
-
-const parseEducationText = (education = "") => {
-  const lines = String(education || "").split("\n").map((line) => line.trim()).filter(Boolean);
-  if (!lines.length) return [createEducationEntry()];
-  const datePattern = /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|20\d{2}|19\d{2}).*(?:to|-|–|—).*(?:present|current|20\d{2}|19\d{2}|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)|\b(?:20\d{2}|19\d{2})\b/i;
-  const parseDates = (value = "") => {
-    const [fromDate = "", toDate = ""] = String(value || "").split(/\s+(?:to|-|–|—)\s+/i).map((part) => part.trim());
-    return toDate ? { fromDate, toDate } : { fromDate: value, toDate: "" };
-  };
-  const commaEntries = lines
-    .filter((line) => line.includes(",") && datePattern.test(line))
-    .map((line) => {
-      const parts = line.split(",").map((part) => part.trim()).filter(Boolean);
-      const dateIndex = parts.findIndex((part) => datePattern.test(part));
-      const dateText = dateIndex >= 0 ? parts.slice(dateIndex).join(", ") : "";
-      const textParts = dateIndex >= 0 ? parts.slice(0, dateIndex) : parts;
-      const dates = parseDates(dateText);
-      return {
-        ...createEducationEntry(),
-        qualification: textParts[0] || "",
-        school: textParts.slice(1).join(", "),
-        ...dates,
-      };
-    })
-    .filter((entry) => entry.qualification || entry.school);
-  if (commaEntries.length === lines.length) return commaEntries;
-  const entries = [];
-  for (let index = 0; index < lines.length; index += 3) {
-    const chunk = lines.slice(index, index + 3);
-    const dateLine = chunk.find((line) => datePattern.test(line)) || "";
-    const textLines = chunk.filter((line) => line !== dateLine);
-    const dates = parseDates(dateLine);
-    entries.push({
-      ...createEducationEntry(),
-      qualification: textLines[0] || chunk[0] || "",
-      school: textLines[1] || "",
-      ...dates,
-    });
-  }
-  return entries.filter((entry) => entry.qualification || entry.school || entry.fromDate);
-};
-
-const normalizeEducationEntries = (cv = {}) => {
-  if (Array.isArray(cv.educationEntries) && cv.educationEntries.length) {
-    return cv.educationEntries.map((entry) => ({ ...createEducationEntry(), ...entry }));
-  }
-  return parseEducationText(cv.education);
 };
 
 const photoShapeClass = (shape = "circle", roundedClass = "rounded-xl") => {
@@ -287,49 +189,13 @@ const hasUserEnteredCvData = (cv) => {
   ];
   return meaningfulFields.some((key) => {
     const value = cv[key];
-    if (key === "references") {
-      const normalized = normalizeReferences(value);
-      return normalized.mode !== defaultReferences.mode || normalized.entries.some((entry) => Object.values(entry).some((field) => String(field || "").trim()));
-    }
+    if (key === "references") return referencesHasContent(value);
     if (typeof value === "object") return Boolean(value && Object.keys(value).length);
     return String(value || "").trim();
-  }) || (Array.isArray(cv.workExperiences) && cv.workExperiences.some((entry) => [entry.jobTitle, entry.employer, entry.companyLocation, entry.fromDate, entry.toDate, entry.responsibilities].some((value) => String(value || "").trim())))
-    || (Array.isArray(cv.educationEntries) && cv.educationEntries.some((entry) => [entry.qualification, entry.school, entry.location, entry.fromDate, entry.toDate, entry.details].some((value) => String(value || "").trim())));
+  }) || (Array.isArray(cv.workExperiences) && cv.workExperiences.length > 0);
 };
 
 const initialCv = {
-  fullName: "",
-  jobTitle: "",
-  email: "",
-  phone: "",
-  country: "",
-  nationality: "",
-  visaStatus: "",
-  linkedIn: "",
-  portfolioUrl: "",
-  summary: "",
-  skills: "",
-  experience: "",
-  workExperiences: [{ ...createExperienceEntry(defaultCategory), jobTitle: "", employer: "", responsibilities: "" }],
-  education: "",
-  educationEntries: [createEducationEntry()],
-  certifications: "",
-  languages: "",
-  drivingLicense: "",
-  expectedSalaryEnabled: false,
-  expectedSalary: "",
-  industry: "general",
-  tipsEnabled: true,
-  qrCode: defaultQrCode,
-  references: defaultReferences,
-  sectionOrder: defaultSectionOrder,
-  hiddenSections: [],
-  profilePhoto: "",
-  photoShape: "circle",
-};
-
-const sampleCv = {
-  ...initialCv,
   fullName: "Juan Dela Cruz",
   jobTitle: defaultCategory.title,
   email: "juan.delacruz@email.com",
@@ -337,15 +203,27 @@ const sampleCv = {
   country: "United Arab Emirates",
   nationality: "Filipino",
   visaStatus: "Visit visa",
+  linkedIn: "",
+  portfolioUrl: "",
   summary: defaultCategory.summary,
   skills: defaultCategory.skills,
   experience: defaultCategory.experience,
   workExperiences: [createExperienceEntry(defaultCategory)],
   education: "High School Diploma\nManila High School, 2018",
-  educationEntries: [{ ...createEducationEntry(), qualification: "High School Diploma", school: "Manila High School", toDate: "2018" }],
   certifications: "Basic Food Safety Certificate",
   languages: "English, Filipino",
   drivingLicense: "No UAE driving license",
+  expectedSalaryEnabled: false,
+  expectedSalary: "",
+  industry: "general",
+  tipsEnabled: true,
+  qrCode: defaultQrCode,
+  showCredit: true,
+  references: defaultReferences,
+  sectionOrder: defaultSectionOrder,
+  hiddenSections: [],
+  profilePhoto: "",
+  photoShape: "circle",
 };
 
 const createCoverLetterFromCv = (cv, categoryId) => {
@@ -448,7 +326,7 @@ const completenessFields = [
   ["Professional summary", (cv) => cv.summary && cv.summary.length > 40],
   ["Skills", (cv) => cv.skills && cv.skills.split(",").length >= 3],
   ["Work experience", (cv) => normalizeWorkExperiences(cv).some((entry) => entry.employer && entry.fromDate && (entry.toDate || entry.isCurrent) && entry.responsibilities?.length > 20)],
-  ["Education", (cv) => normalizeEducationEntries(cv).some((entry) => entry.qualification && (entry.school || entry.toDate || entry.details))],
+  ["Education", (cv) => cv.education && cv.education.length > 10],
   ["Certifications", (cv) => cv.certifications && cv.certifications.length > 5],
   ["Languages", (cv) => cv.languages && cv.languages.length > 2],
 ];
@@ -612,7 +490,7 @@ function CookieNotice() {
   );
 }
 
-function Header({ onStart, onSignIn }) {
+function Header({ onStart }) {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -634,13 +512,12 @@ function Header({ onStart, onSignIn }) {
           <Link to="/#templates" className="nav-link">Templates</Link>
           <Link to="/#how-it-works" className="nav-link">How it works</Link>
           <Link to="/blog" className="nav-link">Blog</Link>
-          {onSignIn && <button onClick={onSignIn} className="nav-link">Sign In</button>}
         </nav>
         <button onClick={onStart} className="nav-cta">
-          Create and download CV for free
+          Build my CV - it's free
         </button>
       </div>
-      <button onClick={onStart} className="nav-mobile-cta" aria-label="Create and download CV for free">
+      <button onClick={onStart} className="nav-mobile-cta" aria-label="Build my CV">
         CV
       </button>
     </header>
@@ -712,7 +589,7 @@ function LandingPage({ onStart }) {
       className: "global-cv-card-right",
     },
   ];
-  const videoUrl = BUILDMYCV_DEMO_VIDEO_URL;
+  const videoUrl = HEYGEN_DEMO_VIDEO_URL;
 
   const toggleVideo = async () => {
     const video = videoRef.current;
@@ -760,7 +637,7 @@ function LandingPage({ onStart }) {
             <div className="global-hero-cta-row">
               <button type="button" onClick={onStart} className="global-hero-primary">
                 <Icon name="file" className="h-4 w-4" />
-                Create and download CV for free
+                Build my CV - it's free
               </button>
               <a href="/templates" className="global-hero-secondary">Browse templates <Icon name="arrow" className="h-4 w-4" /></a>
             </div>
@@ -826,7 +703,7 @@ function LandingPage({ onStart }) {
                 ref={videoRef}
                 className="demo-video"
                 src={videoUrl}
-                poster={BUILDMYCV_DEMO_POSTER_URL}
+                poster={HEYGEN_DEMO_POSTER_URL}
                 preload="metadata"
                 playsInline
                 loop
@@ -1119,8 +996,8 @@ function PrivacyPage({ onStart }) {
       <StaticHero title="Privacy Policy" description="This policy explains what BuildMyCVNow may collect and how user CV data should be handled." />
       <section className="mx-auto max-w-4xl px-5 py-14">
         <PolicyCard title="Privacy Policy">
-          <p>BuildMyCVNow may collect the information needed to create, save, and email CVs when you choose account mode, including name, email address, phone number, country, nationality, visa status, job history, education, skills, uploaded CV text, profile photos, saved drafts, and email delivery metadata.</p>
-          <p>Download-only users keep CV data in browser state or localStorage so they can finish their CV quickly. This information is not intentionally saved to Supabase unless the user signs in and chooses cloud saving. Download-only users should download their file before refreshing the page or closing the browser.</p>
+          <p>BuildMyCVNow may collect the information needed to create, save, and download CVs, including name, email address, phone number, country, nationality, visa status, job history, education, skills, uploaded CV text, profile photos, saved drafts, and download verification details.</p>
+          <p>Download-only users keep CV data in browser state or localStorage so they can finish their CV quickly. This information is not intentionally saved to Supabase unless the user signs in and chooses cloud saving. Download-only users should download their file before closing the browser.</p>
           <p>Registered users can save CV drafts, uploaded files, profile photos, and CV versions with Supabase Auth, Supabase Database, and Supabase Storage under their authenticated account. Row Level Security should be used so users can only access their own records.</p>
           <p>BuildMyCVNow may use Google Analytics to understand page usage, Google reCAPTCHA to reduce spam, and Google AdSense to display advertising. These services may use cookies or similar technologies to measure traffic, protect forms, serve ads, and personalize ads where allowed.</p>
           <p>Users can request access, correction, export, or deletion of stored personal data by using the Contact page. Users should avoid uploading or entering sensitive document numbers unless a trusted employer or agency specifically requires them outside BuildMyCVNow.</p>
@@ -1248,9 +1125,9 @@ function SiteFooter({ onStart }) {
   );
 }
 
-const BUILDMYCV_DEMO_VIDEO_URL = "/assets/buildmycvnow-demo.mp4";
-const BUILDMYCV_DEMO_PAGE_URL = BUILDMYCV_DEMO_VIDEO_URL;
-const BUILDMYCV_DEMO_POSTER_URL = "/assets/cv-video-thumb.jpg";
+const HEYGEN_DEMO_PAGE_URL = "https://app.heygen.com/videos/buildmycvnow-landscape-boost-37034e74791e4040830908c8fe32f8a0";
+const HEYGEN_DEMO_VIDEO_URL = "https://resource2.heygen.ai/video/transcode/37034e74791e4040830908c8fe32f8a0/v45300492faf240b39a88f9905a3267a9/1920x1080_caption.mp4";
+const HEYGEN_DEMO_POSTER_URL = "https://dynamic.heygen.ai/aws_pacific/avatar_tmp/021c62749e9c473098175a3fcc2354c1/v45300492faf240b39a88f9905a3267a9/37034e74791e4040830908c8fe32f8a0.jpeg";
 
 function IPhonePortraitDisplay({ onStart }) {
   return (
@@ -1264,13 +1141,13 @@ function IPhonePortraitDisplay({ onStart }) {
               </span>
               BuildMyCV<span className="text-green-600">Now</span>
             </span>
-            <a href={BUILDMYCV_DEMO_PAGE_URL} target="_blank" rel="noreferrer" className="rounded bg-green-600 px-3 py-2 text-xs font-black text-white">
+            <a href={HEYGEN_DEMO_PAGE_URL} target="_blank" rel="noreferrer" className="rounded bg-green-600 px-3 py-2 text-xs font-black text-white">
               Open video
             </a>
           </div>
           <div className="landing-video-frame">
-            <video controls playsInline preload="metadata" poster={BUILDMYCV_DEMO_POSTER_URL} aria-label="How to create and download your CV for free">
-              <source src={BUILDMYCV_DEMO_VIDEO_URL} type="video/mp4" />
+            <video controls playsInline preload="metadata" poster={HEYGEN_DEMO_POSTER_URL} aria-label="How to create and download your CV for free">
+              <source src={HEYGEN_DEMO_VIDEO_URL} type="video/mp4" />
               Your browser cannot play this video. Please open the video in a new tab.
             </video>
           </div>
@@ -1295,7 +1172,7 @@ function IPhonePortraitDisplay({ onStart }) {
             <button onClick={onStart} className="rounded bg-green-600 px-6 py-4 font-bold text-white hover:bg-green-700">
               Try the CV builder
             </button>
-            <a href={BUILDMYCV_DEMO_PAGE_URL} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded border border-blue-600 px-6 py-4 font-bold text-blue-700 hover:bg-blue-50">
+            <a href={HEYGEN_DEMO_PAGE_URL} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded border border-blue-600 px-6 py-4 font-bold text-blue-700 hover:bg-blue-50">
               Open video
             </a>
           </div>
@@ -1334,39 +1211,17 @@ function CategorySelector({ selected, onSelect }) {
 }
 
 function ExistingCVImporter({ onImport }) {
-  const [status, setStatus] = useState("Upload an existing CV. AI will analyze the file text and fill the form.");
-  const analyzeWithAi = async (text, fileName) => {
-    const response = await fetch("/.netlify/functions/analyzeCv", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, fileName }),
-    });
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      throw new Error(data.error || "AI analysis is unavailable.");
-    }
-    const data = await response.json();
-    if (!data.cv) throw new Error("AI analysis did not return CV fields.");
-    return data.cv;
-  };
+  const [status, setStatus] = useState("Upload an existing CV. AI will read the file text and fill the form.");
   const handleFile = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    setStatus("Reading CV text...");
+    setStatus("Reading CV and extracting details...");
     try {
       const text = await readCvFile(file);
-      const localExtracted = mockAiExtractCv(text, file.name);
-      let extracted = localExtracted;
-      try {
-        setStatus("AI is analyzing the CV and mapping fields...");
-        const aiExtracted = await analyzeWithAi(text, file.name);
-        extracted = mergeImportedCvData(localExtracted, aiExtracted);
-        setStatus("AI filled the form. Please review each section before download.");
-      } catch (aiError) {
-        extracted = localExtracted;
-        setStatus(`${aiError.message} Local import filled the form; please review and edit.`);
-      }
+      setStatus("AI is identifying your CV sections...");
+      const extracted = await extractCvDetails(text, file.name);
       onImport(extracted);
+      setStatus("Details filled automatically. Please review and edit before download.");
     } catch (error) {
       setStatus(error.message);
     } finally {
@@ -1382,7 +1237,7 @@ function ExistingCVImporter({ onImport }) {
         <div className="min-w-0">
           <h3 className="panel-title">Upload existing CV</h3>
           <p className="mt-1 text-sm leading-6 text-slate-600">
-            AI import analyzes the CV first, then fills the form fields. You can still edit every field.
+            AI import fills the form automatically. You can still edit every field.
           </p>
           <label className="mt-3 inline-flex cursor-pointer items-center justify-center rounded bg-white px-4 py-3 text-sm font-bold text-blue-700 ring-1 ring-blue-200 hover:bg-blue-50">
             Choose CV file
@@ -1414,7 +1269,6 @@ function WorkExperienceEditor({ cv, onChange }) {
   const [openId, setOpenId] = useState(entries[0]?.id || "");
   const [aiStatus, setAiStatus] = useState("");
   const [aiSuggestions, setAiSuggestions] = useState({});
-  const [aiInstructions, setAiInstructions] = useState({});
   const commitEntries = (nextEntries) => {
     onChange("workExperiences", nextEntries);
     onChange("experience", formatWorkExperiences(nextEntries));
@@ -1532,58 +1386,8 @@ function WorkExperienceEditor({ cv, onChange }) {
       .replace(/\bprepare\b(?=\s)/gi, "prepared")
       .replace(/\bhandle\b(?=\s)/gi, "handled");
   };
-  const presentTenseReplacements = [
-    [/\bManaged\b/g, "Manage"],
-    [/\bCoordinated\b/g, "Coordinate"],
-    [/\bPrepared\b/g, "Prepare"],
-    [/\bSupported\b/g, "Support"],
-    [/\bHandled\b/g, "Handle"],
-    [/\bImproved\b/g, "Improve"],
-    [/\bMaintained\b/g, "Maintain"],
-    [/\bAssisted\b/g, "Assist"],
-    [/\bRecorded\b/g, "Record"],
-    [/\bInspected\b/g, "Inspect"],
-    [/\bServed\b/g, "Serve"],
-    [/\bOrganized\b/g, "Organize"],
-    [/\bMonitored\b/g, "Monitor"],
-    [/\bProcessed\b/g, "Process"],
-    [/\bDelivered\b/g, "Deliver"],
-    [/\bSupervised\b/g, "Supervise"],
-    [/\bTrained\b/g, "Train"],
-    [/\bCreated\b/g, "Create"],
-    [/\bChecked\b/g, "Check"],
-    [/\bResolved\b/g, "Resolve"],
-  ];
-  const categoryForResponsibility = (line) => {
-    if (/\b(account|invoice|ledger|payable|receivable|bank|cash|vat|payroll|budget|financial|balance sheet|audit|accrual|payment|currency|asset)\b/i.test(line)) return "Accounting tasks";
-    if (/\b(file|document|record|report|email|call|schedule|coordinate|admin|office|data|customer|supplier)\b/i.test(line)) return "Administrative tasks";
-    if (/\b(system|software|sap|quickbooks|erp|infor|excel|word|powerpoint)\b/i.test(line)) return "System and reporting tasks";
-    return "Operational tasks";
-  };
-  const applyInstructionToSuggestion = (text, instruction = "", isCurrent = false) => {
-    const wantsPresent = isCurrent || /\b(present tense|currently|current role|still working|i am currently working)\b/i.test(instruction);
-    const wantsGrouped = /\b(group|arrange|categor|type|admin|accounting task|diversified)\b/i.test(instruction);
-    let lines = text.split("\n").map((line) => line.trim()).filter(Boolean);
-    if (wantsPresent) {
-      lines = lines.map((line) => {
-        let next = line;
-        presentTenseReplacements.forEach(([pattern, replacement]) => {
-          next = next.replace(pattern, replacement);
-        });
-        return next;
-      });
-    }
-    if (wantsGrouped) {
-      const groups = lines.reduce((current, line) => {
-        const group = categoryForResponsibility(line);
-        return { ...current, [group]: [...(current[group] || []), line] };
-      }, {});
-      lines = Object.entries(groups).flatMap(([group, items]) => [`${group}:`, ...items]);
-    }
-    return lines.join("\n");
-  };
-  const createReviewSuggestion = (text, instruction = "", isCurrent = false) => {
-    const suggested = text
+  const createReviewSuggestion = (text) =>
+    text
       .split("\n")
       .map((line) => line.trim().replace(/^[-*]\s*/, ""))
       .filter(Boolean)
@@ -1605,53 +1409,20 @@ function WorkExperienceEditor({ cv, onChange }) {
         return professionalLine.charAt(0).toUpperCase() + professionalLine.slice(1);
       })
       .join("\n");
-    return applyInstructionToSuggestion(suggested, instruction, isCurrent);
-  };
-  const reviewEntryWithAi = async (id) => {
+  const reviewEntryWithAi = (id) => {
     const target = entries.find((entry) => entry.id === id);
     if (!target?.responsibilities?.trim()) {
       setAiStatus("Add responsibilities or achievements first, then AI can check and improve them.");
       return;
     }
-    const instruction = String(aiInstructions[id] || "").trim();
-    setAiStatus("AI is preparing a suggested rewrite from your instruction...");
-    try {
-      const response = await fetch("/.netlify/functions/generateCvBullets", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          category: cv.industry || "general",
-          jobTitle: target.jobTitle || cv.jobTitle || "Role",
-          skills: cv.skills || "",
-          experience: target.responsibilities,
-          isCurrent: Boolean(target.isCurrent),
-          instruction,
-        }),
-      });
-      if (!response.ok) throw new Error("AI suggestions are unavailable.");
-      const data = await response.json();
-      const suggested = Array.isArray(data.suggestions) && data.suggestions.length
-        ? data.suggestions.join("\n")
-        : createReviewSuggestion(target.responsibilities, instruction, target.isCurrent);
-      setAiSuggestions((current) => ({
-        ...current,
-        [id]: {
-          original: target.responsibilities,
-          suggested,
-        },
-      }));
-      setAiStatus("AI created a suggested rewrite from your instruction. Approve to use it or reject to keep your original text.");
-      return;
-    } catch (error) {
-      setAiStatus(`${error.message} Local assistant created a suggested rewrite instead.`);
-    }
     setAiSuggestions((current) => ({
       ...current,
       [id]: {
         original: target.responsibilities,
-        suggested: createReviewSuggestion(target.responsibilities, instruction, target.isCurrent),
+        suggested: createReviewSuggestion(target.responsibilities),
       },
     }));
+    setAiStatus("AI created a suggested rewrite. Approve to use it or reject to keep your original text.");
   };
   const approveSuggestion = (id) => {
     const suggestion = aiSuggestions[id];
@@ -1718,19 +1489,9 @@ function WorkExperienceEditor({ cv, onChange }) {
               <span className="form-label">Responsibilities / achievements</span>
               <textarea className="form-field resize-y" rows={5} value={entry.responsibilities || ""} onChange={(event) => updateEntry(entry.id, "responsibilities", event.target.value)} placeholder="Example: Managed inventory records, prepared daily dispatch documents, and coordinated deliveries across UAE sites." />
             </label>
-            <label className="block">
-              <span className="form-label">What should AI change or focus on?</span>
-              <textarea
-                className="form-field resize-y"
-                rows={3}
-                value={aiInstructions[entry.id] || ""}
-                onChange={(event) => setAiInstructions((current) => ({ ...current, [entry.id]: event.target.value }))}
-                placeholder="Example: Make this present tense because I currently work here. Arrange duties by type: accounting tasks, admin tasks, and system/reporting tasks."
-              />
-            </label>
             <div className="ai-assist-row">
               <button type="button" onClick={() => reviewEntryWithAi(entry.id)} className="btn-ai btn-ai-work"><Icon name="sparkle" className="h-3 w-3" /> Check with AI</button>
-              <span className="ai-hint">AI follows your instruction before suggesting changes</span>
+              <span className="ai-hint">Check spelling, grammar, and make this sound more professional</span>
             </div>
             {aiSuggestions[entry.id] && (
               <div className="ai-suggestion-card">
@@ -1765,80 +1526,6 @@ function WorkExperienceEditor({ cv, onChange }) {
       {aiStatus && <p className="text-xs font-bold text-blue-700">{aiStatus}</p>}
       <button type="button" onClick={addEntry} className="btn-add-more">
         <Icon name="plus" className="h-4 w-4" /> Add another role
-      </button>
-    </section>
-  );
-}
-
-function EducationEditor({ cv, onChange }) {
-  const entries = normalizeEducationEntries(cv);
-  const [openId, setOpenId] = useState(entries[0]?.id || "");
-  const commitEntries = (nextEntries) => {
-    onChange("educationEntries", nextEntries);
-    onChange("education", formatEducationEntries(nextEntries));
-  };
-  const updateEntry = (id, key, value) => {
-    commitEntries(entries.map((entry) => (entry.id === id ? { ...entry, [key]: value } : entry)));
-  };
-  const addEntry = () => {
-    const nextEntry = createEducationEntry();
-    commitEntries([...entries, nextEntry]);
-    setOpenId(nextEntry.id);
-  };
-  const removeEntry = (id) => {
-    commitEntries(entries.length === 1 ? [createEducationEntry()] : entries.filter((entry) => entry.id !== id));
-  };
-  return (
-    <section className="space-y-3">
-      <p className="text-xs font-bold leading-5 text-slate-500">Add one row for each degree, school, training course, or certificate program.</p>
-      <div className="space-y-3">
-        {entries.map((entry, index) => (
-          <article key={entry.id} className={`entry-card ${openId === entry.id ? "open" : ""}`}>
-            <button type="button" className="entry-card-header" onClick={() => setOpenId(openId === entry.id ? "" : entry.id)}>
-              <Icon name="file" className="h-4 w-4 text-blue-700" />
-              <span className="entry-card-title">{entry.qualification || `Education ${index + 1}`}</span>
-              <Icon name="chevron" className={`h-4 w-4 text-slate-400 transition ${openId === entry.id ? "rotate-180" : ""}`} />
-            </button>
-            {openId === entry.id && (
-              <div className="entry-card-body">
-                <div className="field-pair">
-                  <label>
-                    <span className="form-label">Educational attainment / course</span>
-                    <input className="form-field" value={entry.qualification || ""} onChange={(event) => updateEntry(entry.id, "qualification", event.target.value)} placeholder="Example: Bachelor Degree in Accountancy" />
-                  </label>
-                  <label>
-                    <span className="form-label">School / institution</span>
-                    <input className="form-field" value={entry.school || ""} onChange={(event) => updateEntry(entry.id, "school", event.target.value)} placeholder="Example: Saint Mary's University" />
-                  </label>
-                </div>
-                <label className="block">
-                  <span className="form-label">School location</span>
-                  <input className="form-field" value={entry.location || ""} onChange={(event) => updateEntry(entry.id, "location", event.target.value)} placeholder="Example: Philippines" />
-                </label>
-                <div className="field-pair">
-                  <label>
-                    <span className="form-label">Date from</span>
-                    <input className="form-field" value={entry.fromDate || ""} onChange={(event) => updateEntry(entry.id, "fromDate", event.target.value)} placeholder="Example: June 2008" />
-                  </label>
-                  <label>
-                    <span className="form-label">Date to / completed</span>
-                    <input className="form-field" value={entry.toDate || ""} onChange={(event) => updateEntry(entry.id, "toDate", event.target.value)} placeholder="Example: March 2013" />
-                  </label>
-                </div>
-                <label className="block">
-                  <span className="form-label">Details / honors / units</span>
-                  <textarea className="form-field resize-y" rows={3} value={entry.details || ""} onChange={(event) => updateEntry(entry.id, "details", event.target.value)} placeholder="Optional: honors, major, training details, or relevant coursework" />
-                </label>
-                <button type="button" onClick={() => removeEntry(entry.id)} className="self-start rounded border border-red-200 px-3 py-2 text-xs font-black text-red-700">
-                  Remove education
-                </button>
-              </div>
-            )}
-          </article>
-        ))}
-      </div>
-      <button type="button" onClick={addEntry} className="btn-add-more">
-        <Icon name="plus" className="h-4 w-4" /> Add another education row
       </button>
     </section>
   );
@@ -2074,7 +1761,6 @@ function ReferencesSection({ cv, onChange }) {
 
 function CVBuilderForm({ cv, onChange }) {
   const [smartTips, setSmartTips] = useState({});
-  const [aiInstructions, setAiInstructions] = useState({ skills: "", summary: "" });
   const tipsEnabled = cv.tipsEnabled !== false;
   const handleBlurTip = (field, value) => {
     if (!tipsEnabled) return;
@@ -2082,27 +1768,17 @@ function CVBuilderForm({ cv, onChange }) {
     if (message) setSmartTips((current) => ({ ...current, [field]: message }));
   };
   const clearSmartTip = (field) => setSmartTips((current) => ({ ...current, [field]: "" }));
-  const applySummaryInstruction = (value, instruction) => {
-    const base = value.replace(/\.$/, "");
-    const focus = [];
-    if (/\b(account|finance|treasury|payroll|vat|ledger|invoice)\b/i.test(instruction)) focus.push("accounting and finance support");
-    if (/\b(admin|document|file|office|record)\b/i.test(instruction)) focus.push("administrative coordination");
-    if (/\b(current|present|currently)\b/i.test(instruction)) focus.push("current hands-on responsibilities");
-    if (/\b(short|concise|brief)\b/i.test(instruction)) return base.split(/(?<=[.!?])\s+/).slice(0, 2).join(" ");
-    return focus.length ? `${base}. Skilled in ${focus.join(", ")}.` : `${base}. Experienced in UAE/GCC job requirements, clear communication, and reliable daily performance.`;
-  };
   const improveText = (key) => {
     const value = String(cv[key] || "").trim();
     if (!value) return;
-    const instruction = String(aiInstructions[key] || "").trim();
     const improved = key === "summary"
-      ? applySummaryInstruction(value, instruction)
+      ? `${value.replace(/\.$/, "")}. Experienced in UAE/GCC job requirements, clear communication, and reliable daily performance.`
       : value
           .split(/[,\n]/)
           .map((item) => item.trim())
           .filter(Boolean)
           .slice(0, 10)
-          .join(instruction.toLowerCase().includes("line") ? "\n" : ", ");
+          .join(", ");
     onChange(key, improved);
   };
   return (
@@ -2175,8 +1851,8 @@ function CVBuilderForm({ cv, onChange }) {
         <WorkExperienceEditor cv={cv} onChange={onChange} />
       </CollapsibleFormSection>
 
-      <CollapsibleFormSection id="education" title="Education and certifications" icon="file" badge={normalizeEducationEntries(cv).some((entry) => entry.qualification || entry.school) ? "Done" : ""}>
-        <EducationEditor cv={cv} onChange={onChange} />
+      <CollapsibleFormSection id="education" title="Education and certifications" icon="file" badge={cv.education ? "Done" : ""}>
+        <FormField label="Education" type="textarea" rows={4} value={cv.education} onChange={(value) => onChange("education", value)} placeholder="Example: High School Diploma, Manila High School, 2018" />
         <FormField label="Certifications & licenses" type="textarea" rows={3} value={cv.certifications} onChange={(value) => onChange("certifications", value)} placeholder="Example: Basic Food Safety Certificate, TESDA NC II, UAE driving license" />
       </CollapsibleFormSection>
 
@@ -2189,19 +1865,9 @@ function CVBuilderForm({ cv, onChange }) {
           <textarea value={cv.skills || ""} onChange={(event) => onChange("skills", event.target.value)} onBlur={(event) => handleBlurTip("skills", event.target.value)} rows={4} className="form-field resize-y" placeholder="Example: Inventory control, customer service, Excel, dispatch coordination" />
           <SmartTip message={smartTips.skills} onDismiss={() => clearSmartTip("skills")} />
         </label>
-        <label className="block">
-          <span className="form-label">What should AI do with these skills?</span>
-          <textarea
-            value={aiInstructions.skills}
-            onChange={(event) => setAiInstructions((current) => ({ ...current, skills: event.target.value }))}
-            rows={3}
-            className="form-field resize-y"
-            placeholder="Example: Arrange by line, focus on accounting software first, remove repeated skills."
-          />
-        </label>
         <div className="ai-assist-row">
           <button type="button" onClick={() => improveText("skills")} className="btn-ai"><Icon name="sparkle" className="h-3 w-3" /> Improve with AI</button>
-          <span className="ai-hint">Clean and strengthen your skills list using your instruction</span>
+          <span className="ai-hint">Clean and strengthen your skills list</span>
         </div>
         <FormField label="Languages spoken" type="textarea" rows={3} value={cv.languages} onChange={(value) => onChange("languages", value)} placeholder="Example: English - Good, Filipino - Native, Arabic - Basic" />
       </CollapsibleFormSection>
@@ -2215,19 +1881,9 @@ function CVBuilderForm({ cv, onChange }) {
           <textarea value={cv.summary || ""} onChange={(event) => onChange("summary", event.target.value)} onBlur={(event) => handleBlurTip("summary", event.target.value)} rows={5} className="form-field resize-y" placeholder="Example: Reliable logistics assistant with UAE warehouse experience, strong inventory skills, and careful documentation habits." />
           <SmartTip message={smartTips.summary} onDismiss={() => clearSmartTip("summary")} />
         </label>
-        <label className="block">
-          <span className="form-label">What should AI do with this summary?</span>
-          <textarea
-            value={aiInstructions.summary}
-            onChange={(event) => setAiInstructions((current) => ({ ...current, summary: event.target.value }))}
-            rows={3}
-            className="form-field resize-y"
-            placeholder="Example: Make it concise, accounting-focused, and mention that I currently handle treasury and finance support tasks."
-          />
-        </label>
         <div className="ai-assist-row">
           <button type="button" onClick={() => improveText("summary")} className="btn-ai"><Icon name="sparkle" className="h-3 w-3" /> Improve with AI</button>
-          <span className="ai-hint">Make your summary clearer using your instruction</span>
+          <span className="ai-hint">Make your summary clearer for UAE/GCC employers</span>
         </div>
       </CollapsibleFormSection>
     </div>
@@ -2287,13 +1943,26 @@ async function readCvFile(file) {
   throw new Error("Unsupported file type. Please upload a PDF, DOCX, or TXT CV.");
 }
 
-const cvSectionHeading = /^(summary|profile|objective|skills|core\s+competencies|work\s+experience|professional\s+experience|employment\s+history|employment|work\s+history|career\s+history|education|certifications?|certificates?|licenses?|languages?|references?|projects?|contact|hobbies|desired\s+positions?|notice\s+period|marital\s+status|nationality|visa\s+stat(?:us|is)|address|phone|email)$/i;
+async function extractCvDetails(text, fileName) {
+  try {
+    const response = await fetch("/.netlify/functions/parseCv", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, fileName }),
+    });
+    const result = await response.json();
+    if (response.ok && result.ok && result.cv) return result.cv;
+    if (response.status === 422) throw new Error(result.message || "This document does not look like a CV/resume.");
+  } catch (error) {
+    if (/does not look like a CV|actual CV/i.test(error.message || "")) throw error;
+  }
+  return mockAiExtractCv(text, fileName);
+}
+
+const cvSectionHeading = /^(summary|profile|objective|skills|core\s+competencies|work\s+experience|professional\s+experience|employment\s+history|employment|career\s+history|education|certifications?|licenses?|languages?|references?|projects?)$/i;
 const mojibakeDashPattern = "\u00e2\u20ac[\u201c\u201d]";
-const monthDatePattern = "(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\.?\\s+(?:\\d{1,2},?\\s+)?(?:19|20)\\d{2}";
-const yearDatePattern = "(?:19|20)\\d{2}";
-const dateValuePattern = `(?:${monthDatePattern}|${yearDatePattern})`;
-const dateRangePattern = new RegExp(`(${dateValuePattern})\\s*(?:-|\\u2013|\\u2014|${mojibakeDashPattern}|to|until|till|through)\\s*(${dateValuePattern}|present|current|till\\s+date|to\\s+date|now)`, "i");
-const singleDatePattern = new RegExp(`(${monthDatePattern})\\s*$`, "i");
+const dateRangePattern = new RegExp(`((?:(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\.?\\s+)?(?:19|20)\\d{2})\\s*(?:-|\\u2013|\\u2014|${mojibakeDashPattern}|to|until|till|through)\\s*((?:(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\.?\\s+)?(?:19|20)\\d{2}|present|current|till\\s+date|to\\s+date|now)`, "i");
+const singleDatePattern = /((?:(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+)(?:19|20)\d{2})\s*$/i;
 const locationPattern = /\b(abu\s*dhabi|ajman|al\s*ain|bahrain|canada|cebu|chennai|cochin|doha|dubai|gcc|india|kerala|kuwait|lagos|london|mangalore|manila|oman|philippines|qatar|riyadh|saudi|sharjah|singapore|toronto|uae|u\.a\.e\.|united\s+arab\s+emirates|uk|usa)\b/i;
 const jobTitlePattern = /\b(accountant|admin|analyst|assistant|associate|cashier|clerk|controller|coordinator|counsellor|counselor|developer|driver|electrician|engineer|executive|helper|housekeeper|intern|manager|nanny|officer|operator|plumber|receptionist|representative|sales|secretary|supervisor|support|technician|waiter|warehouse|welder)\b/i;
 const employerPattern = /\b(agency|association|bank|company|consultancy|corp|corporation|department|forwarding|fzc|hotel|hypermarket|industries|international|llc|limited|logistics|ltd|mart|restaurant|school|services|shipping|solutions|trading|transport|warehouse)\b/i;
@@ -2316,37 +1985,7 @@ const normalizeImportedDate = (value = "") =>
 
 const isResponsibilityLine = (line) => {
   const cleaned = cleanCvLine(line);
-  if (employerPattern.test(cleaned) && cleaned.length < 120) return false;
-  if (jobTitlePattern.test(cleaned) && cleaned.length < 120 && !/[.!?]$/.test(cleaned)) return false;
   return /^[-*]\s+/.test(cleaned) || responsibilityVerbPattern.test(cleaned.replace(/^[-*]\s*/, "")) || cleaned.length > 70;
-};
-
-const isSidebarOrPersonalLine = (line) =>
-  /^(contact|phone|email|address|visa\s+stat(?:us|is)|notice\s+period|marital\s+status|nationality|hobbies|desired\s+positions?)$/i.test(cleanCvLine(line).replace(/:$/, ""));
-
-const looksLikeContactValue = (line) => {
-  const cleaned = cleanCvLine(line);
-  return /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(cleaned)
-    || /^\+?\d[\d\s().-]{7,}\d$/.test(cleaned)
-    || /^(single|married|filipino|employment\s+visa|visit\s+visa|own\s+visa|gardening|cooking|craft\s+making|entrepreneurship)$/i.test(cleaned)
-    || /^(al\s+barsha|tecom|dubai|uae|united\s+arab\s+emirates)/i.test(cleaned);
-};
-
-const looksLikeSidebarSkillLeak = (line) =>
-  /^-?\s*(microsoft\s+powerpoint|social\s+media\s+management|experience|instagram|facebook)$/i.test(cleanCvLine(line));
-
-const isExperienceMetaLine = (line) => {
-  const cleaned = cleanCvLine(line);
-  if (!cleaned) return false;
-  if (/^accounting\s+software\s*:/i.test(cleaned)) return true;
-  if (employerPattern.test(cleaned) && cleaned.length < 90 && /^[A-Z0-9 &'./()-]+$/.test(cleaned)) return true;
-  if (jobTitlePattern.test(cleaned) && cleaned.length < 90 && !isResponsibilityLine(cleaned)) return true;
-  return false;
-};
-
-const isLikelyMetaContinuation = (line) => {
-  const cleaned = cleanCvLine(line);
-  return cleaned.length < 90 && /^[A-Z0-9 &'./()-]+$/.test(cleaned) && !cvSectionHeading.test(cleaned.replace(/:$/, ""));
 };
 
 const splitEmployerAndLocation = (value = "") => {
@@ -2417,22 +2056,11 @@ const assignExperienceMeta = (beforeMeta, afterMeta, fallbackJobTitle = "") => {
     isCurrent: false,
     responsibilities: "",
   };
-  const before = beforeMeta.map(cleanCvLine).filter(Boolean).filter((line) => !/^accounting\s+software\s*:/i.test(line));
-  const after = afterMeta.map(cleanCvLine).filter(Boolean).filter((line) => !/^accounting\s+software\s*:/i.test(line));
-  const titleIndex = before.findIndex((line) => jobTitlePattern.test(line) && !employerPattern.test(line));
-  let titleCandidate = "";
-  if (titleIndex >= 0) {
-    const titleParts = [before[titleIndex]];
-    for (let index = titleIndex + 1; index < before.length; index += 1) {
-      if (employerPattern.test(before[index]) || /^accounting\s+software\s*:/i.test(before[index])) break;
-      if (isLikelyMetaContinuation(before[index]) || jobTitlePattern.test(before[index])) titleParts.push(before[index]);
-    }
-    titleCandidate = titleParts.join(" ");
-  }
-  titleCandidate ||= [...before].reverse().find((line) => jobTitlePattern.test(line) && !employerPattern.test(line)) || fallbackJobTitle;
+  const before = beforeMeta.map(cleanCvLine).filter(Boolean);
+  const after = afterMeta.map(cleanCvLine).filter(Boolean);
+  const titleCandidate = [...before].reverse().find((line) => jobTitlePattern.test(line) && !employerPattern.test(line)) || before[0] || fallbackJobTitle;
   entry.jobTitle = titleCandidate || fallbackJobTitle || "";
-  const employerBeforeTitle = titleIndex > 0 ? before.slice(0, titleIndex).join(" ") : "";
-  const employerCandidates = [employerBeforeTitle, ...before, ...after].filter((line) => line && line !== entry.jobTitle && !entry.jobTitle.includes(line) && !dateRangePattern.test(line));
+  const employerCandidates = [...before, ...after].filter((line) => line !== entry.jobTitle && !dateRangePattern.test(line));
   const employerCandidate = employerCandidates.find((line) => employerPattern.test(line)) || employerCandidates.find((line) => !isResponsibilityLine(line)) || "";
   const employerLocation = splitEmployerAndLocation(employerCandidate);
   entry.employer = employerLocation.employer;
@@ -2451,9 +2079,7 @@ const extractStructuredWorkExperiences = (experienceText = "", fallbackJobTitle 
     .split("\n")
     .map(cleanCvLine)
     .filter(Boolean)
-    .filter((line) => !cvSectionHeading.test(line.replace(/:$/, "")))
-    .filter((line) => !isSidebarOrPersonalLine(line))
-    .filter((line) => !looksLikeContactValue(line));
+    .filter((line) => !cvSectionHeading.test(line));
   if (!rawLines.length) return [];
 
   const dateIndices = rawLines
@@ -2486,40 +2112,21 @@ const extractStructuredWorkExperiences = (experienceText = "", fallbackJobTitle 
     for (let pointer = index - 1; pointer > previousDateIndex; pointer -= 1) {
       const line = rawLines[pointer];
       if (isResponsibilityLine(line)) break;
-      if (beforeMeta.length && !isExperienceMetaLine(line) && !isLikelyMetaContinuation(line)) break;
       beforeMeta.unshift(line);
-      if (beforeMeta.length >= 6) break;
+      if (beforeMeta.length >= 3) break;
     }
     const afterMeta = [];
     let dutiesStart = index + 1;
     for (let pointer = index + 1; pointer < nextDateIndex; pointer += 1) {
       const line = rawLines[pointer];
       if (isResponsibilityLine(line) || dateRangePattern.test(line)) break;
-      if (beforeMeta.some((item) => jobTitlePattern.test(item) || employerPattern.test(item)) && !isExperienceMetaLine(line)) break;
       afterMeta.push(line);
       dutiesStart = pointer + 1;
       if (afterMeta.length >= 2) break;
     }
-    let dutiesEnd = nextDateIndex;
-    if (datePosition < dateIndices.length - 1) {
-      let pointer = nextDateIndex - 1;
-      let checked = 0;
-      while (pointer > index && checked < 5) {
-        const candidate = rawLines[pointer];
-        if (isExperienceMetaLine(candidate)) dutiesEnd = pointer;
-        else if (isResponsibilityLine(candidate)) break;
-        pointer -= 1;
-        checked += 1;
-      }
-    }
-    let duties = rawLines.slice(dutiesStart, dutiesEnd);
-    duties = duties
-      .filter((line) => !isExperienceMetaLine(line))
-      .filter((line) => !isSidebarOrPersonalLine(line))
-      .filter((line) => !looksLikeContactValue(line))
-      .filter((line) => !looksLikeSidebarSkillLeak(line))
-      .map((line) => line.replace(/^[-*]\s*/, ""))
-      .filter(Boolean);
+    let duties = rawLines.slice(dutiesStart, nextDateIndex);
+    while (duties.length && !isResponsibilityLine(duties[duties.length - 1])) duties = duties.slice(0, -1);
+    duties = duties.map((line) => line.replace(/^[-*]\s*/, "")).filter(Boolean);
     const inlineMeta = parseInlineExperienceHeader(dateLine, match);
     const entry = { ...assignExperienceMeta(beforeMeta, afterMeta, fallbackJobTitle), ...inlineMeta };
     if (!entry.companyLocation) {
@@ -2537,83 +2144,50 @@ const extractStructuredWorkExperiences = (experienceText = "", fallbackJobTitle 
 
 function mockAiExtractCv(text, fileName) {
   const clean = text.replace(/\r/g, "\n").replace(/[ \t]+/g, " ").trim();
-  const lines = clean.split("\n").map(cleanCvLine).filter(Boolean);
+  const lines = clean.split("\n").map((line) => line.trim()).filter(Boolean);
+  const firstPageText = lines.slice(0, 24).join(" ");
+  if (/(codex\s+developer\s+handoff|client-rendered\s+spa|root\s+cause|features?\s+\d+\s*(?:-|to|through)\s*\d+|prompt\s+batch|traffic\s+growth\s+context)/i.test(firstPageText)) {
+    throw new Error("This file looks like a project brief or prompt, not a CV. Please upload the applicant's actual CV or resume file.");
+  }
   const email = clean.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];
-  const phone = clean.match(/(\+?\d[\d\s().-]{7,}\d)/)?.[0];
+  const rawPhone = clean.match(/(\+?\d[\d\s().-]{7,}\d)/)?.[0]?.trim();
+  const phone = rawPhone && rawPhone.replace(/\D/g, "").length >= 8 && rawPhone.length <= 28 ? rawPhone : "";
   const linkedIn = clean.match(/https?:\/\/(?:www\.)?linkedin\.com\/[^\s)]+/i)?.[0] || clean.match(/linkedin\.com\/[^\s)]+/i)?.[0];
   const urlMatches = clean.match(/https?:\/\/[^\s)]+/gi) || [];
   const portfolioUrl = urlMatches.find((url) => !/linkedin\.com/i.test(url)) || "";
-  const headingPattern = /summary|profile|objective|skills|core competencies|experience|professional experience|employment|work history|education|certification|certificate|language|reference|contact|nationality|visa|driving|linkedin|portfolio|curriculum|resume|cv|desired positions|hobbies|phone|email|address/i;
+  const nationality = clean.match(/nationality\s*[:\-]\s*([^\n]+)/i)?.[1]?.trim();
+  const visaStatus = clean.match(/visa\s*(?:status)?\s*[:\-]\s*([^\n]+)/i)?.[1]?.trim();
+  const drivingLicense = clean.match(/(?:driving|driver'?s?)\s+licen[cs]e\s*[:\-]?\s*([^\n]*)/i)?.[0]?.trim();
+  const headingPattern = /summary|profile|objective|skills|core competencies|experience|professional experience|employment|work history|education|certification|certificate|language|reference|contact|nationality|visa|driving|linkedin|portfolio|curriculum|resume|cv/i;
+  const hasCvSignals = Boolean(email || phone || linkedIn) || lines.some((line) => /^(professional\s+summary|summary|profile|objective|skills|core\s+competencies|professional\s+experience|work\s+experience|employment\s+history|education|certifications?|languages?)$/i.test(line));
+  if (!hasCvSignals) {
+    throw new Error("Could not identify this file as a CV. Please upload a readable CV with contact details, work experience, education, or skills sections.");
+  }
+  const firstLine = lines.find((line) => !line.includes("@") && !headingPattern.test(line) && !/^\+?\d/.test(line) && line.length <= 60 && /[a-z]/i.test(line));
   const compactText = lines.join("\n");
-
-  const findLabelValue = (labelPatterns, options = {}) => {
-    const labels = Array.isArray(labelPatterns) ? labelPatterns : [labelPatterns];
-    for (let i = 0; i < lines.length; i += 1) {
-      const line = cleanCvLine(lines[i]);
-      const withoutColon = line.replace(/:$/, "");
-      if (!labels.some((pattern) => pattern.test(withoutColon))) continue;
-      const inline = cleanCvLine(line.replace(/^[^:]+:\s*/i, ""));
-      if (inline && inline !== withoutColon && (!options.reject || !options.reject(inline))) return inline;
-      for (let j = i + 1; j < Math.min(lines.length, i + 5); j += 1) {
-        const candidate = cleanCvLine(lines[j]);
-        if (!candidate || cvSectionHeading.test(candidate.replace(/:$/, "")) || /^[A-Z ]+:$/.test(candidate)) continue;
-        if (!options.reject || !options.reject(candidate)) return candidate;
-      }
-    }
-    return "";
-  };
-
-  const address = findLabelValue([/^address$/i]);
-  const nationality = findLabelValue([/^nationality$/i], { reject: (value) => value.length > 35 || isResponsibilityLine(value) });
-  const visaStatus = findLabelValue([/^visa\s+stat(?:us|is)$/i], { reject: (value) => value.length > 45 || isResponsibilityLine(value) });
-  const drivingLicense = findLabelValue([/^(?:driving|driver'?s?)\s+licen[cs]e$/i], { reject: (value) => value.length > 45 });
-  const fullName = lines.find((line, index) => {
-    const words = line.split(/\s+/).filter(Boolean);
-    return index < 60
-      && words.length >= 3
-      && words.length <= 6
-      && /^[A-Z .'-]+$/.test(line)
-      && !headingPattern.test(line)
-      && !jobTitlePattern.test(line)
-      && !employerPattern.test(line)
-      && !/(degree|university|course|software|quickbooks|zoho|sap|office)/i.test(line);
-  });
-  const nameIndex = fullName ? lines.indexOf(fullName) : -1;
-  const jobTitleAfterName = nameIndex >= 0
-    ? lines.slice(nameIndex + 1, nameIndex + 5).find((line) => line.length <= 70 && jobTitlePattern.test(line) && !headingPattern.test(line) && !employerPattern.test(line))
-    : "";
   const section = (names, maxLines = 6) => {
-    const index = lines.findIndex((line) => names.some((name) => new RegExp(`^${name}\\s*:?$`, "i").test(line)));
+    const index = lines.findIndex((line) => names.some((name) => new RegExp(`^${name}\\b`, "i").test(line) || line.toLowerCase() === name));
     if (index === -1) return "";
-    const nextIndex = lines.findIndex((line, lineIndex) => lineIndex > index && cvSectionHeading.test(line.replace(/:$/, "")));
+    const nextIndex = lines.findIndex((line, lineIndex) => lineIndex > index && /^(summary|profile|objective|skills|core\s+competencies|work\s+experience|professional\s+experience|employment\s+history|employment|career\s+history|work\s+history|education|certifications?|certificates?|languages?|references?)$/i.test(line));
     return lines.slice(index + 1, nextIndex === -1 ? Math.min(lines.length, index + 1 + maxLines) : nextIndex).join("\n").trim();
   };
   const skills = section(["skills", "core competencies"], 20);
-  const experience = section(["work experience", "professional experience", "employment", "employment history", "work history", "career history"], 180);
-  let education = section(["education"], 14);
-  const certifications = section(["certification", "certificate", "certifications", "certificates"], 10);
-  const languages = section(["language", "languages"], 8);
+  const experience = section(["experience", "professional experience", "employment", "employment history", "work history", "career history"], 120);
+  const education = section(["education"], 14);
+  const certifications = section(["certification", "certificate"], 10);
+  const languages = section(["language"], 8);
   const summary = section(["summary", "profile", "objective"], 4);
-  const jobTitle = jobTitleAfterName || lines.find((line, index) => index > 0 && index < 12 && !line.includes("@") && !phone?.includes(line) && !headingPattern.test(line) && jobTitlePattern.test(line) && line.length <= 70);
+  const jobTitle = lines.find((line, index) => index > 0 && index < 8 && !line.includes("@") && !phone?.includes(line) && !headingPattern.test(line) && line.length <= 70);
   const summaryFallback = (() => {
-    const stopIndex = lines.findIndex((line) => /^(core\s+competencies|skills|professional\s+experience|work\s+experience|employment|education)$/i.test(line.replace(/:$/, "")));
+    const stopIndex = lines.findIndex((line) => /^(core\s+competencies|skills|professional\s+experience|work\s+experience|employment|education)$/i.test(line));
     const usableLines = lines
-      .slice(nameIndex >= 0 ? nameIndex + 1 : 1, stopIndex === -1 ? Math.min(lines.length, 10) : stopIndex)
+      .slice(1, stopIndex === -1 ? Math.min(lines.length, 8) : stopIndex)
       .filter((line) => line.length > 35)
       .filter((line) => !line.includes("@") && !/linkedin|https?:|^\+?\d/.test(line))
       .filter((line) => !headingPattern.test(line));
     return usableLines.join(" ").trim();
   })();
   const structuredWorkExperiences = extractStructuredWorkExperiences(experience, jobTitle || "");
-  const formattedExperience = structuredWorkExperiences.length ? formatWorkExperiences(structuredWorkExperiences) : experience;
-  if (fullName && education.includes(fullName)) {
-    education = education
-      .split("\n")
-      .slice(0, education.split("\n").findIndex((line) => line === fullName))
-      .join("\n")
-      .trim();
-  }
-  const educationEntries = parseEducationText(education);
   const fallbackWorkExperiences = [
     {
       ...createExperienceEntry(),
@@ -2626,24 +2200,21 @@ function mockAiExtractCv(text, fileName) {
       responsibilities: experience || "Please review imported CV and add work experience here.",
     },
   ];
-  const country = /dubai|uae|u\.a\.e\.|united\s+arab\s+emirates/i.test(`${address}\n${clean}`) ? "United Arab Emirates" : "";
   return {
-    fullName: fullName || fileName.replace(/\.[^.]+$/, "").replaceAll("-", " "),
+    fullName: firstLine || fileName.replace(/\.[^.]+$/, "").replaceAll("-", " "),
     jobTitle: jobTitle || "",
     email: email || "",
     phone: phone || "",
-    country,
     nationality: nationality || "",
     visaStatus: visaStatus || "",
     linkedIn: linkedIn || "",
     portfolioUrl,
-    drivingLicense: drivingLicense || "",
+    drivingLicense: drivingLicense || "Add driving license status here.",
     summary: sanitizeCvTextForCoverLetter(summary || summaryFallback || compactText.split("\n").filter((line) => line.length > 40 && !line.includes("@") && !/linkedin/i.test(line)).slice(0, 2).join(" ")) || "Please review imported CV and add a professional summary here.",
     skills: sanitizeCvTextForCoverLetter(skills) || "Please review imported CV and add key skills here.",
-    experience: formattedExperience || "Please review imported CV and add work experience here.",
+    experience: experience || "Please review imported CV and add work experience here.",
     workExperiences: structuredWorkExperiences.length ? structuredWorkExperiences : fallbackWorkExperiences,
     education: education || "Please review imported CV and add education details here.",
-    educationEntries,
     certifications: certifications || "Add certificates or training here.",
     languages: languages || "English",
     references: section(["reference"]) || "Available upon request",
@@ -2757,18 +2328,19 @@ function LiveCVPreview({ cv, theme, layout }) {
     );
   };
   const workEntries = normalizeWorkExperiences(cv);
-  const educationEntries = normalizeEducationEntries(cv).filter((entry) => [entry.qualification, entry.school, entry.location, entry.fromDate, entry.toDate, entry.details].some((value) => String(value || "").trim()));
   const workExperienceSection = (
     <section className="break-inside-avoid">
       <h3 className="cv-section-title" style={{ color: theme.dark, borderColor: theme.color }}>Work Experience</h3>
       <div className="mt-3 space-y-4">
         {workEntries.map((entry) => (
           <article key={entry.id} className="text-[12px] leading-5 text-slate-700">
-            <div className="grid gap-1">
-              <p><span className="font-black text-slate-900">Position:</span> <span className="font-bold text-slate-800">{entry.jobTitle || "Job title"}</span></p>
-              <p><span className="font-black text-slate-900">Company:</span> <span className="font-bold text-slate-700">{entry.employer || "Employer name"}</span></p>
-              {entry.companyLocation && <p><span className="font-black text-slate-900">Location:</span> <span className="font-semibold text-slate-500">{entry.companyLocation}</span></p>}
-              <p><span className="font-black text-slate-900">Duration:</span> <span className="font-bold text-slate-500">{[entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - ")}</span></p>
+            <div className="flex flex-col justify-between gap-1 sm:flex-row">
+              <div>
+                <p className="font-black text-slate-900">{entry.jobTitle || "Job title"}</p>
+                <p className="font-bold text-slate-700">{entry.employer || "Employer name"}</p>
+                {entry.companyLocation && <p className="font-semibold text-slate-500">{entry.companyLocation}</p>}
+              </div>
+              <p className="font-bold text-slate-500">{[entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - ")}</p>
             </div>
             {entry.responsibilities && (
               <ul className="mt-2 list-disc space-y-1 pl-5">
@@ -2780,30 +2352,10 @@ function LiveCVPreview({ cv, theme, layout }) {
       </div>
     </section>
   );
-  const educationSection = (
-    <section className="break-inside-avoid">
-      <h3 className="cv-section-title" style={{ color: theme.dark, borderColor: theme.color }}>Education</h3>
-      <div className="mt-3 space-y-3">
-        {educationEntries.map((entry) => (
-          <article key={entry.id} className="text-[12px] leading-5 text-slate-700">
-            <div className="flex flex-col justify-between gap-1 sm:flex-row">
-              <div>
-                {entry.qualification && <p className="font-black text-slate-900">{entry.qualification}</p>}
-                {entry.school && <p className="font-bold text-slate-700">{entry.school}</p>}
-                {entry.location && <p className="font-semibold text-slate-500">{entry.location}</p>}
-              </div>
-              <p className="font-bold text-slate-500">{[entry.fromDate, entry.toDate].filter(Boolean).join(" - ")}</p>
-            </div>
-            {entry.details && <p className="mt-1 whitespace-pre-line">{entry.details}</p>}
-          </article>
-        ))}
-      </div>
-    </section>
-  );
   const sectionRenderers = {
     summary: () => section("Professional Summary", cv.summary),
     experience: () => workExperienceSection,
-    education: () => educationSection,
+    education: () => section("Education", cv.education),
     skills: () => section("Skills", cv.skills),
     certifications: () => section("Certifications", cv.certifications),
     languages: () => section("Languages", cv.languages),
@@ -2862,17 +2414,27 @@ function LiveCVPreview({ cv, theme, layout }) {
   );
 }
 
-function DownloadModal({ onClose, onVerifiedDownload, onSignIn, canEmailCopy = false, emailCopyAddress = "", title = "Download for free", description = "No account or contact details are required. Your file downloads directly to this device." }) {
+function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, emailCopyAddress = "", title = "Verify to download", description = "Enter your contact details. We will send an OTP before unlocking downloads.", label = "Downloads" }) {
+  const [details, setDetails] = useState({ name: cv.fullName, email: cv.email, country: cv.country, phone: cv.phone });
+  const [otp, setOtp] = useState("");
+  const [sentOtp, setSentOtp] = useState("");
+  const [verified, setVerified] = useState(false);
   const [actionStatus, setActionStatus] = useState("");
   const runDownloadAction = async (type) => {
-    setActionStatus(type === "email" ? "Sending CV copy to your verified email..." : "Preparing your file...");
+    setActionStatus(type === "email" ? "Sending CV copy to email..." : "Preparing your file...");
     try {
-      const result = await onVerifiedDownload(type);
+      const result = await onVerifiedDownload(type, details);
       setActionStatus(result?.message || (type === "email" ? "CV email request completed." : "Download started."));
     } catch (error) {
       setActionStatus(error.message || "Action failed. Please try again.");
     }
   };
+  const sendOtp = (event) => {
+    event.preventDefault();
+    setSentOtp(String(Math.floor(100000 + Math.random() * 900000)));
+    setOtp("");
+  };
+  const verify = () => setVerified(otp === sentOtp);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4">
       <div className="w-full max-w-lg rounded bg-white p-6 shadow-soft">
@@ -2881,33 +2443,43 @@ function DownloadModal({ onClose, onVerifiedDownload, onSignIn, canEmailCopy = f
             <h2 className="text-2xl font-black text-slate-950">{title}</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
           </div>
-          <button onClick={onClose} className="text-2xl leading-none text-slate-500" aria-label="Close">x</button>
+          <button onClick={onClose} className="text-2xl leading-none text-slate-500">Ã—</button>
         </div>
-        <div className="mt-5 rounded border border-green-200 bg-green-50 p-4 text-sm font-bold leading-6 text-green-950">
-          Free download-only mode keeps this CV in your browser. It is not saved online unless you create an account.
-        </div>
+        <form onSubmit={sendOtp} className="mt-5 grid gap-3 sm:grid-cols-2">
+          {[
+            ["name", "Name"],
+            ["email", "Contact email"],
+            ["country", "Country"],
+            ["phone", "Contact number"],
+          ].map(([key, label]) => (
+            <label key={key} className="block">
+              <span className="form-label">{label}</span>
+              <input value={details[key]} onChange={(event) => setDetails({ ...details, [key]: event.target.value })} className="form-field" required />
+            </label>
+          ))}
+          <button className="rounded bg-blue-600 px-5 py-3 font-bold text-white sm:col-span-2">Generate OTP</button>
+        </form>
+        {sentOtp && (
+          <div className="mt-5 rounded border border-green-200 bg-green-50 p-4">
+            <p className="text-sm font-bold text-green-900">Mock OTP: {sentOtp}</p>
+            <div className="mt-3 flex gap-2">
+              <input value={otp} onChange={(event) => setOtp(event.target.value)} inputMode="numeric" maxLength={6} className="form-field" placeholder="Enter 6-digit OTP" />
+              <button onClick={verify} className="rounded bg-green-600 px-5 py-3 font-bold text-white">Verify</button>
+            </div>
+            {verified && <p className="mt-3 text-sm font-bold text-green-800">OTP verified. {label} are unlocked.</p>}
+          </div>
+        )}
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <button onClick={() => runDownloadAction("pdf")} className="rounded bg-green-600 px-5 py-3 font-bold text-white">Download PDF</button>
-          <button onClick={() => runDownloadAction("word")} className="rounded border border-blue-600 px-5 py-3 font-bold text-blue-700">Download DOCX</button>
+          <button disabled={!verified} onClick={() => runDownloadAction("pdf")} className="rounded bg-green-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">Download PDF</button>
+          <button disabled={!verified} onClick={() => runDownloadAction("word")} className="rounded border border-blue-600 px-5 py-3 font-bold text-blue-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400">Download DOCX</button>
           {canEmailCopy ? (
-            <button onClick={() => runDownloadAction("email")} className="rounded border border-green-600 bg-green-50 px-5 py-3 font-bold text-green-800 sm:col-span-2">
-              Email CV copy to {emailCopyAddress}
+            <button disabled={!verified} onClick={() => runDownloadAction("email")} className="rounded border border-green-600 bg-green-50 px-5 py-3 font-bold text-green-800 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-white disabled:text-slate-400 sm:col-span-2">
+              Email CV copy to {emailCopyAddress || details.email}
             </button>
           ) : (
-            <div className="rounded bg-blue-50 p-3 sm:col-span-2">
-              <p className="text-xs font-bold leading-5 text-blue-900">
-                Sign in with email if you want BuildMyCVNow to save online and send a CV copy to your inbox.
-              </p>
-              {onSignIn && (
-                <button
-                  type="button"
-                  onClick={onSignIn}
-                  className="mt-3 w-full rounded border border-blue-600 bg-white px-4 py-3 text-sm font-black text-blue-700 hover:bg-blue-100"
-                >
-                  Sign in or create account
-                </button>
-              )}
-            </div>
+            <p className="rounded bg-blue-50 p-3 text-xs font-bold leading-5 text-blue-900 sm:col-span-2">
+              Sign in with email if you want BuildMyCVNow to send a CV copy to your inbox.
+            </p>
           )}
         </div>
         {actionStatus && <p className="mt-3 rounded bg-slate-50 p-3 text-sm font-bold leading-6 text-slate-700">{actionStatus}</p>}
@@ -2918,8 +2490,7 @@ function DownloadModal({ onClose, onVerifiedDownload, onSignIn, canEmailCopy = f
 
 function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
   const [mode, setMode] = useState("signin");
-  const [form, setForm] = useState({ name: "", email: "" });
-  const [emailOtp, setEmailOtp] = useState("");
+  const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [phoneForm, setPhoneForm] = useState({ phone: "", otp: "", challenge: null, mockOtp: "" });
   const [phoneOtpSent, setPhoneOtpSent] = useState(false);
   const [message, setMessage] = useState(isSupabaseConfigured ? "" : "Add VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY or REACT_APP_SUPABASE_URL/REACT_APP_SUPABASE_ANON_KEY to .env to enable login.");
@@ -2951,43 +2522,24 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
       const options = {
         emailRedirectTo: AUTH_REDIRECT_URL,
         data: { full_name: form.name },
+        captchaToken,
       };
-      const { error } = await supabase.auth.signInWithOtp({
-        email: form.email,
-        options: {
-          ...options,
-          shouldCreateUser: mode === "signup",
-          captchaToken,
-        },
-      });
+      const { error } =
+        mode === "signup"
+          ? await supabase.auth.signUp({ email: form.email, password: form.password, options })
+          : await supabase.auth.signInWithPassword({ email: form.email, password: form.password, captchaToken });
       if (error) throw error;
-      trackEvent(mode === "signup" ? "signup" : "login", { method: "email_otp" });
-      setLastSignupEmail(form.email);
-      setMessage("Email verification sent. Open the sign-in link from your inbox, or enter the OTP code if your Supabase email template includes one. Check spam if it does not arrive.");
+      trackEvent(mode === "signup" ? "signup" : "login", { method: "email" });
+      if (mode === "signup") {
+        setLastSignupEmail(form.email);
+        setMessage("Signup request sent. Please check your inbox and spam folder for the confirmation email. If it does not arrive, use Resend confirmation email below.");
+      } else {
+        setMessage("Signed in successfully.");
+        onRegisteredMode();
+      }
+      if (mode === "signin") onClose();
     } catch (error) {
       setMessage(error.message || "Authentication failed.");
-    } finally {
-      setLoading(false);
-    }
-  };
-  const verifyEmailOtp = async (event) => {
-    event.preventDefault();
-    if (!supabase || !lastSignupEmail || !emailOtp.trim()) return;
-    setLoading(true);
-    setMessage("Verifying email OTP...");
-    try {
-      const { data, error } = await supabase.auth.verifyOtp({
-        email: lastSignupEmail,
-        token: emailOtp.trim(),
-        type: "email",
-      });
-      if (error) throw error;
-      trackEvent("email_otp_verified");
-      const result = await onRegisteredMode(data?.session || null, { saveCurrentCv: true });
-      setMessage(result?.message || "Email verified. Your account is ready and this CV is saved online.");
-      onClose();
-    } catch (error) {
-      setMessage(error.message || "Invalid OTP. Please check the code and try again.");
     } finally {
       setLoading(false);
     }
@@ -2995,15 +2547,23 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
   const resendConfirmation = async () => {
     if (!supabase || !lastSignupEmail) return;
     setLoading(true);
-    setMessage("Sending email verification again...");
+    setMessage("Sending confirmation email again...");
     try {
-      const { error } = await supabase.auth.signInWithOtp({
+      const { error } = await supabase.auth.resend({
+        type: "signup",
         email: lastSignupEmail,
-        options: { emailRedirectTo: AUTH_REDIRECT_URL, shouldCreateUser: true },
+        options: { emailRedirectTo: AUTH_REDIRECT_URL },
       });
-      if (error) throw error;
-      trackEvent("email_otp_resend");
-      setMessage("Email verification sent again. Please check your inbox and spam folder.");
+      if (error) {
+        const fallback = await fetch("/.netlify/functions/resendSignupConfirmation", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: lastSignupEmail }),
+        });
+        if (!fallback.ok) throw error;
+      }
+      trackEvent("signup_confirmation_resend");
+      setMessage("Confirmation email sent again. Please check your inbox and spam folder.");
     } catch (error) {
       setMessage(error.message || "Could not resend confirmation email.");
     } finally {
@@ -3031,10 +2591,10 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
       });
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.message || "Could not send mobile OTP.");
-      setPhoneForm({ ...phoneForm, challenge: result.challenge, mockOtp: "" });
+      setPhoneForm({ ...phoneForm, challenge: result.challenge, mockOtp: result.mockOtp || "" });
       setPhoneOtpSent(true);
       trackEvent("phone_otp_sent");
-      setMessage("OTP sent to your mobile number. This continues in download-only mode unless SMS login is connected to Supabase Auth.");
+      setMessage(result.smsSent ? "OTP sent to your mobile number. Enter the SMS code to continue." : `SMS provider is not configured yet. Test OTP: ${result.mockOtp}`);
     } catch (error) {
       setMessage(error.message || "Could not send mobile OTP.");
     } finally {
@@ -3067,8 +2627,8 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
       <div className="w-full max-w-md rounded bg-white p-6 shadow-soft">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-black text-slate-950">{mode === "signin" ? "Email login" : "Create account"}</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">Use free download-only mode with no online storage, or verify your email to save generated CVs online and receive CV copies.</p>
+            <h2 className="text-2xl font-black text-slate-950">{mode === "signin" ? "Login" : "Create account"}</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">Choose quick download-only mode or sign in to save CVs online.</p>
           </div>
           <button onClick={onClose} className="text-2xl leading-none text-slate-500">x</button>
         </div>
@@ -3077,18 +2637,17 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
             Continue without cloud saving
           </button>
           <button onClick={() => setMode("phone")} className={`rounded px-4 py-3 text-sm font-black ${mode === "phone" ? "bg-slate-950 text-white" : "bg-blue-50 text-blue-800"}`}>
-            Receive OTP on mobile
+            Continue with mobile OTP
           </button>
           <p className="rounded bg-amber-50 p-3 text-xs font-bold leading-5 text-amber-900">
-            Free download-only mode: no account, no online CV, local browser only. Download before refreshing, closing the browser, or clearing site data.
+            Download-only mode: Your CV will not be saved online. Download your file before closing the browser.
           </p>
         </div>
         <div className="mt-4">
-          <p className="mb-2 text-xs font-black uppercase text-slate-500">Email verified account mode</p>
-          <p className="mb-3 text-xs font-bold leading-5 text-slate-500">Email account mode stores generated CVs online and applies a {MAX_DAILY_GENERATED_CVS} CV daily generation limit. After OTP verification, this CV is saved to My CVs automatically.</p>
+          <p className="mb-2 text-xs font-black uppercase text-slate-500">Sign in / Create account to save online</p>
           <div className="grid grid-cols-2 gap-2">
           {[
-            ["signin", "Email login"],
+            ["signin", "Login"],
             ["signup", "Sign up"],
           ].map(([id, label]) => (
             <button key={id} onClick={() => setMode(id)} className={`rounded px-4 py-3 text-sm font-black ${mode === id ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-700"}`}>
@@ -3099,9 +2658,6 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
         </div>
         {mode === "phone" ? (
           <form onSubmit={phoneOtpSent ? verifyPhoneOtp : sendPhoneOtp} className="mt-5 grid gap-3">
-            <p className="rounded bg-blue-50 p-3 text-xs font-bold leading-5 text-blue-800">
-              Mobile OTP is available for quick local access. To save CVs online and view previous downloads, use email account mode.
-            </p>
             <label>
               <span className="form-label">Mobile number</span>
               <input className="form-field" type="tel" value={phoneForm.phone} onChange={(event) => setPhoneForm({ ...phoneForm, phone: event.target.value })} placeholder="+971501234567" required />
@@ -3113,8 +2669,13 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
               </label>
             )}
             <button disabled={loading} className="rounded bg-green-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
-              {loading ? "Please wait..." : phoneOtpSent ? "Verify OTP and continue locally" : "Send mobile OTP"}
+              {loading ? "Please wait..." : phoneOtpSent ? "Verify OTP and continue" : "Send OTP"}
             </button>
+            {phoneForm.mockOtp && (
+              <p className="rounded bg-amber-50 p-3 text-xs font-bold leading-5 text-amber-900">
+                Test mode OTP: {phoneForm.mockOtp}. Add Twilio environment variables in Netlify to send OTP by SMS.
+              </p>
+            )}
           </form>
         ) : (
         <form onSubmit={submit} className="mt-5 grid gap-3">
@@ -3128,33 +2689,15 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
             <span className="form-label">Email address</span>
             <input className="form-field" type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} required />
           </label>
+          <label>
+            <span className="form-label">Password</span>
+            <input className="form-field" type="password" minLength={6} value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} required />
+          </label>
           {isRecaptchaConfigured && <p className="text-xs font-bold text-slate-500">Protected by Google reCAPTCHA.</p>}
           <button disabled={!isSupabaseConfigured || loading} className="rounded bg-green-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
-            {loading ? "Please wait..." : mode === "signin" ? "Send email verification" : "Create account by email"}
+            {loading ? "Please wait..." : mode === "signin" ? "Login" : "Create account"}
           </button>
         </form>
-        )}
-        {lastSignupEmail && mode !== "phone" && (
-          <form onSubmit={verifyEmailOtp} className="mt-3 grid gap-3 rounded border border-blue-100 bg-blue-50 p-3">
-            <p className="text-xs font-bold leading-5 text-blue-900">
-              Open the sign-in link sent to {lastSignupEmail}. If your Supabase email template includes a numeric OTP, enter it here to create/sign in to the account and save this CV online.
-            </p>
-            <label>
-              <span className="form-label">Email OTP code</span>
-              <input
-                className="form-field"
-                inputMode="numeric"
-                maxLength={6}
-                value={emailOtp}
-                onChange={(event) => setEmailOtp(event.target.value)}
-                placeholder="6-digit code"
-                required
-              />
-            </label>
-            <button disabled={loading || !emailOtp.trim()} className="rounded bg-blue-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
-              Verify email and save CV
-            </button>
-          </form>
         )}
         {GOOGLE_AUTH_ENABLED ? (
           <button disabled={!isSupabaseConfigured} onClick={signInWithGoogle} className="mt-3 w-full rounded border border-blue-600 px-5 py-3 font-bold text-blue-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400">
@@ -3167,7 +2710,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
         )}
         {lastSignupEmail && (
           <button disabled={loading} onClick={resendConfirmation} className="mt-3 w-full rounded border border-green-600 px-5 py-3 font-bold text-green-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400">
-            Resend email verification
+            Resend confirmation email
           </button>
         )}
         {message && <p className="mt-4 rounded bg-slate-50 p-3 text-sm font-bold leading-6 text-slate-700">{message}</p>}
@@ -3176,9 +2719,9 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
   );
 }
 
-function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDraft, onLoadDraft, onExportData, onClearLocalDraft, onDeleteAllData, onDeleteAccount, draftStatus }) {
+function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDraft, onLoadDraft, draftStatus }) {
   const [items, setItems] = useState([]);
-  const [message, setMessage] = useState(user ? "Load your saved CVs." : `Login to save generated CVs online. Daily limit: ${MAX_DAILY_GENERATED_CVS}.`);
+  const [message, setMessage] = useState(user ? "Load your saved CVs." : "Login to save and manage up to 5 CVs.");
   const refresh = async () => {
     if (!user) return;
     try {
@@ -3213,25 +2756,9 @@ function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDra
     }
   };
   const remove = async (id) => {
-    if (!window.confirm("Delete this saved CV?")) return;
     try {
       await deleteUserCv(id);
       await refresh();
-    } catch (error) {
-      setMessage(error.message);
-    }
-  };
-  const removeAll = async () => {
-    try {
-      await onDeleteAllData();
-      await refresh();
-    } catch (error) {
-      setMessage(error.message);
-    }
-  };
-  const removeAccount = async () => {
-    try {
-      await onDeleteAccount();
     } catch (error) {
       setMessage(error.message);
     }
@@ -3241,7 +2768,7 @@ function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDra
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="panel-title">My CVs dashboard</h3>
-          <p className="mt-1 text-[11px] font-bold text-slate-500">{items.length} saved version{items.length === 1 ? "" : "s"}. Daily generation limit: {MAX_DAILY_GENERATED_CVS}</p>
+          <p className="mt-1 text-[11px] font-bold text-slate-500">{items.length} saved version{items.length === 1 ? "" : "s"} of 5</p>
         </div>
         <button onClick={saveCurrent} className="rounded bg-green-600 px-3 py-2 text-xs font-black text-white">Save</button>
       </div>
@@ -3251,16 +2778,6 @@ function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDra
         <div className="mt-3 grid grid-cols-2 gap-2">
           <button onClick={onSaveDraft} className="rounded bg-blue-600 px-3 py-2 text-xs font-black text-white">Save draft</button>
           <button onClick={onLoadDraft} className="rounded bg-white px-3 py-2 text-xs font-black text-blue-700 ring-1 ring-blue-200">Restore draft</button>
-        </div>
-      </div>
-      <div className="mt-3 rounded border border-slate-200 bg-white p-3">
-        <p className="text-xs font-black text-slate-950">Privacy and data controls</p>
-        <p className="mt-1 text-xs font-bold leading-5 text-slate-500">CVs can include sensitive personal data. You can export or delete your saved data at any time.</p>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          <button onClick={() => onExportData(items)} className="rounded bg-slate-100 px-3 py-2 text-xs font-black text-slate-700">Export my data</button>
-          <button onClick={onClearLocalDraft} className="rounded bg-slate-100 px-3 py-2 text-xs font-black text-slate-700">Clear local draft</button>
-          <button onClick={removeAll} className="rounded bg-red-50 px-3 py-2 text-xs font-black text-red-700">Delete saved CVs</button>
-          <button onClick={removeAccount} className="rounded bg-red-600 px-3 py-2 text-xs font-black text-white">Delete account</button>
         </div>
       </div>
       <p className="mt-2 text-xs font-bold leading-5 text-slate-500">{message}</p>
@@ -3426,7 +2943,6 @@ const polishCoverLetterText = (text, fieldKey = "") => {
 function CoverLetterForm({ letter, onChange, onRegenerate }) {
   const [aiSuggestions, setAiSuggestions] = useState({});
   const [aiStatus, setAiStatus] = useState("");
-  const [aiInstructions, setAiInstructions] = useState({});
   const fields = [
     ["hiringManager", "Hiring manager name", "text"],
     ["companyName", "Company name", "text"],
@@ -3445,14 +2961,7 @@ function CoverLetterForm({ letter, onChange, onRegenerate }) {
       setAiStatus(`Add text in ${label.toLowerCase()} first, then AI Assistant can check it.`);
       return;
     }
-    const instruction = String(aiInstructions[key] || "").trim();
-    let suggested = polishCoverLetterText(original, key);
-    if (/\b(short|concise|brief)\b/i.test(instruction)) {
-      suggested = suggested.split(/(?<=[.!?])\s+/).slice(0, 2).join(" ");
-    }
-    if (/\b(account|finance|admin|customer|sales|logistics|technical|teaching)\b/i.test(instruction)) {
-      suggested = `${suggested.replace(/\.$/, "")}, with wording focused on the most relevant experience for the target role.`;
-    }
+    const suggested = polishCoverLetterText(original, key);
     setAiSuggestions((current) => ({
       ...current,
       [key]: { original, suggested },
@@ -3509,21 +3018,11 @@ function CoverLetterForm({ letter, onChange, onRegenerate }) {
           </label>
           {type === "textarea" && coverLetterAiFields.has(key) && (
             <div className="mt-2">
-              <label className="block">
-                <span className="form-label">What should AI change or focus on?</span>
-                <textarea
-                  value={aiInstructions[key] || ""}
-                  onChange={(event) => setAiInstructions((current) => ({ ...current, [key]: event.target.value }))}
-                  rows={2}
-                  className="form-field resize-y"
-                  placeholder="Example: Make it shorter, focus on accounting tasks, or make it more confident."
-                />
-              </label>
               <div className="ai-assist-row">
                 <button type="button" onClick={() => reviewWithAi(key, label)} className="btn-ai btn-ai-work">
                   <Icon name="sparkle" className="h-3 w-3" /> AI Assistant
                 </button>
-                <span className="ai-hint">Check grammar and follow your instruction</span>
+                <span className="ai-hint">Check grammar, spelling, and rephrase this more professionally</span>
               </div>
               {aiSuggestions[key] && (
                 <div className="ai-suggestion-card mt-3">
@@ -3630,8 +3129,8 @@ function CoverLetterDownloadModal({ cv, onClose, onVerifiedDownload }) {
       cv={cv}
       onClose={onClose}
       onVerifiedDownload={onVerifiedDownload}
-      title="Download cover letter for free"
-      description="No account or contact details are required. Your cover letter downloads directly to this device."
+      title="Verify to download cover letter"
+      description="Enter your contact details to unlock your free cover letter download. This uses the same mock OTP flow as the CV."
       label="Cover letter downloads"
     />
   );
@@ -3740,7 +3239,7 @@ function getBuilderStepState(cv) {
   return {
     personal: Boolean(cv.fullName && cv.email && cv.phone && cv.country),
     experience: normalizeWorkExperiences(cv).some((entry) => entry.employer && entry.responsibilities),
-    education: normalizeEducationEntries(cv).some((entry) => entry.qualification || entry.school),
+    education: Boolean(cv.education),
     skills: Boolean(cv.skills && cv.languages),
     summary: Boolean(cv.summary && cv.summary.length > 40),
   };
@@ -4104,15 +3603,6 @@ function CVBuilderApp({ onHome }) {
     }
     setDownloadTarget("cv");
   };
-  const dismissSharePrompt = () => {
-    sessionStorage.setItem("bmcv_share_prompt_seen", "1");
-    setShowSharePrompt(false);
-  };
-  useEffect(() => {
-    if (window.location.hash !== "#signin") return;
-    setAuthOpen(true);
-    window.history.replaceState(null, "", "/builder");
-  }, []);
   const handleNextStep = (section) => {
     logEvent("nextstep_clicked", { step: section });
     if (section === "download") requestCvDownload();
@@ -4264,7 +3754,7 @@ function CVBuilderApp({ onHome }) {
     if (!noCloudMode || downloaded || coverDownloaded) return;
     const warnBeforeLeave = (event) => {
       event.preventDefault();
-      event.returnValue = "Your CV will not be saved online. Download your file before refreshing or closing the browser.";
+      event.returnValue = "Your CV will not be saved online. Download your file before closing the browser.";
     };
     window.addEventListener("beforeunload", warnBeforeLeave);
     return () => window.removeEventListener("beforeunload", warnBeforeLeave);
@@ -4326,12 +3816,6 @@ function CVBuilderApp({ onHome }) {
       return;
     }
     loadTemplateSampleData(id);
-  };
-  const loadCurrentSampleData = () => {
-    setCv(sampleCv);
-    setCoverLetter(createCoverLetterFromCv(sampleCv, defaultCategory.id));
-    setCategoryId(defaultCategory.id);
-    trackEvent("load_sample_cv");
   };
   const updateCvField = (key, value) => {
     if (key === "tipsEnabled") localStorage.setItem("bmcv_tips_enabled", String(Boolean(value)));
@@ -4403,41 +3887,23 @@ function CVBuilderApp({ onHome }) {
       setCoverLetter(localDraft);
     }
   };
-  const saveGeneratedCvOnline = async () => {
-    if (!user?.id || !cloudSavingEnabled) return null;
-    const saved = await saveCvForUser({ userId: user.id, cv, categoryId, themeId, layoutId });
-    setDraftStatus(`Generated CV saved online. ${MAX_DAILY_GENERATED_CVS} CV daily limit applies.`);
-    return saved;
-  };
   const handleDownload = async (type) => {
-    const emailGeneratedCv = async (format) => {
-      if (!user?.email || !session?.access_token) {
+    if (type === "email") {
+      const toEmail = user?.email || session?.user?.email || cv.email;
+      if (!user?.email && !session?.user?.email) {
         throw new Error("Please sign in with email first to receive a CV copy by email.");
       }
       const response = await fetch("/.netlify/functions/emailCv", {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${session.access_token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ cv, theme, layoutId, format }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: toEmail, cv }),
       });
-      const result = await response.json().catch(() => ({}));
+      const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.message || "Could not email your CV.");
-      logEvent("cv_email_requested", { templateId: categoryId, forwarded: result.forwarded, format });
+      logEvent("cv_email_requested", { templateId: categoryId, forwarded: result.forwarded });
       return result;
-    };
-    if (type === "email") {
-      await saveGeneratedCvOnline();
-      return emailGeneratedCv("pdf");
-    }
-    if (cloudSavingEnabled) {
-      await saveGeneratedCvOnline();
     }
     await downloadCvFile(cv, type, theme, layoutId);
-    if (user?.email && session?.access_token) {
-      emailGeneratedCv(type).catch((error) => setDraftStatus(error.message || "CV downloaded, but email copy could not be sent."));
-    }
     logEvent("cv_downloaded", { format: type, templateId: categoryId, completionPercent: completion.percent });
     setDownloaded(true);
     if (showSharePrompt) sessionStorage.setItem("bmcv_share_prompt_seen", "1");
@@ -4458,70 +3924,12 @@ function CVBuilderApp({ onHome }) {
     setUserMode("guest");
     trackEvent("logout");
   };
-  const exportUserData = (items = []) => {
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      accountEmail: user?.email || "",
-      currentDraft: draftPayload(),
-      savedCvs: items,
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "buildmycvnow-data-export.json";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-    trackEvent("export_account_data");
-  };
-  const clearLocalDraft = () => {
-    if (!window.confirm("Clear the draft saved in this browser? This will not delete cloud CVs.")) return;
-    localStorage.removeItem(DRAFT_STORAGE_KEY);
-    setSaveStatus("Local draft cleared");
-    trackEvent("clear_local_draft");
-  };
-  const deleteAllAccountData = async () => {
-    if (!user?.id || !window.confirm("Delete all saved CVs and cloud drafts for this account? This cannot be undone.")) return;
-    await deleteAllUserCvs(user.id);
-    await deleteAllUserDrafts(user.id);
-    setDraftStatus("Saved CVs and cloud drafts deleted.");
-    trackEvent("delete_account_cv_data");
-  };
-  const deleteAccount = async () => {
-    if (!window.confirm("Permanently delete your account and saved CV data? This cannot be undone.")) return;
-    await deleteSignedInAccount();
-    setUserMode("guest");
-    setSession(null);
-    localStorage.removeItem("cvforall:user-mode");
-    setDraftStatus("Account deleted.");
-    trackEvent("delete_account");
-  };
   const startUrgentMode = (method) => {
     setUserMode(method === "phone" ? "urgent-phone" : "urgent-local");
     setAuthOpen(false);
   };
-  const startRegisteredMode = async (verifiedSession = null, options = {}) => {
+  const startRegisteredMode = () => {
     setUserMode("registered");
-    const activeSession = verifiedSession || session || (await supabase?.auth.getSession().then(({ data }) => data.session).catch(() => null));
-    if (activeSession) setSession(activeSession);
-    if (!options.saveCurrentCv) return { saved: false, message: "Account mode is active." };
-    const userId = activeSession?.user?.id;
-    if (!userId) {
-      setDraftStatus("Account verified, but the CV was not saved yet. Please use Save in My CVs.");
-      return { saved: false, message: "Account verified. Please use Save in My CVs to store this CV online." };
-    }
-    try {
-      await saveCvForUser({ userId, cv, categoryId, themeId, layoutId });
-      setDraftStatus(`Account verified. This CV is saved online and visible in My CVs. Daily limit: ${MAX_DAILY_GENERATED_CVS}.`);
-      trackEvent("save_cv_after_email_otp");
-      return { saved: true, message: "Email verified. Your account is ready and this CV is saved online." };
-    } catch (error) {
-      const message = error.message || "Account verified, but this CV could not be saved online.";
-      setDraftStatus(message);
-      return { saved: false, message };
-    }
   };
   return (
     <main className="builder-app-shell">
@@ -4556,7 +3964,7 @@ function CVBuilderApp({ onHome }) {
       {noCloudMode && (
         <section className="border-b border-amber-200 bg-amber-50 px-5 py-3">
           <div className="mx-auto max-w-7xl text-sm font-bold leading-6 text-amber-950">
-            Your CV will not be saved online. Download your file before refreshing this page, closing the browser, or clearing site data.
+            Your CV will not be saved online. Download your file before closing the browser.
           </div>
         </section>
       )}
@@ -4574,19 +3982,7 @@ function CVBuilderApp({ onHome }) {
           />
           <section className="builder-form-panel-v2">
             <div className="builder-form-inner">
-              <section className="rounded border border-slate-200 bg-white p-4 text-xs font-bold leading-5 text-slate-600">
-                Upload/import privacy note: CV files can contain sensitive personal data. In download-only mode, imported text stays in this browser unless you choose to sign in and save online.
-              </section>
               <ExistingCVImporter onImport={handleImport} />
-              {!hasUserEnteredCvData(cv) && (
-                <section className="rounded border border-blue-100 bg-blue-50 p-4">
-                  <h3 className="panel-title text-blue-950">Start from scratch or load a sample</h3>
-                  <p className="mt-2 text-xs font-bold leading-5 text-blue-800">The builder starts blank so you never accidentally download sample information.</p>
-                  <button type="button" onClick={loadCurrentSampleData} className="mt-3 rounded bg-blue-600 px-4 py-3 text-sm font-black text-white hover:bg-blue-700">
-                    Load sample CV
-                  </button>
-                </section>
-              )}
               <ProfilePhotoUploader cv={cv} onChange={handleProfilePhotoChange} />
               {storageMessage && cloudSavingEnabled && <p className="rounded bg-slate-50 p-3 text-xs font-bold leading-5 text-slate-600">{storageMessage}</p>}
               <CVBuilderForm cv={cv} onChange={updateCvField} />
@@ -4615,23 +4011,31 @@ function CVBuilderApp({ onHome }) {
                         onLoad={loadSavedCv}
                         onSaveDraft={() => saveCloudDraft()}
                         onLoadDraft={restoreCloudDraft}
-                        onExportData={exportUserData}
-                        onClearLocalDraft={clearLocalDraft}
-                        onDeleteAllData={deleteAllAccountData}
-                        onDeleteAccount={deleteAccount}
                         draftStatus={draftStatus}
                       />
                     ) : (
                       <section className="rounded border border-amber-200 bg-amber-50 p-4">
                         <h3 className="panel-title text-amber-950">Download-only mode</h3>
                         <p className="mt-2 text-xs font-bold leading-5 text-amber-900">
-                          Cloud saving is off. Your CV stays in this browser only and will not be saved to Supabase. Download it before refreshing or closing the browser.
+                          Cloud saving is off. Your CV stays in this browser only and will not be saved to Supabase.
                         </p>
                         <button onClick={() => setAuthOpen(true)} className="mt-3 w-full rounded border border-amber-300 bg-white px-4 py-3 text-sm font-black text-amber-900 hover:bg-amber-100">
                           Sign in to save online
                         </button>
                       </section>
                     )}
+                    <label className="mt-4 flex items-start gap-3 rounded border border-slate-200 bg-white p-4">
+                      <input
+                        type="checkbox"
+                        checked={cv.showCredit !== false}
+                        onChange={(event) => updateCvField("showCredit", event.target.checked)}
+                        className="mt-1 h-4 w-4"
+                      />
+                      <span>
+                        <span className="block text-sm font-black text-slate-950">Show "created with" credit on my CV</span>
+                        <span className="mt-1 block text-xs font-bold leading-5 text-slate-500">Default on, freely removable. This keeps the free tool easy to share without adding a watermark.</span>
+                      </span>
+                    </label>
                   </div>
                 </div>
               </section>
@@ -4688,15 +4092,7 @@ function CVBuilderApp({ onHome }) {
           <div className="download-success-stack">
             <div className="rounded border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-900 shadow-lg">Download confirmed. Your CV file is ready.</div>
             {showSharePrompt && (
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={dismissSharePrompt}
-                  className="absolute right-3 top-3 z-10 rounded-full border border-slate-200 bg-white px-2 py-1 text-xs font-black text-slate-600 shadow-sm hover:bg-slate-50"
-                  aria-label="Close job hunting popup"
-                >
-                  x
-                </button>
+              <div>
                 <ShareTool moment="post_download" />
                 <EmailCapture source="download" roleInterest={cv.jobTitle} />
               </div>
@@ -4743,10 +4139,6 @@ function CVBuilderApp({ onHome }) {
           cv={cv}
           onClose={() => setDownloadTarget(null)}
           onVerifiedDownload={handleDownload}
-          onSignIn={() => {
-            setDownloadTarget(null);
-            setAuthOpen(true);
-          }}
           canEmailCopy={Boolean(user?.email || session?.user?.email)}
           emailCopyAddress={user?.email || session?.user?.email || ""}
         />
@@ -4780,7 +4172,6 @@ export default function App() {
   const location = useLocation();
   const isBuilderHash = ["#builder", "#cover-letter"].includes(location.hash);
   const goToBuilder = () => navigate("/builder");
-  const goToSignIn = () => navigate("/builder#signin");
   const goHome = () => navigate("/");
 
   useEffect(() => {
@@ -4820,7 +4211,7 @@ export default function App() {
           path="/"
           element={
             <>
-              <Header onStart={goToBuilder} onSignIn={goToSignIn} />
+              <Header onStart={goToBuilder} />
               <LandingPage onStart={goToBuilder} />
             </>
           }
