@@ -896,7 +896,7 @@ function PolicySections() {
     <section className="mx-auto grid max-w-7xl gap-6 px-5 py-14 lg:grid-cols-2">
       <PolicyCard id="privacy" title="Privacy Policy">
         <p>BuildMyCVNow has two modes. In download-only mode, users can create a free CV without an account and verify by email OTP before downloading. In account mode, users can sign in and save CV versions online for a limited time.</p>
-        <p>Download-only CV content stays in the browser and is not intentionally saved to Supabase. OTP contact details may be processed by EmailJS only to send or verify the download code.</p>
+        <p>Download-only CV content stays in the browser and is not intentionally saved to Supabase. The email address entered for OTP may be processed by EmailJS only to send or verify the download code.</p>
         <p>Registered users can save up to 10 CVs online. Saved CVs are stored with Supabase under the user account for up to 15 days, then are designed to expire so users are encouraged to download their own records.</p>
         <p>Google Analytics, reCAPTCHA, and AdSense may use cookies or similar technologies when enabled. Ads are intended to support the free service without interfering with CV creation.</p>
       </PolicyCard>
@@ -999,6 +999,7 @@ function PrivacyPage({ onStart }) {
       <StaticHero title="Privacy Policy" description="This policy explains what BuildMyCVNow may collect and how user CV data should be handled." />
       <section className="mx-auto max-w-4xl px-5 py-14">
         <PolicyCard title="Privacy Policy">
+          <p><strong>Last updated:</strong> June 13, 2026.</p>
           <p>BuildMyCVNow may collect the information needed to create, verify, save, and download CVs, including name, email address, phone number, country, nationality, visa status, job history, education, skills, uploaded CV text, profile photos, saved drafts, saved CV versions, and download verification details.</p>
           <p><strong>Download-only mode:</strong> Users can create and download a CV without creating an account. The CV data stays in browser state or localStorage and is not intentionally saved to Supabase. Before download, the user may verify by email OTP. The email address entered for OTP may be processed by EmailJS only to send or verify the code. Users should download their file before closing the browser because no online copy is kept in this mode.</p>
           <p><strong>Registered account mode:</strong> Users can sign up or sign in with email/password, passwordless email OTP, or another enabled Supabase Auth provider. Registered users can save and manage up to 10 CVs online. Saved CVs, drafts, and related profile photo data may be stored with Supabase Auth, Supabase Database, and Supabase Storage under the authenticated account.</p>
@@ -1023,6 +1024,7 @@ function TermsPage({ onStart }) {
       <StaticHero title="Terms of Use" description="Please use BuildMyCVNow honestly and review your CV carefully before sending it to employers." />
       <section className="mx-auto max-w-4xl px-5 py-14">
         <PolicyCard title="Terms of Use">
+          <p><strong>Last updated:</strong> June 13, 2026.</p>
           <p><strong>Free download-only use:</strong> Users may create and download a CV for free without creating an account. Before downloading, users must complete email OTP verification when requested. Download-only mode does not save CVs online, so users must download their file before closing the browser.</p>
           <p><strong>Registered account use:</strong> Users may create a free account to save and manage CVs online. Each account may save up to 10 CVs. Saved CVs are kept for up to 15 days and may be automatically deleted after that period. Users are responsible for downloading their own files before expiry.</p>
           <p><strong>User responsibility:</strong> Users are responsible for the accuracy, honesty, and completeness of the information they enter into BuildMyCVNow. Do not include false work history, certificates, education, licenses, salaries, visa status, references, or employer details.</p>
