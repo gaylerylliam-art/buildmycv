@@ -2291,6 +2291,11 @@ function LayoutSelector({ selected, onSelect }) {
 
 function LiveCVPreview({ cv, theme, layout }) {
   const lines = (value) => String(value || "").split("\n").filter(Boolean);
+  const chunks = (items, size) => {
+    const result = [];
+    for (let index = 0; index < items.length; index += size) result.push(items.slice(index, index + size));
+    return result.length ? result : [[]];
+  };
   const contactLines = [
     cv.email,
     cv.phone,
@@ -2338,89 +2343,128 @@ function LiveCVPreview({ cv, theme, layout }) {
     );
   };
   const workEntries = normalizeWorkExperiences(cv);
-  const workExperienceSection = (
+  const renderWorkEntry = (block) => (
     <section className="break-inside-avoid">
-      <h3 className="cv-section-title" style={{ color: theme.dark, borderColor: theme.color }}>Work Experience</h3>
-      <div className="mt-3 space-y-4">
-        {workEntries.map((entry) => (
-          <article key={entry.id} className="text-[12px] leading-5 text-slate-700">
-            <div className="flex flex-col justify-between gap-1 sm:flex-row">
-              <div>
-                <p className="font-black text-slate-900">{entry.jobTitle || "Job title"}</p>
-                <p className="font-bold text-slate-700">{entry.employer || "Employer name"}</p>
-                {entry.companyLocation && <p className="font-semibold text-slate-500">{entry.companyLocation}</p>}
-              </div>
-              <p className="font-bold text-slate-500">{[entry.fromDate, entry.isCurrent ? "Present" : entry.toDate].filter(Boolean).join(" - ")}</p>
-            </div>
-            {entry.responsibilities && (
-              <ul className="mt-2 list-disc space-y-1 pl-5">
-                {lines(entry.responsibilities).map((line) => <li key={line}>{line}</li>)}
-              </ul>
-            )}
-          </article>
-        ))}
-      </div>
+      {block.showTitle && <h3 className="cv-section-title" style={{ color: theme.dark, borderColor: theme.color }}>{block.title}</h3>}
+      <article className="mt-3 text-[12px] leading-5 text-slate-700">
+        <div className="flex flex-col justify-between gap-1 sm:flex-row">
+          <div>
+            <p className="font-black text-slate-900">{block.entry.jobTitle || "Job title"}</p>
+            <p className="font-bold text-slate-700">{block.entry.employer || "Employer name"}</p>
+            {block.entry.companyLocation && <p className="font-semibold text-slate-500">{block.entry.companyLocation}</p>}
+          </div>
+          <p className="font-bold text-slate-500">{[block.entry.fromDate, block.entry.isCurrent ? "Present" : block.entry.toDate].filter(Boolean).join(" - ")}</p>
+        </div>
+        {block.responsibilities && (
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            {lines(block.responsibilities).map((line) => <li key={line}>{line}</li>)}
+          </ul>
+        )}
+      </article>
     </section>
   );
-  const sectionRenderers = {
-    summary: () => section("Professional Summary", cv.summary),
-    experience: () => workExperienceSection,
-    education: () => section("Education", cv.education),
-    skills: () => section("Skills", cv.skills),
-    certifications: () => section("Certifications", cv.certifications),
-    languages: () => section("Languages", cv.languages),
-    references: () => referencesBlock(),
+  const blockWeight = (content, base = 1.4) => base + Math.ceil(lines(content).join(" ").length / 220);
+  const workBlocks = workEntries.flatMap((entry, entryIndex) => {
+    const responsibilityChunks = chunks(lines(entry.responsibilities), layout === "compact" ? 7 : 6);
+    return responsibilityChunks.map((chunk, chunkIndex) => ({
+      id: `work-${entry.id}-${chunkIndex}`,
+      type: "work",
+      entry,
+      responsibilities: chunk.join("\n"),
+      showTitle: entryIndex === 0 && chunkIndex === 0,
+      title: entryIndex === 0 && chunkIndex === 0 ? "Work Experience" : "Work Experience continued",
+      weight: 2.1 + Math.max(1, chunk.length * 0.75),
+    }));
+  });
+  const sectionBlocks = {
+    summary: () => ({ id: "summary", type: "section", title: "Professional Summary", content: cv.summary, weight: blockWeight(cv.summary, 1.5) }),
+    experience: () => workBlocks,
+    education: () => ({ id: "education", type: "section", title: "Education", content: cv.education, weight: blockWeight(cv.education, 1.3) }),
+    skills: () => ({ id: "skills", type: "section", title: "Skills", content: cv.skills, weight: blockWeight(cv.skills, 1.2) }),
+    certifications: () => ({ id: "certifications", type: "section", title: "Certifications", content: cv.certifications, weight: blockWeight(cv.certifications, 1.2) }),
+    languages: () => ({ id: "languages", type: "section", title: "Languages", content: cv.languages, weight: blockWeight(cv.languages, 0.9) }),
+    references: () => ({ id: "references", type: "custom", render: referencesBlock, weight: 1.4 }),
   };
-  const content = (
+  const previewBlocks = [
+    ...(personalDetails.length > 0 ? [{ id: "personal-details", type: "section", title: "Personal Details", content: personalDetails.join("\n"), weight: blockWeight(personalDetails.join("\n"), 1.1) }] : []),
+    ...visibleSectionOrder(cv).flatMap((id) => {
+      const value = sectionBlocks[id]?.();
+      return Array.isArray(value) ? value : value ? [value] : [];
+    }),
+  ];
+  const pageLimit = layout === "compact" ? 11.5 : layout === "sidebar" ? 12.25 : 10.75;
+  const pages = previewBlocks.reduce((acc, block) => {
+    const current = acc[acc.length - 1];
+    const currentWeight = current.reduce((sum, item) => sum + item.weight, 0);
+    if (current.length && currentWeight + block.weight > pageLimit) acc.push([block]);
+    else current.push(block);
+    return acc;
+  }, [[]]).filter(Boolean);
+  const renderBlock = (block) => {
+    if (block.type === "work") return renderWorkEntry(block);
+    if (block.type === "custom") return block.render();
+    return section(block.title, block.content);
+  };
+  const renderPageContent = (pageBlocks) => (
     <div className={layout === "compact" ? "space-y-3" : "space-y-5"}>
-      {personalDetails.length > 0 && section("Personal Details", personalDetails.join("\n"))}
-      {visibleSectionOrder(cv).map((id) => <React.Fragment key={id}>{sectionRenderers[id]?.()}</React.Fragment>)}
+      {pageBlocks.map((block) => <React.Fragment key={block.id}>{renderBlock(block)}</React.Fragment>)}
     </div>
   );
-  if (layout === "sidebar") {
-    return (
-      <article className="cv-paper grid grid-cols-[0.38fr_0.62fr] overflow-hidden p-0">
-        <aside className="cv-sidebar text-white" style={{ background: theme.dark }}>
-          <div className="sidebar-header">
-            <div className="photo-container">
-              {cv.profilePhoto ? (
-                <img src={cv.profilePhoto} alt={`${cv.fullName} profile`} className={`profile-photo ${cv.photoShape === "circle" || cv.photoShape === "round" ? "round" : cv.photoShape === "rounded" ? "rounded" : "square"}`} />
-              ) : (
-                <div className={`profile-photo placeholder ${cv.photoShape === "circle" || cv.photoShape === "round" ? "round" : cv.photoShape === "rounded" ? "rounded" : "square"}`}>{initials(cv.fullName)}</div>
-              )}
-            </div>
-            <div className="name-block">
-              <h2 className="text-xl font-black leading-tight">{cv.fullName}</h2>
-              <p className="mt-1 text-sm font-bold text-white/85">{cv.jobTitle}</p>
-            </div>
-          </div>
-          <div className="sidebar-contact mt-7 space-y-3 text-[11px] leading-5 text-white/85">
-            {contactLines.map((line) => <p key={line}>{line}</p>)}
-          </div>
-          {cv.qrCode?.position === "sidebar" && (
-            <div className="mt-7 flex justify-center">
-              <QrBlock qrCode={cv.qrCode} color="#ffffff" size={80} />
-            </div>
+  const renderSidebar = (pageIndex) => (
+    <aside className="cv-sidebar text-white" style={{ background: theme.dark }}>
+      <div className="sidebar-header">
+        <div className="photo-container">
+          {cv.profilePhoto ? (
+            <img src={cv.profilePhoto} alt={`${cv.fullName} profile`} className={`profile-photo ${cv.photoShape === "circle" || cv.photoShape === "round" ? "round" : cv.photoShape === "rounded" ? "rounded" : "square"}`} />
+          ) : (
+            <div className={`profile-photo placeholder ${cv.photoShape === "circle" || cv.photoShape === "round" ? "round" : cv.photoShape === "rounded" ? "rounded" : "square"}`}>{initials(cv.fullName)}</div>
           )}
-        </aside>
-        <div className="p-7">{content}</div>
-      </article>
-    );
-  }
-  return (
-    <article className={`cv-paper ${layout === "compact" ? "p-6" : "p-8"}`}>
-      <header className={`relative flex items-center gap-4 ${layout === "header" ? "rounded p-5 pr-24 text-white" : "border-b border-slate-200 pb-5 pr-24"}`} style={layout === "header" ? { background: theme.dark } : {}}>
-        {photo("h-20 w-20")}
-        <div>
-          <h2 className="text-2xl font-black leading-tight">{cv.fullName}</h2>
-          <p className={`mt-1 text-sm font-bold ${layout === "header" ? "text-white/90" : "text-blue-700"}`} style={layout === "header" ? {} : { color: theme.color }}>{cv.jobTitle}</p>
-          <p className={`mt-3 text-[11px] ${layout === "header" ? "text-white/80" : "text-slate-500"}`}>{contactLines.join(" | ")}</p>
         </div>
-        {cv.qrCode?.position === "header" && <div className="absolute right-4 top-4"><QrBlock qrCode={cv.qrCode} color={layout === "header" ? "#ffffff" : "#1E293B"} /></div>}
-      </header>
-      <div className="mt-6">{content}</div>
-      {cv.qrCode?.position === "footer" && <div className="mt-6 flex justify-center"><QrBlock qrCode={cv.qrCode} color="#1E293B" /></div>}
-    </article>
+        <div className="name-block">
+          <h2 className="text-xl font-black leading-tight">{cv.fullName}</h2>
+          <p className="mt-1 text-sm font-bold text-white/85">{cv.jobTitle}</p>
+        </div>
+      </div>
+      <div className="sidebar-contact mt-7 space-y-3 text-[11px] leading-5 text-white/85">
+        {contactLines.map((line) => <p key={line}>{line}</p>)}
+      </div>
+      {cv.qrCode?.position === "sidebar" && pageIndex === 0 && (
+        <div className="mt-7 flex justify-center">
+          <QrBlock qrCode={cv.qrCode} color="#ffffff" size={80} />
+        </div>
+      )}
+    </aside>
+  );
+  const renderHeader = () => (
+    <header className={`relative flex items-center gap-4 ${layout === "header" ? "rounded p-5 pr-24 text-white" : "border-b border-slate-200 pb-5 pr-24"}`} style={layout === "header" ? { background: theme.dark } : {}}>
+      {photo("h-20 w-20")}
+      <div>
+        <h2 className="text-2xl font-black leading-tight">{cv.fullName}</h2>
+        <p className={`mt-1 text-sm font-bold ${layout === "header" ? "text-white/90" : "text-blue-700"}`} style={layout === "header" ? {} : { color: theme.color }}>{cv.jobTitle}</p>
+        <p className={`mt-3 text-[11px] ${layout === "header" ? "text-white/80" : "text-slate-500"}`}>{contactLines.join(" | ")}</p>
+      </div>
+      {cv.qrCode?.position === "header" && <div className="absolute right-4 top-4"><QrBlock qrCode={cv.qrCode} color={layout === "header" ? "#ffffff" : "#1E293B"} /></div>}
+    </header>
+  );
+  return (
+    <div className="cv-page-stack" aria-label={`${pages.length} page CV preview`}>
+      {pages.map((pageBlocks, pageIndex) => layout === "sidebar" ? (
+        <article key={pageIndex} className="cv-paper cv-paper-page grid grid-cols-[0.38fr_0.62fr] overflow-hidden p-0">
+          {renderSidebar(pageIndex)}
+          <div className="p-7">
+            {renderPageContent(pageBlocks)}
+            <p className="cv-page-number">Page {pageIndex + 1} of {pages.length}</p>
+          </div>
+        </article>
+      ) : (
+        <article key={pageIndex} className={`cv-paper cv-paper-page ${layout === "compact" ? "p-6" : "p-8"}`}>
+          {renderHeader()}
+          <div className="mt-6">{renderPageContent(pageBlocks)}</div>
+          {cv.qrCode?.position === "footer" && pageIndex === pages.length - 1 && <div className="mt-6 flex justify-center"><QrBlock qrCode={cv.qrCode} color="#1E293B" /></div>}
+          <p className="cv-page-number">Page {pageIndex + 1} of {pages.length}</p>
+        </article>
+      ))}
+    </div>
   );
 }
 
@@ -3503,8 +3547,10 @@ function BuilderSidebar({ currentStep, onStep, completedSteps, categoryId, onCat
 
 function BuilderPreviewPanel({ cv, theme, layout, onDownload }) {
   const [message, setMessage] = useState("");
+  const [previewZoom, setPreviewZoom] = useState(56);
   const completeness = getCompleteness(cv);
   const shareUrl = "https://buildmycvnow.com/builder";
+  const changeZoom = (delta) => setPreviewZoom((value) => Math.min(100, Math.max(42, value + delta)));
   const copyShare = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
@@ -3529,9 +3575,18 @@ function BuilderPreviewPanel({ cv, theme, layout, onDownload }) {
         <div className="preview-strength-track">
           <div className="preview-strength-fill" style={{ width: `${completeness.score}%`, background: theme.color }} />
         </div>
+        <div className="preview-zoom-row" aria-label="Preview zoom controls">
+          <span>A4 preview</span>
+          <div className="preview-zoom-controls">
+            <button type="button" onClick={() => changeZoom(-6)} aria-label="Zoom out">-</button>
+            <strong>{previewZoom}%</strong>
+            <button type="button" onClick={() => changeZoom(6)} aria-label="Zoom in">+</button>
+            <button type="button" onClick={() => setPreviewZoom(56)}>Fit</button>
+          </div>
+        </div>
         {message && <p className="mt-2 text-xs font-bold text-blue-700">{message}</p>}
       </div>
-      <div className="preview-sheet-scroll">
+      <div className="preview-sheet-scroll" style={{ "--preview-zoom": previewZoom / 100 }}>
         <LiveCVPreview cv={cv} theme={theme} layout={layout} />
         <button type="button" onClick={onDownload} className="mt-4 flex w-full items-center justify-center gap-2 rounded bg-green-600 px-4 py-3 text-sm font-black text-white hover:bg-green-700">
           <Icon name="download" className="h-4 w-4" /> Download CV
