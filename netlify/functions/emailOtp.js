@@ -83,7 +83,7 @@ export const handler = async (event) => {
         ok: false,
         emailSent: false,
         providerCode: error.providerCode,
-        message: error.message || "Could not send email OTP. Please try SMS OTP or contact support.",
+        message: error.message || "Could not send email OTP. Please try again or contact support.",
       });
     }
   }

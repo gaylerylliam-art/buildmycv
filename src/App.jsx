@@ -895,8 +895,8 @@ function PolicySections() {
   return (
     <section className="mx-auto grid max-w-7xl gap-6 px-5 py-14 lg:grid-cols-2">
       <PolicyCard id="privacy" title="Privacy Policy">
-        <p>BuildMyCVNow has two modes. In download-only mode, users can create a free CV without an account and verify by email OTP or SMS OTP before downloading. In account mode, users can sign in and save CV versions online for a limited time.</p>
-        <p>Download-only CV content stays in the browser and is not intentionally saved to Supabase. OTP contact details may be processed by EmailJS or Twilio only to send or verify the download code.</p>
+        <p>BuildMyCVNow has two modes. In download-only mode, users can create a free CV without an account and verify by email OTP before downloading. In account mode, users can sign in and save CV versions online for a limited time.</p>
+        <p>Download-only CV content stays in the browser and is not intentionally saved to Supabase. OTP contact details may be processed by EmailJS only to send or verify the download code.</p>
         <p>Registered users can save up to 10 CVs online. Saved CVs are stored with Supabase under the user account for up to 15 days, then are designed to expire so users are encouraged to download their own records.</p>
         <p>Google Analytics, reCAPTCHA, and AdSense may use cookies or similar technologies when enabled. Ads are intended to support the free service without interfering with CV creation.</p>
       </PolicyCard>
@@ -1000,10 +1000,10 @@ function PrivacyPage({ onStart }) {
       <section className="mx-auto max-w-4xl px-5 py-14">
         <PolicyCard title="Privacy Policy">
           <p>BuildMyCVNow may collect the information needed to create, verify, save, and download CVs, including name, email address, phone number, country, nationality, visa status, job history, education, skills, uploaded CV text, profile photos, saved drafts, saved CV versions, and download verification details.</p>
-          <p><strong>Download-only mode:</strong> Users can create and download a CV without creating an account. The CV data stays in browser state or localStorage and is not intentionally saved to Supabase. Before download, the user may verify by email OTP or SMS OTP. The email address or phone number entered for OTP may be processed by EmailJS or Twilio only to send or verify the code. Users should download their file before closing the browser because no online copy is kept in this mode.</p>
+          <p><strong>Download-only mode:</strong> Users can create and download a CV without creating an account. The CV data stays in browser state or localStorage and is not intentionally saved to Supabase. Before download, the user may verify by email OTP. The email address entered for OTP may be processed by EmailJS only to send or verify the code. Users should download their file before closing the browser because no online copy is kept in this mode.</p>
           <p><strong>Registered account mode:</strong> Users can sign up or sign in with email/password, passwordless email OTP, or another enabled Supabase Auth provider. Registered users can save and manage up to 10 CVs online. Saved CVs, drafts, and related profile photo data may be stored with Supabase Auth, Supabase Database, and Supabase Storage under the authenticated account.</p>
           <p><strong>Retention:</strong> Online saved CVs are stored for up to 15 days. After that period, saved CV records are designed to expire and may be automatically deleted. Users are responsible for downloading and keeping their own copies before the storage period ends. Browser-local drafts may also be lost if the user clears browser storage, changes device, or uses private browsing.</p>
-          <p><strong>Service providers:</strong> BuildMyCVNow may use Supabase for authentication, database, and storage; EmailJS for email messages and email OTP; Twilio for SMS OTP; OpenAI or similar AI services for optional writing assistance and CV parsing; Google Analytics for traffic measurement; Google reCAPTCHA for spam protection; and Google AdSense for advertising. These providers may process limited data needed to deliver their service.</p>
+          <p><strong>Service providers:</strong> BuildMyCVNow may use Supabase for authentication, database, and storage; EmailJS for email messages and email OTP; OpenAI or similar AI services for optional writing assistance and CV parsing; Google Analytics for traffic measurement; Google reCAPTCHA for spam protection; and Google AdSense for advertising. These providers may process limited data needed to deliver their service.</p>
           <p><strong>Advertising and cookies:</strong> Ad areas support the free service. When Google AdSense, Google Analytics, or reCAPTCHA are enabled, Google and its partners may use cookies or similar technologies to measure traffic, protect forms, serve ads, and personalize ads where allowed by law and user settings.</p>
           <p><strong>User rights:</strong> Users can request access, correction, export, or deletion of stored personal data by using the Contact page. Users should avoid uploading or entering unnecessary sensitive information, passport numbers, national ID numbers, medical details, or private family information unless they intentionally choose to include it in their CV.</p>
           <p><strong>Security:</strong> BuildMyCVNow uses account-based access controls and Supabase Row Level Security for saved CV records. No online service can guarantee perfect security, so users should keep their login details private and download their own records for safekeeping.</p>
@@ -1023,14 +1023,14 @@ function TermsPage({ onStart }) {
       <StaticHero title="Terms of Use" description="Please use BuildMyCVNow honestly and review your CV carefully before sending it to employers." />
       <section className="mx-auto max-w-4xl px-5 py-14">
         <PolicyCard title="Terms of Use">
-          <p><strong>Free download-only use:</strong> Users may create and download a CV for free without creating an account. Before downloading, users must complete OTP verification by email or SMS when requested. Download-only mode does not save CVs online, so users must download their file before closing the browser.</p>
+          <p><strong>Free download-only use:</strong> Users may create and download a CV for free without creating an account. Before downloading, users must complete email OTP verification when requested. Download-only mode does not save CVs online, so users must download their file before closing the browser.</p>
           <p><strong>Registered account use:</strong> Users may create a free account to save and manage CVs online. Each account may save up to 10 CVs. Saved CVs are kept for up to 15 days and may be automatically deleted after that period. Users are responsible for downloading their own files before expiry.</p>
           <p><strong>User responsibility:</strong> Users are responsible for the accuracy, honesty, and completeness of the information they enter into BuildMyCVNow. Do not include false work history, certificates, education, licenses, salaries, visa status, references, or employer details.</p>
           <p><strong>CV ownership:</strong> Users own the CV content they create. BuildMyCVNow provides templates, formatting tools, download tools, AI assistance, and general guidance, but the user's personal information and work history remain their responsibility.</p>
           <p><strong>AI and imported CVs:</strong> AI-assisted parsing, grammar checks, rephrasing, and suggested wording may contain mistakes. Users must review, approve, edit, or reject suggestions before using them in a CV or cover letter.</p>
           <p><strong>No employment guarantee:</strong> BuildMyCVNow does not guarantee interviews, job offers, visa approval, agency acceptance, employer selection, salary offers, or background-check results. The app is a CV creation and career guidance tool only.</p>
           <p><strong>Acceptable use:</strong> Users must not misuse forms, abuse OTP requests, upload harmful files, attempt to access another user's records, interfere with the service, scrape data, or use the service for spam, fraud, scams, impersonation, or misleading job applications.</p>
-          <p><strong>Service availability:</strong> BuildMyCVNow may change templates, limits, storage periods, provider integrations, or features to keep the service free, secure, and reliable. Third-party services such as Supabase, EmailJS, Twilio, Google, and AI providers may also affect availability.</p>
+          <p><strong>Service availability:</strong> BuildMyCVNow may change templates, limits, storage periods, provider integrations, or features to keep the service free, secure, and reliable. Third-party services such as Supabase, EmailJS, Google, and AI providers may also affect availability.</p>
         </PolicyCard>
       </section>
     </PageShell>
@@ -2424,7 +2424,6 @@ function LiveCVPreview({ cv, theme, layout }) {
 
 function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, emailCopyAddress = "", title = "Verify to download", description = "Enter your contact details. We will send an OTP before unlocking downloads.", label = "Downloads" }) {
   const [details, setDetails] = useState({ name: cv.fullName, email: cv.email, country: cv.country, phone: cv.phone });
-  const [otpMethod, setOtpMethod] = useState("email");
   const [otp, setOtp] = useState("");
   const [otpChallenge, setOtpChallenge] = useState(null);
   const [mockOtp, setMockOtp] = useState("");
@@ -2441,20 +2440,16 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
   };
   const sendOtp = async (event) => {
     event.preventDefault();
-    setActionStatus(`Sending OTP to your ${otpMethod === "email" ? "email" : "mobile number"}...`);
+    setActionStatus("Sending OTP to your email...");
     setVerified(false);
     setOtp("");
     setMockOtp("");
     setOtpChallenge(null);
     try {
-      const endpoint = otpMethod === "email" ? "/.netlify/functions/emailOtp" : "/.netlify/functions/mobileOtp";
-      const payload = otpMethod === "email"
-        ? { action: "send", email: details.email, name: details.name }
-        : { action: "send", phone: details.phone };
-      const response = await fetch(endpoint, {
+      const response = await fetch("/.netlify/functions/emailOtp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ action: "send", email: details.email, name: details.name }),
       });
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.message || "Could not send OTP.");
@@ -2467,14 +2462,10 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
   };
   const verify = async () => {
     try {
-      const endpoint = otpMethod === "email" ? "/.netlify/functions/emailOtp" : "/.netlify/functions/mobileOtp";
-      const payload = otpMethod === "email"
-        ? { action: "verify", email: details.email, otp, challenge: otpChallenge }
-        : { action: "verify", phone: details.phone, otp, challenge: otpChallenge };
-      const response = await fetch(endpoint, {
+      const response = await fetch("/.netlify/functions/emailOtp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ action: "verify", email: details.email, otp, challenge: otpChallenge }),
       });
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.message || "Invalid OTP.");
@@ -2496,35 +2487,10 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
           <button onClick={onClose} className="text-2xl leading-none text-slate-500">Ã—</button>
         </div>
         <form onSubmit={sendOtp} className="mt-5 grid gap-3 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <span className="form-label">Send OTP by</span>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                ["email", "Email"],
-                ["sms", "SMS"],
-              ].map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => {
-                    setOtpMethod(id);
-                    setOtpChallenge(null);
-                    setMockOtp("");
-                    setOtp("");
-                    setVerified(false);
-                  }}
-                  className={`rounded px-4 py-3 text-sm font-black ${otpMethod === id ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-700"}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
           {[
             ["name", "Name"],
             ["email", "Contact email"],
             ["country", "Country"],
-            ["phone", "Contact number"],
           ].map(([key, label]) => (
             <label key={key} className="block">
               <span className="form-label">{label}</span>
@@ -2532,7 +2498,7 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
                 value={details[key]}
                 onChange={(event) => setDetails({ ...details, [key]: event.target.value })}
                 className="form-field"
-                required={key === "email" ? otpMethod === "email" : key === "phone" ? otpMethod === "sms" : true}
+                required
               />
             </label>
           ))}
@@ -2540,7 +2506,7 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
         </form>
         {otpChallenge && (
           <div className="mt-5 rounded border border-green-200 bg-green-50 p-4">
-            <p className="text-sm font-bold text-green-900">Enter the 6-digit OTP sent by {otpMethod === "email" ? "email" : "SMS"}.</p>
+            <p className="text-sm font-bold text-green-900">Enter the 6-digit OTP sent to your email.</p>
             {mockOtp && <p className="mt-1 text-xs font-bold text-amber-800">Test mode OTP: {mockOtp}</p>}
             <div className="mt-3 flex gap-2">
               <input value={otp} onChange={(event) => setOtp(event.target.value)} inputMode="numeric" maxLength={6} className="form-field" placeholder="Enter 6-digit OTP" />
@@ -2572,8 +2538,6 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
   const [mode, setMode] = useState("signin");
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [accountOtp, setAccountOtp] = useState({ name: "", email: "", token: "", sent: false });
-  const [phoneForm, setPhoneForm] = useState({ phone: "", otp: "", challenge: null, mockOtp: "" });
-  const [phoneOtpSent, setPhoneOtpSent] = useState(false);
   const [message, setMessage] = useState(isSupabaseConfigured ? "" : "Add VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY or REACT_APP_SUPABASE_URL/REACT_APP_SUPABASE_ANON_KEY to .env to enable login.");
   const [loading, setLoading] = useState(false);
   const [lastSignupEmail, setLastSignupEmail] = useState("");
@@ -2705,49 +2669,6 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
       setLoading(false);
     }
   };
-  const sendPhoneOtp = async (event) => {
-    event.preventDefault();
-    setLoading(true);
-    setMessage("Sending mobile OTP...");
-    try {
-      const response = await fetch("/.netlify/functions/mobileOtp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "send", phone: phoneForm.phone }),
-      });
-      const result = await response.json();
-      if (!response.ok || !result.ok) throw new Error(result.message || "Could not send mobile OTP.");
-      setPhoneForm({ ...phoneForm, challenge: result.challenge, mockOtp: result.mockOtp || "" });
-      setPhoneOtpSent(true);
-      trackEvent("phone_otp_sent");
-      setMessage(result.smsSent ? "OTP sent to your mobile number. Enter the SMS code to continue." : `SMS provider is not configured yet. Test OTP: ${result.mockOtp}`);
-    } catch (error) {
-      setMessage(error.message || "Could not send mobile OTP.");
-    } finally {
-      setLoading(false);
-    }
-  };
-  const verifyPhoneOtp = async (event) => {
-    event.preventDefault();
-    setLoading(true);
-    setMessage("Verifying OTP...");
-    try {
-      const response = await fetch("/.netlify/functions/mobileOtp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "verify", phone: phoneForm.phone, otp: phoneForm.otp, challenge: phoneForm.challenge }),
-      });
-      const result = await response.json();
-      if (!response.ok || !result.ok) throw new Error(result.message || "Invalid OTP.");
-      trackEvent("phone_otp_verified");
-      onUrgentMode("phone");
-      onClose();
-    } catch (error) {
-      setMessage(error.message || "Invalid OTP. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4">
       <div className="w-full max-w-md rounded bg-white p-6 shadow-soft">
@@ -2761,9 +2682,6 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
         <div className="mt-5 grid gap-2">
           <button onClick={startUrgentMode} className="rounded bg-green-600 px-4 py-3 text-sm font-black text-white hover:bg-green-700">
             Continue without cloud saving
-          </button>
-          <button onClick={() => setMode("phone")} className={`rounded px-4 py-3 text-sm font-black ${mode === "phone" ? "bg-slate-950 text-white" : "bg-blue-50 text-blue-800"}`}>
-            Continue with mobile OTP
           </button>
           <p className="rounded bg-amber-50 p-3 text-xs font-bold leading-5 text-amber-900">
             Download-only mode: Your CV will not be saved online. Download your file before closing the browser.
@@ -2783,28 +2701,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
           ))}
           </div>
         </div>
-        {mode === "phone" ? (
-          <form onSubmit={phoneOtpSent ? verifyPhoneOtp : sendPhoneOtp} className="mt-5 grid gap-3">
-            <label>
-              <span className="form-label">Mobile number</span>
-              <input className="form-field" type="tel" value={phoneForm.phone} onChange={(event) => setPhoneForm({ ...phoneForm, phone: event.target.value })} placeholder="+971501234567" required />
-            </label>
-            {phoneOtpSent && (
-              <label>
-                <span className="form-label">OTP code</span>
-                <input className="form-field" inputMode="numeric" maxLength={6} value={phoneForm.otp} onChange={(event) => setPhoneForm({ ...phoneForm, otp: event.target.value })} required />
-              </label>
-            )}
-            <button disabled={loading} className="rounded bg-green-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
-              {loading ? "Please wait..." : phoneOtpSent ? "Verify OTP and continue" : "Send OTP"}
-            </button>
-            {phoneForm.mockOtp && (
-              <p className="rounded bg-amber-50 p-3 text-xs font-bold leading-5 text-amber-900">
-                Test mode OTP: {phoneForm.mockOtp}. Add Twilio environment variables in Netlify to send OTP by SMS.
-              </p>
-            )}
-          </form>
-        ) : mode === "accountOtp" ? (
+        {mode === "accountOtp" ? (
           <form onSubmit={accountOtp.sent ? verifyAccountEmailOtp : sendAccountEmailOtp} className="mt-5 grid gap-3">
             {!accountOtp.sent && (
               <label>
@@ -3745,7 +3642,7 @@ function CVBuilderApp({ onHome }) {
   const previousCompletionRef = useRef(completion.percent);
   const user = session?.user || null;
   const cloudSavingEnabled = Boolean(user && userMode === "registered");
-  const noCloudMode = userMode === "urgent-local" || userMode === "urgent-phone";
+  const noCloudMode = userMode === "urgent-local";
   const completedSteps = useMemo(() => getBuilderStepState(cv), [cv]);
   const jumpToStep = (id) => {
     setCurrentStep(id);
@@ -4081,7 +3978,7 @@ function CVBuilderApp({ onHome }) {
     trackEvent("logout");
   };
   const startUrgentMode = (method) => {
-    setUserMode(method === "phone" ? "urgent-phone" : "urgent-local");
+    setUserMode("urgent-local");
     setAuthOpen(false);
   };
   const startRegisteredMode = () => {

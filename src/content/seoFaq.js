@@ -5,7 +5,7 @@ export const homepageFaqs = [
   },
   {
     question: "Do I need to sign up to download my CV?",
-    answer: "No. You can build and download a CV without creating an account. Download-only users verify by email OTP or SMS OTP before download. Signing in is useful if you want to save and manage CV versions online.",
+    answer: "No. You can build and download a CV without creating an account. Download-only users verify by email OTP before download. Signing in is useful if you want to save and manage CV versions online.",
   },
   {
     question: "Can I use BuildMyCVNow outside the UAE or GCC?",

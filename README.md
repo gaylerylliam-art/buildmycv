@@ -89,7 +89,7 @@ Cover letter templates, role categories, sample letters, experience levels, regi
 - PDF generation uses `html2pdf.js`; DOCX generation uses the `docx` library.
 - CV drafts auto-save locally every 30 seconds and can be restored when the builder opens.
 - Mobile CV editing includes an Edit/Preview toggle while desktop keeps the side-by-side builder layout.
-- Urgent CV mode lets users continue without cloud saving or verify by mobile OTP for download-only use.
+- Urgent CV mode lets users continue without cloud saving and verify by email OTP before download.
 - Registered account mode enables cloud saving, My CVs, profile photo storage, and online CV management.
 - The Cover Letter Builder now works as a full cover letter generator with 60+ predefined roles, experience levels, UAE/GCC, UK, US, Canada, Australia, and international formats, copy-to-clipboard, saved templates, light/dark preview mode, sample generated letters, and the same OTP download flow.
 - Google AdSense areas use a reusable `AdBanner` component. AdSense loads only when `VITE_ADSENSE_CLIENT_ID` is set to a real `ca-pub-` ID.
@@ -131,7 +131,7 @@ This Vite app supports both `VITE_SUPABASE_*` and `REACT_APP_SUPABASE_*` browser
 1. Create a Supabase project.
 2. Run `supabase/schema.sql` in the SQL editor.
 3. Enable Email/Password in Supabase Auth. Google is optional.
-4. Enable Phone Auth in Supabase if you want mobile OTP. Configure an SMS provider such as Twilio in Supabase Auth settings.
+4. Configure EmailJS OTP variables in Netlify if you want email OTP messages to be sent instead of test-mode OTP display.
 5. In Supabase Auth URL Configuration, set the Site URL to `https://buildmycvnow.com`.
 6. Add redirect URLs:
    - `https://buildmycvnow.com/**`
@@ -145,7 +145,7 @@ This Vite app supports both `VITE_SUPABASE_*` and `REACT_APP_SUPABASE_*` browser
 
 ## User modes
 
-- Urgent CV mode / No cloud saving: users can continue immediately or verify by mobile OTP. CV data stays in browser state/localStorage only. Supabase CV records, file uploads, and My CVs are disabled.
+- Urgent CV mode / No cloud saving: users can continue immediately and verify by email OTP before download. CV data stays in browser state/localStorage only. Supabase CV records, file uploads, and My CVs are disabled.
 - Registered account mode / Cloud saving: users log in with email/password or Google. My CVs, save, duplicate, delete, and Supabase Storage profile photos are enabled.
 
 Google reCAPTCHA is verified through `netlify/functions/verifyRecaptcha.js`. Supabase native Auth CAPTCHA currently supports hCaptcha/Turnstile, so use this Google reCAPTCHA layer for frontend bot checks or switch to Supabase-native CAPTCHA if you prefer that validation inside Supabase Auth.
