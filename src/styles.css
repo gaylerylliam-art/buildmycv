@@ -2373,6 +2373,20 @@ summary {
   font-weight: 800;
 }
 
+.cv-paper.cv-rtl {
+  direction: rtl;
+  text-align: right;
+}
+
+.cv-paper.cv-rtl ul {
+  padding-left: 0;
+  padding-right: 1.25rem;
+}
+
+.cv-paper.cv-rtl .cv-continuation-header > p {
+  text-align: left;
+}
+
 .cv-continuation-header {
   display: flex;
   align-items: flex-start;

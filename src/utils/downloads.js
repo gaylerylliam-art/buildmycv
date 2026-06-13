@@ -91,8 +91,9 @@ const cvPersonalDetails = (cv) =>
     cv.expectedSalaryEnabled && cleanExportText(cv.expectedSalary) ? `Expected Salary: ${cleanExportText(cv.expectedSalary)}` : "",
   ].filter(Boolean);
 
-const defaultSectionOrder = ["summary", "experience", "education", "skills", "certifications", "languages", "references"];
+const defaultSectionOrder = ["summary", "experience", "education", "skills", "educationProjects", "certifications", "languages", "references"];
 const defaultQrCode = { enabled: false, url: "", label: "Scan for LinkedIn", position: "header" };
+const isArabicLanguage = (language = "") => /arabic|عربي|العربية/i.test(String(language || ""));
 
 const normalizeSectionOrder = (cv = {}) => {
   const order = Array.isArray(cv.sectionOrder) ? cv.sectionOrder : [];
@@ -185,6 +186,7 @@ const normalizeCvWorkExperiences = (cv) => {
 const sectionHasContent = (cv = {}, id) => {
   if (id === "experience") return normalizeCvWorkExperiences(cv).some((entry) => [entry.jobTitle, entry.employer, entry.responsibilities].some((value) => cleanExportText(value)));
   if (id === "references") return referencesHasContent(cv.references);
+  if (id === "educationProjects") return Boolean(cleanExportText(cv.projects));
   return Boolean(cleanExportText(cv[id]));
 };
 
@@ -234,6 +236,7 @@ const cvSectionHtml = (cv, id) => {
     summary: `<div class="section"><h2>Professional Summary</h2><p>${escapeHtml(cleanExportText(cv.summary))}</p></div>`,
     experience: `<div class="section"><h2>Work Experience</h2>${workExperienceHtml(cv)}</div>`,
     education: `<div class="section"><h2>Education</h2><p>${escapeHtml(cleanExportText(cv.education))}</p></div>`,
+    educationProjects: `<div class="section"><h2>Projects</h2><p>${escapeHtml(cleanExportText(cv.projects))}</p></div>`,
     skills: `<div class="section"><h2>Skills</h2><p>${escapeHtml(cleanExportText(cv.skills))}</p></div>`,
     certifications: `<div class="section"><h2>Certifications</h2><p>${escapeHtml(cleanExportText(cv.certifications))}</p></div>`,
     languages: `<div class="section"><h2>Languages</h2><p>${escapeHtml(cleanExportText(cv.languages))}</p></div>`,
@@ -445,6 +448,7 @@ const downloadCvDocx = async (cv, filename, theme = { color: "#0f66d0", dark: "#
         }),
       ],
       education: [sectionHeading("Education"), paragraph(cleanExportText(cv.education))],
+      educationProjects: [sectionHeading("Projects"), paragraph(cleanExportText(cv.projects))],
       skills: [sectionHeading("Skills"), paragraph(cleanExportText(cv.skills))],
       certifications: [sectionHeading("Certifications"), paragraph(cleanExportText(cv.certifications))],
       languages: [sectionHeading("Languages"), paragraph(cleanExportText(cv.languages))],
@@ -477,6 +481,7 @@ const downloadCvDocx = async (cv, filename, theme = { color: "#0f66d0", dark: "#
 };
 
 export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a" }, layout = "classic") => {
+  const isRtl = cv.languageDirection === "rtl" || isArabicLanguage(cv.outputLanguage);
   const qrConfig = { ...defaultQrCode, ...(cv.qrCode || {}) };
   const qrSvg = await buildQrSvg(qrConfig, cv.linkedIn || cv.portfolioUrl, layout === "sidebar" && qrConfig.position === "sidebar" ? "#FFFFFF" : "#1E293B");
   const qrHeader = qrConfig.position === "header" ? qrBlockHtml(qrSvg, qrConfig.label, 64) : "";
@@ -490,6 +495,8 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
         * { box-sizing: border-box; }
         html { background: #ffffff; }
         body { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 10mm 11mm; font-family: Arial, sans-serif; font-size: 11px; color: #111827; line-height: 1.38; background: #ffffff; overflow-wrap: anywhere; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        body.rtl { direction: rtl; text-align: right; }
+        body.rtl ul { padding-left: 0; padding-right: 18px; }
         h1 { color: #0f172a; margin: 0 0 3px; font-size: 26px; line-height: 1.12; }
         h2 { color: ${theme.dark}; border-bottom: 1px solid ${theme.color}; padding-bottom: 4px; margin: 14px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0; }
         p { margin: 0 0 8px; white-space: pre-line; }
@@ -531,7 +538,7 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
         .credit-footer { margin: 24px 0 0; padding-top: 12px; border-top: 1px solid #e5e7eb; color: #9ca3af; font-size: 7pt; text-align: center; }
       </style>
     </head>
-    <body>
+    <body class="${isRtl ? "rtl" : ""}" dir="${isRtl ? "rtl" : "ltr"}">
       ${layout === "sidebar" ? `
       <div class="sidebar-paper">
         <aside class="sidebar">

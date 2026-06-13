@@ -52,9 +52,13 @@ const normalizeCv = (data = {}, fileName = "") => {
     experience: experiences.map((entry) => [entry.jobTitle, entry.employer, entry.fromDate || entry.toDate ? `${entry.fromDate} - ${entry.isCurrent ? "Present" : entry.toDate}` : "", entry.responsibilities].filter(Boolean).join("\n")).join("\n\n"),
     workExperiences: experiences,
     education: Array.isArray(data.education) ? data.education.filter(Boolean).join("\n") : String(data.education || "").trim(),
+    projects: Array.isArray(data.projects) ? data.projects.filter(Boolean).join("\n") : String(data.projects || "").trim(),
     certifications: Array.isArray(data.certifications) ? data.certifications.filter(Boolean).join("\n") : String(data.certifications || "").trim(),
     languages: Array.isArray(data.languages) ? data.languages.filter(Boolean).join(", ") : String(data.languages || "").trim(),
     references: String(data.references || "Available upon request").trim(),
+    originalLanguage: String(data.originalLanguage || data.detectedLanguage || "").trim(),
+    outputLanguage: String(data.outputLanguage || "").trim(),
+    languageDirection: String(data.languageDirection || "").trim(),
     sourceFileName: fileName,
   };
 };
@@ -70,8 +74,9 @@ export const handler = async (event) => {
   }
 
   const text = String(payload.text || "").replace(/\u0000/g, "").trim();
+  const imageDataUrl = String(payload.imageDataUrl || "").trim();
   const fileName = String(payload.fileName || "uploaded-cv").trim();
-  if (text.length < 80) return json(400, { ok: false, message: "The uploaded file does not contain enough readable CV text." });
+  if (!imageDataUrl && text.length < 80) return json(400, { ok: false, message: "The uploaded file does not contain enough readable CV text." });
 
   if (!process.env.OPENAI_API_KEY) {
     return json(503, { ok: false, mode: "fallback", message: "AI CV extraction is not configured." });
@@ -86,6 +91,8 @@ Rules:
 - Extract each work experience separately.
 - For every job, fill: jobTitle, employer, companyLocation, fromDate, toDate, isCurrent, responsibilities.
 - Responsibilities must belong only to that employer/job. Use one duty per line.
+- Extract projects if the CV has project work, capstone projects, portfolios, systems, websites, campaigns, or process improvements.
+- Detect the original CV language and set originalLanguage.
 - Keep wording factual. Do not invent companies, dates, countries, or education.
 - Remove duplicate contact details from summary.
 
@@ -116,14 +123,22 @@ Return this exact shape:
     }
   ],
   "education": [],
+  "projects": [],
   "certifications": [],
   "languages": [],
-  "references": ""
+  "references": "",
+  "originalLanguage": ""
 }
 
 File name: ${fileName}
-CV text:
-${text.slice(0, 18000)}`;
+${imageDataUrl ? "The CV is attached as an image. Use OCR/vision to read it accurately." : `CV text:\n${text.slice(0, 18000)}`}`;
+
+  const userContent = imageDataUrl
+    ? [
+        { type: "text", text: prompt },
+        { type: "image_url", image_url: { url: imageDataUrl } },
+      ]
+    : prompt;
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -135,7 +150,7 @@ ${text.slice(0, 18000)}`;
       model: process.env.OPENAI_MODEL || "gpt-4o-mini",
       messages: [
         { role: "system", content: "You are a precise CV/resume parser. Return valid JSON only." },
-        { role: "user", content: prompt },
+        { role: "user", content: userContent },
       ],
       temperature: 0.1,
       response_format: { type: "json_object" },

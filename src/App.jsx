@@ -58,7 +58,7 @@ import {
 } from "./supabaseClient";
 
 const defaultCategory = categories[0];
-const defaultSectionOrder = ["summary", "experience", "education", "skills", "certifications", "languages", "references"];
+const defaultSectionOrder = ["summary", "experience", "education", "skills", "educationProjects", "certifications", "languages", "references"];
 const defaultQrCode = { enabled: false, url: "", label: "Scan for LinkedIn", position: "header" };
 const createReferenceEntry = () => ({
   id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
@@ -72,10 +72,13 @@ const createReferenceEntry = () => ({
   consentGiven: false,
 });
 const defaultReferences = { mode: "on-request", entries: [] };
+const translationLanguageOptions = ["English", "French", "German", "Arabic", "Dutch", "Other language"];
+const isArabicLanguage = (language = "") => /arabic|عربي|العربية/i.test(String(language || ""));
 const sectionLabels = {
   summary: "Professional Summary",
   experience: "Work Experience",
   education: "Education",
+  educationProjects: "Projects",
   skills: "Skills",
   certifications: "Certifications",
   languages: "Languages",
@@ -188,6 +191,7 @@ const referencesHasContent = (references) => {
 const sectionHasContent = (cv = {}, id) => {
   if (id === "experience") return normalizeWorkExperiences(cv).some((entry) => [entry.jobTitle, entry.employer, entry.responsibilities].some((value) => String(value || "").trim()));
   if (id === "references") return referencesHasContent(cv.references);
+  if (id === "educationProjects") return Boolean(String(cv.projects || "").trim());
   return Boolean(String(cv[id] || "").trim());
 };
 
@@ -233,6 +237,7 @@ const hasUserEnteredCvData = (cv) => {
     "skills",
     "experience",
     "education",
+    "projects",
     "certifications",
     "languages",
     "drivingLicense",
@@ -263,8 +268,12 @@ const initialCv = {
   experience: defaultCategory.experience,
   workExperiences: [createExperienceEntry(defaultCategory)],
   education: "High School Diploma\nManila High School, 2018",
+  projects: "",
   certifications: "Basic Food Safety Certificate",
   languages: "English, Filipino",
+  originalLanguage: "English",
+  outputLanguage: "English",
+  languageDirection: "ltr",
   drivingLicense: "No UAE driving license",
   expectedSalaryEnabled: false,
   expectedSalary: "",
@@ -1272,17 +1281,24 @@ function CategorySelector({ selected, onSelect }) {
 }
 
 function ExistingCVImporter({ onImport }) {
-  const [status, setStatus] = useState("Upload an existing CV. AI will read the file text and fill the form.");
+  const [status, setStatus] = useState("Upload CV -> Extract Content -> Select Output Language -> Translate & Improve -> Edit in Builder -> Download Final CV.");
+  const [outputLanguage, setOutputLanguage] = useState("English");
+  const [customLanguage, setCustomLanguage] = useState("");
+  const [improveWording, setImproveWording] = useState(true);
+  const selectedLanguage = outputLanguage === "Other language" ? customLanguage.trim() || "English" : outputLanguage;
   const handleFile = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    setStatus("Reading CV and extracting details...");
+    setStatus("Reading uploaded CV and preparing extraction...");
     try {
-      const text = await readCvFile(file);
-      setStatus("AI is identifying your CV sections...");
-      const extracted = await extractCvDetails(text, file.name);
-      onImport(extracted);
-      setStatus("Details filled automatically. Please review and edit before download.");
+      const source = await readCvSource(file);
+      setStatus("AI/OCR is extracting CV sections and detecting the original language...");
+      const extracted = await extractCvDetails(source, file.name);
+      setStatus(`Translating and preparing a professional ${selectedLanguage} CV...`);
+      const translated = await translateCvDetails(extracted, selectedLanguage, improveWording);
+      onImport(translated);
+      const sourceLanguage = translated.originalLanguage || extracted.originalLanguage || "detected language";
+      setStatus(`Done. Original language: ${sourceLanguage}. Output language: ${translated.outputLanguage || selectedLanguage}. Review and edit before download.`);
     } catch (error) {
       setStatus(error.message);
     } finally {
@@ -1296,13 +1312,50 @@ function ExistingCVImporter({ onImport }) {
           <Icon name="upload" className="h-5 w-5" />
         </span>
         <div className="min-w-0">
-          <h3 className="panel-title">Upload existing CV</h3>
+          <h3 className="panel-title">Upload & Translate CV</h3>
           <p className="mt-1 text-sm leading-6 text-slate-600">
-            AI import fills the form automatically. You can still edit every field.
+            Upload PDF, DOCX, TXT, JPG, PNG, or WEBP. AI/OCR will extract, translate, improve, and fill the builder.
           </p>
+          <div className="mt-3 grid gap-3 rounded border border-blue-100 bg-white/70 p-3">
+            <div>
+              <span className="form-label">Final CV output language</span>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {translationLanguageOptions.map((language) => (
+                  <button
+                    key={language}
+                    type="button"
+                    onClick={() => setOutputLanguage(language)}
+                    className={`rounded border px-3 py-2 text-xs font-black ${outputLanguage === language ? "border-blue-700 bg-blue-700 text-white" : "border-blue-100 bg-white text-blue-900"}`}
+                  >
+                    {language}
+                  </button>
+                ))}
+              </div>
+              {outputLanguage === "Other language" && (
+                <input
+                  value={customLanguage}
+                  onChange={(event) => setCustomLanguage(event.target.value)}
+                  className="form-field mt-2"
+                  placeholder="Type any language, for example Spanish or Hindi"
+                />
+              )}
+            </div>
+            <label className="flex items-start gap-3 rounded bg-green-50 p-3 text-sm font-bold text-green-950">
+              <input
+                type="checkbox"
+                checked={improveWording}
+                onChange={(event) => setImproveWording(event.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-green-300 text-green-700"
+              />
+              <span>
+                <span className="block">Improve CV wording during translation</span>
+                <span className="mt-1 block text-xs leading-5 text-green-800">Default ON. Keeps facts the same while making the CV sound professional.</span>
+              </span>
+            </label>
+          </div>
           <label className="mt-3 inline-flex cursor-pointer items-center justify-center rounded bg-white px-4 py-3 text-sm font-bold text-blue-700 ring-1 ring-blue-200 hover:bg-blue-50">
             Choose CV file
-            <input className="hidden" type="file" accept=".txt,.pdf,.doc,.docx" onChange={handleFile} />
+            <input className="hidden" type="file" accept=".txt,.pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,image/*" onChange={handleFile} />
           </label>
           <p className="mt-3 text-xs font-bold leading-5 text-blue-900">{status}</p>
         </div>
@@ -1914,6 +1967,7 @@ function CVBuilderForm({ cv, onChange }) {
 
       <CollapsibleFormSection id="education" title="Education and certifications" icon="file" badge={cv.education ? "Done" : ""}>
         <FormField label="Education" type="textarea" rows={4} value={cv.education} onChange={(value) => onChange("education", value)} placeholder="Example: High School Diploma, Manila High School, 2018" />
+        <FormField label="Projects (optional)" type="textarea" rows={4} value={cv.projects} onChange={(value) => onChange("projects", value)} placeholder="Example: Website redesign, inventory tracking project, school capstone, or work improvement project" />
         <FormField label="Certifications & licenses" type="textarea" rows={3} value={cv.certifications} onChange={(value) => onChange("certifications", value)} placeholder="Example: Basic Food Safety Certificate, TESDA NC II, UAE driving license" />
       </CollapsibleFormSection>
 
@@ -2001,15 +2055,40 @@ async function readCvFile(file) {
     throw new Error("Old .doc files cannot be read reliably in the browser. Please save it as .docx, PDF, or TXT and upload again.");
   }
 
-  throw new Error("Unsupported file type. Please upload a PDF, DOCX, or TXT CV.");
+  throw new Error("Unsupported file type. Please upload a PDF, DOCX, TXT, or image CV.");
 }
 
-async function extractCvDetails(text, fileName) {
+const fileToDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Could not read this image file."));
+    reader.readAsDataURL(file);
+  });
+
+async function readCvSource(file) {
+  const name = file.name.toLowerCase();
+  const isImage = file.type.startsWith("image/") || /\.(png|jpe?g|webp)$/i.test(name);
+  if (isImage) {
+    return {
+      fileName: file.name,
+      imageDataUrl: await fileToDataUrl(file),
+      text: "",
+    };
+  }
+  return {
+    fileName: file.name,
+    text: await readCvFile(file),
+  };
+}
+
+async function extractCvDetails(source, fileName) {
+  const payload = typeof source === "string" ? { text: source, fileName } : { ...source, fileName: source.fileName || fileName };
   try {
     const response = await fetch("/.netlify/functions/parseCv", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, fileName }),
+      body: JSON.stringify(payload),
     });
     const result = await response.json();
     if (response.ok && result.ok && result.cv) return result.cv;
@@ -2017,7 +2096,28 @@ async function extractCvDetails(text, fileName) {
   } catch (error) {
     if (/does not look like a CV|actual CV/i.test(error.message || "")) throw error;
   }
-  return mockAiExtractCv(text, fileName);
+  if (!payload.text?.trim()) throw new Error("Image OCR needs AI extraction. Please try a text-based PDF/DOCX or check AI configuration.");
+  return mockAiExtractCv(payload.text, payload.fileName);
+}
+
+async function translateCvDetails(cv, outputLanguage = "English", improveWording = true) {
+  try {
+    const response = await fetch("/.netlify/functions/translateCv", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cv, outputLanguage, improveWording }),
+    });
+    const result = await response.json();
+    if (response.ok && result.ok && result.cv) return result.cv;
+  } catch {
+    // Local fallback keeps the extracted CV editable when AI translation is unavailable.
+  }
+  return {
+    ...cv,
+    outputLanguage,
+    originalLanguage: cv.originalLanguage || "Auto-detected",
+    languageDirection: isArabicLanguage(outputLanguage) ? "rtl" : "ltr",
+  };
 }
 
 const cvSectionHeading = /^(summary|profile|objective|skills|core\s+competencies|work\s+experience|professional\s+experience|employment\s+history|employment|career\s+history|education|certifications?|licenses?|languages?|references?|projects?)$/i;
@@ -2230,12 +2330,13 @@ function mockAiExtractCv(text, fileName) {
   const section = (names, maxLines = 6) => {
     const index = lines.findIndex((line) => names.some((name) => new RegExp(`^${name}\\b`, "i").test(line) || line.toLowerCase() === name));
     if (index === -1) return "";
-    const nextIndex = lines.findIndex((line, lineIndex) => lineIndex > index && /^(summary|profile|objective|skills|core\s+competencies|work\s+experience|professional\s+experience|employment\s+history|employment|career\s+history|work\s+history|education|certifications?|certificates?|languages?|references?)$/i.test(line));
+    const nextIndex = lines.findIndex((line, lineIndex) => lineIndex > index && /^(summary|profile|objective|skills|core\s+competencies|work\s+experience|professional\s+experience|employment\s+history|employment|career\s+history|work\s+history|education|projects?|certifications?|certificates?|languages?|references?)$/i.test(line));
     return lines.slice(index + 1, nextIndex === -1 ? Math.min(lines.length, index + 1 + maxLines) : nextIndex).join("\n").trim();
   };
   const skills = section(["skills", "core competencies"], 20);
   const experience = section(["experience", "professional experience", "employment", "employment history", "work history", "career history"], 120);
   const education = section(["education"], 14);
+  const projects = section(["project", "projects"], 30);
   const certifications = section(["certification", "certificate"], 10);
   const languages = section(["language"], 8);
   const summary = section(["summary", "profile", "objective"], 4);
@@ -2277,9 +2378,13 @@ function mockAiExtractCv(text, fileName) {
     experience: experience || "Please review imported CV and add work experience here.",
     workExperiences: structuredWorkExperiences.length ? structuredWorkExperiences : fallbackWorkExperiences,
     education: education || "Please review imported CV and add education details here.",
+    projects,
     certifications: certifications || "Add certificates or training here.",
     languages: languages || "English",
     references: section(["reference"]) || "Available upon request",
+    originalLanguage: "Auto-detected",
+    outputLanguage: "English",
+    languageDirection: "ltr",
   };
 }
 
@@ -2342,6 +2447,7 @@ function LayoutSelector({ selected, onSelect }) {
 }
 
 function LiveCVPreview({ cv, theme, layout }) {
+  const isRtl = cv.languageDirection === "rtl" || isArabicLanguage(cv.outputLanguage);
   const lines = (value) => String(value || "").split("\n").filter(Boolean);
   const chunks = (items, size) => {
     const result = [];
@@ -2432,6 +2538,7 @@ function LiveCVPreview({ cv, theme, layout }) {
     summary: () => ({ id: "summary", type: "section", title: "Professional Summary", content: cv.summary, weight: blockWeight(cv.summary, 1.5) }),
     experience: () => workBlocks,
     education: () => ({ id: "education", type: "section", title: "Education", content: cv.education, weight: blockWeight(cv.education, 1.3) }),
+    educationProjects: () => ({ id: "educationProjects", type: "section", title: "Projects", content: cv.projects, weight: blockWeight(cv.projects, 1.25) }),
     skills: () => ({ id: "skills", type: "section", title: "Skills", content: cv.skills, weight: blockWeight(cv.skills, 1.2) }),
     certifications: () => ({ id: "certifications", type: "section", title: "Certifications", content: cv.certifications, weight: blockWeight(cv.certifications, 1.2) }),
     languages: () => ({ id: "languages", type: "section", title: "Languages", content: cv.languages, weight: blockWeight(cv.languages, 0.9) }),
@@ -2508,16 +2615,16 @@ function LiveCVPreview({ cv, theme, layout }) {
     </header>
   );
   return (
-    <div className="cv-page-stack" aria-label={`${pages.length} page CV preview`}>
+    <div className={`cv-page-stack ${isRtl ? "cv-rtl" : ""}`} dir={isRtl ? "rtl" : "ltr"} aria-label={`${pages.length} page CV preview`}>
       {pages.map((pageBlocks, pageIndex) => pageIndex > 0 ? (
-        <article key={pageIndex} className={`cv-paper cv-paper-page ${layout === "compact" ? "p-6" : "p-8"}`}>
+        <article key={pageIndex} className={`cv-paper cv-paper-page ${isRtl ? "cv-rtl" : ""} ${layout === "compact" ? "p-6" : "p-8"}`}>
           {renderContinuationHeader()}
           <div className="mt-6">{renderPageContent(pageBlocks)}</div>
           {cv.qrCode?.position === "footer" && pageIndex === pages.length - 1 && <div className="mt-6 flex justify-center"><QrBlock qrCode={cv.qrCode} color="#1E293B" /></div>}
           <p className="cv-page-number">Page {pageIndex + 1} of {pages.length}</p>
         </article>
       ) : layout === "sidebar" ? (
-        <article key={pageIndex} className="cv-paper cv-paper-page grid grid-cols-[0.38fr_0.62fr] overflow-hidden p-0">
+        <article key={pageIndex} className={`cv-paper cv-paper-page grid grid-cols-[0.38fr_0.62fr] overflow-hidden p-0 ${isRtl ? "cv-rtl" : ""}`}>
           {renderSidebar(pageIndex)}
           <div className="p-7">
             {renderPageContent(pageBlocks)}
@@ -2525,7 +2632,7 @@ function LiveCVPreview({ cv, theme, layout }) {
           </div>
         </article>
       ) : (
-        <article key={pageIndex} className={`cv-paper cv-paper-page ${layout === "compact" ? "p-6" : "p-8"}`}>
+        <article key={pageIndex} className={`cv-paper cv-paper-page ${isRtl ? "cv-rtl" : ""} ${layout === "compact" ? "p-6" : "p-8"}`}>
           {renderHeader()}
           <div className="mt-6">{renderPageContent(pageBlocks)}</div>
           {cv.qrCode?.position === "footer" && pageIndex === pages.length - 1 && <div className="mt-6 flex justify-center"><QrBlock qrCode={cv.qrCode} color="#1E293B" /></div>}
