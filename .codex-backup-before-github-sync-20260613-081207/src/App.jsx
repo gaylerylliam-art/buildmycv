@@ -48,8 +48,6 @@ import {
   isSupabaseConfigured,
   listUserCvs,
   loadLatestDraftForUser,
-  SAVED_CV_LIMIT,
-  SAVED_CV_RETENTION_DAYS,
   saveCvForUser,
   saveDraftForUser,
   submitContactMessage,
@@ -2418,10 +2416,8 @@ function LiveCVPreview({ cv, theme, layout }) {
 
 function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, emailCopyAddress = "", title = "Verify to download", description = "Enter your contact details. We will send an OTP before unlocking downloads.", label = "Downloads" }) {
   const [details, setDetails] = useState({ name: cv.fullName, email: cv.email, country: cv.country, phone: cv.phone });
-  const [otpMethod, setOtpMethod] = useState("email");
   const [otp, setOtp] = useState("");
-  const [otpChallenge, setOtpChallenge] = useState(null);
-  const [mockOtp, setMockOtp] = useState("");
+  const [sentOtp, setSentOtp] = useState("");
   const [verified, setVerified] = useState(false);
   const [actionStatus, setActionStatus] = useState("");
   const runDownloadAction = async (type) => {
@@ -2433,52 +2429,12 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
       setActionStatus(error.message || "Action failed. Please try again.");
     }
   };
-  const sendOtp = async (event) => {
+  const sendOtp = (event) => {
     event.preventDefault();
-    setActionStatus(`Sending OTP to your ${otpMethod === "email" ? "email" : "mobile number"}...`);
-    setVerified(false);
+    setSentOtp(String(Math.floor(100000 + Math.random() * 900000)));
     setOtp("");
-    setMockOtp("");
-    setOtpChallenge(null);
-    try {
-      const endpoint = otpMethod === "email" ? "/.netlify/functions/emailOtp" : "/.netlify/functions/mobileOtp";
-      const payload = otpMethod === "email"
-        ? { action: "send", email: details.email, name: details.name }
-        : { action: "send", phone: details.phone };
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const result = await response.json();
-      if (!response.ok || !result.ok) throw new Error(result.message || "Could not send OTP.");
-      setOtpChallenge(result.challenge);
-      setMockOtp(result.mockOtp || "");
-      setActionStatus(result.message || "OTP sent. Enter the code to unlock downloads.");
-    } catch (error) {
-      setActionStatus(error.message || "Could not send OTP. Please try again.");
-    }
   };
-  const verify = async () => {
-    try {
-      const endpoint = otpMethod === "email" ? "/.netlify/functions/emailOtp" : "/.netlify/functions/mobileOtp";
-      const payload = otpMethod === "email"
-        ? { action: "verify", email: details.email, otp, challenge: otpChallenge }
-        : { action: "verify", phone: details.phone, otp, challenge: otpChallenge };
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const result = await response.json();
-      if (!response.ok || !result.ok) throw new Error(result.message || "Invalid OTP.");
-      setVerified(true);
-      setActionStatus("OTP verified. Downloads are unlocked.");
-    } catch (error) {
-      setVerified(false);
-      setActionStatus(error.message || "Invalid OTP. Please try again.");
-    }
-  };
+  const verify = () => setVerified(otp === sentOtp);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4">
       <div className="w-full max-w-lg rounded bg-white p-6 shadow-soft">
@@ -2490,30 +2446,6 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
           <button onClick={onClose} className="text-2xl leading-none text-slate-500">Ã—</button>
         </div>
         <form onSubmit={sendOtp} className="mt-5 grid gap-3 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <span className="form-label">Send OTP by</span>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                ["email", "Email"],
-                ["sms", "SMS"],
-              ].map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => {
-                    setOtpMethod(id);
-                    setOtpChallenge(null);
-                    setMockOtp("");
-                    setOtp("");
-                    setVerified(false);
-                  }}
-                  className={`rounded px-4 py-3 text-sm font-black ${otpMethod === id ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-700"}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
           {[
             ["name", "Name"],
             ["email", "Contact email"],
@@ -2522,20 +2454,14 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
           ].map(([key, label]) => (
             <label key={key} className="block">
               <span className="form-label">{label}</span>
-              <input
-                value={details[key]}
-                onChange={(event) => setDetails({ ...details, [key]: event.target.value })}
-                className="form-field"
-                required={key === "email" ? otpMethod === "email" : key === "phone" ? otpMethod === "sms" : true}
-              />
+              <input value={details[key]} onChange={(event) => setDetails({ ...details, [key]: event.target.value })} className="form-field" required />
             </label>
           ))}
-          <button className="rounded bg-blue-600 px-5 py-3 font-bold text-white sm:col-span-2">Send OTP</button>
+          <button className="rounded bg-blue-600 px-5 py-3 font-bold text-white sm:col-span-2">Generate OTP</button>
         </form>
-        {otpChallenge && (
+        {sentOtp && (
           <div className="mt-5 rounded border border-green-200 bg-green-50 p-4">
-            <p className="text-sm font-bold text-green-900">Enter the 6-digit OTP sent by {otpMethod === "email" ? "email" : "SMS"}.</p>
-            {mockOtp && <p className="mt-1 text-xs font-bold text-amber-800">Test mode OTP: {mockOtp}</p>}
+            <p className="text-sm font-bold text-green-900">Mock OTP: {sentOtp}</p>
             <div className="mt-3 flex gap-2">
               <input value={otp} onChange={(event) => setOtp(event.target.value)} inputMode="numeric" maxLength={6} className="form-field" placeholder="Enter 6-digit OTP" />
               <button onClick={verify} className="rounded bg-green-600 px-5 py-3 font-bold text-white">Verify</button>
@@ -2565,7 +2491,6 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
 function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
   const [mode, setMode] = useState("signin");
   const [form, setForm] = useState({ name: "", email: "", password: "" });
-  const [accountOtp, setAccountOtp] = useState({ name: "", email: "", token: "", sent: false });
   const [phoneForm, setPhoneForm] = useState({ phone: "", otp: "", challenge: null, mockOtp: "" });
   const [phoneOtpSent, setPhoneOtpSent] = useState(false);
   const [message, setMessage] = useState(isSupabaseConfigured ? "" : "Add VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY or REACT_APP_SUPABASE_URL/REACT_APP_SUPABASE_ANON_KEY to .env to enable login.");
@@ -2654,51 +2579,6 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
     });
     if (error) setMessage(error.message);
   };
-  const sendAccountEmailOtp = async (event) => {
-    event.preventDefault();
-    if (!supabase) return;
-    setLoading(true);
-    setMessage("Sending account verification code...");
-    try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: accountOtp.email,
-        options: {
-          shouldCreateUser: true,
-          emailRedirectTo: AUTH_REDIRECT_URL,
-          data: { full_name: accountOtp.name },
-        },
-      });
-      if (error) throw error;
-      setAccountOtp((current) => ({ ...current, sent: true, token: "" }));
-      trackEvent("account_email_otp_sent");
-      setMessage("Account OTP sent. Check your email inbox and spam folder, then enter the code here.");
-    } catch (error) {
-      setMessage(error.message || "Could not send account OTP.");
-    } finally {
-      setLoading(false);
-    }
-  };
-  const verifyAccountEmailOtp = async (event) => {
-    event.preventDefault();
-    if (!supabase) return;
-    setLoading(true);
-    setMessage("Verifying account OTP...");
-    try {
-      const { error } = await supabase.auth.verifyOtp({
-        email: accountOtp.email,
-        token: accountOtp.token,
-        type: "email",
-      });
-      if (error) throw error;
-      onRegisteredMode();
-      trackEvent("account_email_otp_verified");
-      onClose();
-    } catch (error) {
-      setMessage(error.message || "Invalid account OTP.");
-    } finally {
-      setLoading(false);
-    }
-  };
   const sendPhoneOtp = async (event) => {
     event.preventDefault();
     setLoading(true);
@@ -2765,11 +2645,10 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
         </div>
         <div className="mt-4">
           <p className="mb-2 text-xs font-black uppercase text-slate-500">Sign in / Create account to save online</p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
           {[
             ["signin", "Login"],
             ["signup", "Sign up"],
-            ["accountOtp", "Email OTP"],
           ].map(([id, label]) => (
             <button key={id} onClick={() => setMode(id)} className={`rounded px-4 py-3 text-sm font-black ${mode === id ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-700"}`}>
               {label}
@@ -2797,31 +2676,6 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
                 Test mode OTP: {phoneForm.mockOtp}. Add Twilio environment variables in Netlify to send OTP by SMS.
               </p>
             )}
-          </form>
-        ) : mode === "accountOtp" ? (
-          <form onSubmit={accountOtp.sent ? verifyAccountEmailOtp : sendAccountEmailOtp} className="mt-5 grid gap-3">
-            {!accountOtp.sent && (
-              <label>
-                <span className="form-label">Full name</span>
-                <input className="form-field" value={accountOtp.name} onChange={(event) => setAccountOtp({ ...accountOtp, name: event.target.value })} required />
-              </label>
-            )}
-            <label>
-              <span className="form-label">Email address</span>
-              <input className="form-field" type="email" value={accountOtp.email} onChange={(event) => setAccountOtp({ ...accountOtp, email: event.target.value })} required disabled={accountOtp.sent} />
-            </label>
-            {accountOtp.sent && (
-              <label>
-                <span className="form-label">Email OTP code</span>
-                <input className="form-field" inputMode="numeric" maxLength={6} value={accountOtp.token} onChange={(event) => setAccountOtp({ ...accountOtp, token: event.target.value })} required />
-              </label>
-            )}
-            <button disabled={!isSupabaseConfigured || loading} className="rounded bg-green-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
-              {loading ? "Please wait..." : accountOtp.sent ? "Verify OTP and open account" : "Send email OTP"}
-            </button>
-            <p className="rounded bg-blue-50 p-3 text-xs font-bold leading-5 text-blue-800">
-              Free account mode lets you save up to 10 CVs online. Saved CVs expire after 15 days, so download copies for your records.
-            </p>
           </form>
         ) : (
         <form onSubmit={submit} className="mt-5 grid gap-3">
@@ -2867,12 +2721,12 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
 
 function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDraft, onLoadDraft, draftStatus }) {
   const [items, setItems] = useState([]);
-  const [message, setMessage] = useState(user ? "Load your saved CVs." : `Login to save and manage up to ${SAVED_CV_LIMIT} CVs.`);
+  const [message, setMessage] = useState(user ? "Load your saved CVs." : "Login to save and manage up to 5 CVs.");
   const refresh = async () => {
     if (!user) return;
     try {
       setItems(await listUserCvs(user.id));
-      setMessage(`Saved CVs loaded. Each online CV is kept for ${SAVED_CV_RETENTION_DAYS} days.`);
+      setMessage("Saved CVs loaded.");
     } catch (error) {
       setMessage(error.message);
     }
@@ -2914,14 +2768,13 @@ function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDra
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="panel-title">My CVs dashboard</h3>
-          <p className="mt-1 text-[11px] font-bold text-slate-500">{items.length} saved version{items.length === 1 ? "" : "s"} of {SAVED_CV_LIMIT}</p>
+          <p className="mt-1 text-[11px] font-bold text-slate-500">{items.length} saved version{items.length === 1 ? "" : "s"} of 5</p>
         </div>
         <button onClick={saveCurrent} className="rounded bg-green-600 px-3 py-2 text-xs font-black text-white">Save</button>
       </div>
       <div className="mt-3 rounded border border-blue-100 bg-blue-50 p-3">
         <p className="text-xs font-black text-blue-950">Save progress and come back later</p>
         <p className="mt-1 text-xs font-bold leading-5 text-blue-800">{draftStatus || "Cloud draft sync is ready."}</p>
-        <p className="mt-1 text-xs font-bold leading-5 text-blue-900">Online CVs are stored for {SAVED_CV_RETENTION_DAYS} days, then removed automatically. Download your files regularly.</p>
         <div className="mt-3 grid grid-cols-2 gap-2">
           <button onClick={onSaveDraft} className="rounded bg-blue-600 px-3 py-2 text-xs font-black text-white">Save draft</button>
           <button onClick={onLoadDraft} className="rounded bg-white px-3 py-2 text-xs font-black text-blue-700 ring-1 ring-blue-200">Restore draft</button>
@@ -2939,9 +2792,6 @@ function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDra
             <p className="text-sm font-black text-slate-900">{item.title}</p>
             <p className="text-xs text-slate-500">
               {item.category_id || "CV version"} - Last updated {new Date(item.updated_at || item.created_at).toLocaleString()}
-            </p>
-            <p className="mt-1 text-xs font-bold text-amber-700">
-              Expires {item.expires_at ? new Date(item.expires_at).toLocaleDateString() : `${SAVED_CV_RETENTION_DAYS} days after saving once database expiry is enabled`}
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
               <button onClick={() => onLoad(item)} className="rounded bg-blue-50 px-3 py-2 text-xs font-black text-blue-700">Edit</button>

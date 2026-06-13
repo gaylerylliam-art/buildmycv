@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+.env.*
+npm-debug.log*
+*.local
+qa-*.png
+scripts/publish-github-rest.ps1

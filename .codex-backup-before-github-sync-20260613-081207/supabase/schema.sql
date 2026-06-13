@@ -21,7 +21,6 @@ create table if not exists public.cvs (
   profile_photo_path text,
   share_slug text unique,
   is_public boolean not null default false,
-  expires_at timestamptz not null default (now() + interval '15 days'),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -95,9 +94,6 @@ create table if not exists public.download_requests (
   created_at timestamptz not null default now()
 );
 
-create index if not exists cvs_user_expires_at_idx
-on public.cvs (user_id, expires_at);
-
 create or replace function public.touch_updated_at()
 returns trigger
 language plpgsql
@@ -105,22 +101,6 @@ as $$
 begin
   new.updated_at = now();
   return new;
-end;
-$$;
-
-create or replace function public.delete_expired_cvs()
-returns integer
-language plpgsql
-set search_path = public
-as $$
-declare
-  deleted_count integer;
-begin
-  delete from public.cvs
-  where expires_at <= now();
-
-  get diagnostics deleted_count = row_count;
-  return deleted_count;
 end;
 $$;
 
