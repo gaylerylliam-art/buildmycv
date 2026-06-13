@@ -11,10 +11,14 @@ import {
   HOME_H1,
   HOME_META_DESCRIPTION,
   HOME_META_TITLE,
+  HOME_ATS_PREVIEW,
   HOME_PROOF_CARDS,
+  HOME_PORTFOLIO_FLOW,
   HOME_SUBHEAD,
   HOME_TESTIMONIALS,
   HOME_TRUST_ITEMS,
+  HOME_TRUST_METRICS,
+  HOME_TRANSFORMATION_EXAMPLES,
   HOME_VIDEO,
 } from "../src/content/homepage.js";
 
@@ -145,7 +149,7 @@ function criticalCss() {
 }
 
 function header() {
-  return `<nav class="nav"><div class="nav-inner"><a class="brand" href="/">BuildMyCV<span>Now</span></a><div class="nav-links"><a href="/#templates">Templates</a><a href="/#how-it-works">How it works</a><a href="/blog">Blog</a><a href="/faq">FAQ</a><a class="cta" href="/builder">Build my CV - it's free</a></div></div></nav>`;
+  return `<nav class="nav"><div class="nav-inner"><a class="brand" href="/">BuildMyCV<span>Now</span></a><div class="nav-links"><a href="/#templates">Templates</a><a href="/#how-it-works">How it works</a><a href="/blog">Blog</a><a href="/faq">FAQ</a><a href="/builder#signin">Sign In</a><a class="cta" href="/builder">Create and download CV for free</a></div></div></nav>`;
 }
 
 function footer() {
@@ -159,14 +163,18 @@ function ctaCard(text = "Build your free CV") {
 function staticHomepage() {
   return `<main class="static-home">
     ${staticHero()}
+    ${staticTrustMetrics()}
+    ${staticTemplatesSection()}
+    ${staticPortfolioSection()}
+    ${staticAtsPreviewSection()}
     ${howItWorks()}
     ${staticVideoSection()}
     ${staticWhySection()}
-    ${staticTemplatesSection()}
     ${staticFeaturesSection()}
+    ${staticTransformSection()}
     ${staticTestimonialsSection()}
     ${faqSection()}
-    <section class="section static-final-cta"><div class="wrap"><h2>Ready to build your CV?</h2><p class="lead" style="color:#e0f2fe">Free forever. No sign-up. Download as PDF in minutes.</p><p><a class="cta" href="/builder">Build my CV - it's free</a></p></div></section>
+    <section class="section static-final-cta"><div class="wrap"><h2>Ready to build your CV?</h2><p class="lead" style="color:#e0f2fe">Free forever. No sign-up. Download as PDF in minutes.</p><p><a class="cta" href="/builder">Create and download CV for free</a></p></div></section>
   </main>`;
 }
 
@@ -176,7 +184,23 @@ function staticHero() {
     ["Amina Nwosu", "Hotel Manager", "F&B Ops, Hospitality, PMS", "#16a34a"],
     ["Sarah Chen", "Admin Supervisor", "MS Office, Scheduling, Reports", "#185fa5"],
   ];
-  return `<section class="static-hero"><div class="wrap static-hero-grid"><div><div class="static-eyebrow">${HOME_EYEBROW.toUpperCase()}</div><h1 class="static-headline">${HOME_H1.replace(". ", ".<br>")}</h1><p class="static-subhead">${HOME_SUBHEAD}</p><div class="static-actions"><a class="cta" href="/builder">Build my CV - it's free</a><a class="btn secondary" href="/templates">Browse templates</a></div><div class="static-trust">${HOME_TRUST_ITEMS.map((item) => `<span>${item}</span>`).join("")}</div></div><div class="static-cv-stage" aria-label="Sample CV previews">${cards.map(([name, role, skills, color]) => `<article class="static-cv-card" aria-label="${name} ${role} CV preview"><div class="static-cv-top" style="background:${color}"><strong>${name}</strong><span>${role}</span></div><div class="static-cv-body"><span class="static-badge">ATS-ready</span><p><strong>Professional Summary</strong></p><p>Clear, recruiter-friendly CV layout with global job details.</p><div class="static-line"></div><div class="static-line" style="width:80%"></div><p class="muted">${skills}</p></div></article>`).join("")}<div class="static-pills">${HOME_CITY_PILLS.map((city) => `<span class="static-pill">${city}</span>`).join("")}</div></div></div></section>`;
+  return `<section class="static-hero"><div class="wrap static-hero-grid"><div><div class="static-eyebrow">${HOME_EYEBROW.toUpperCase()}</div><h1 class="static-headline">${HOME_H1.replace(". ", ".<br>")}</h1><p class="static-subhead">${HOME_SUBHEAD}</p><div class="static-actions"><a class="cta" href="/builder">Create and download CV for free</a><a class="btn secondary" href="/builder">Upload Existing CV</a></div><p class="muted"><strong>Upload your existing CV and improve it with AI.</strong></p><div class="static-trust">${HOME_TRUST_ITEMS.map((item) => `<span>${item}</span>`).join("")}</div></div><div class="static-cv-stage" aria-label="Sample CV previews">${cards.map(([name, role, skills, color]) => `<article class="static-cv-card" aria-label="${name} ${role} CV preview"><div class="static-cv-top" style="background:${color}"><strong>${name}</strong><span>${role}</span></div><div class="static-cv-body"><span class="static-badge">ATS-ready</span><p><strong>Professional Summary</strong></p><p>Clear, recruiter-friendly CV layout with global job details.</p><div class="static-line"></div><div class="static-line" style="width:80%"></div><p class="muted">${skills}</p></div></article>`).join("")}<div class="static-pills">${HOME_CITY_PILLS.map((city) => `<span class="static-pill">${city}</span>`).join("")}</div></div></div></section>`;
+}
+
+function staticTrustMetrics() {
+  return `<section class="proof"><div class="wrap"><div class="grid grid-4">${HOME_TRUST_METRICS.map(([value, label]) => `<div class="card"><strong style="display:block;font-size:26px;color:#185fa5">${value}</strong><span>${label}</span></div>`).join("")}</div></div></section>`;
+}
+
+function staticPortfolioSection() {
+  return `<section class="section static-features"><div class="wrap"><div class="static-section-title"><h2>Create a CV, portfolio, and personal website in one platform</h2><p class="lead">BuildMyCVNow combines an online CV builder, portfolio website builder, and personal website for job seekers so applicants can share one online professional profile.</p></div><div class="grid grid-3">${HOME_PORTFOLIO_FLOW.map(([title, text], index) => `<article class="card"><span class="static-badge">Step ${index + 1}</span><h3>${title}</h3><p>${text}</p></article>`).join("")}</div><p style="text-align:center;margin-top:24px"><a class="cta" href="/builder">Start with my CV</a></p></div></section>`;
+}
+
+function staticAtsPreviewSection() {
+  return `<section class="section"><div class="wrap"><div class="grid grid-3"><article class="card" style="grid-column:span 1"><strong style="font-size:44px;color:#16a34a">${HOME_ATS_PREVIEW.score}/100</strong><h2>${HOME_ATS_PREVIEW.title}</h2><p>${HOME_ATS_PREVIEW.description}</p></article>${HOME_ATS_PREVIEW.checks.map((item) => `<article class="card"><h3>${item}</h3><p>Use ATS-friendly resumes to improve readability, keyword matching, and clean formatting.</p></article>`).join("")}</div><p style="text-align:center;margin-top:24px"><a class="cta" href="/builder">Check my CV score</a></p></div></section>`;
+}
+
+function staticTransformSection() {
+  return `<section class="section static-features"><div class="wrap"><div class="static-section-title"><h2>AI resume improvement examples</h2><p class="lead">See how CV content enhancement turns rough wording into professional resume writing for summaries, experience, and skills.</p></div><div class="grid grid-3">${HOME_TRANSFORMATION_EXAMPLES.map((item) => `<article class="card"><h3>${item.label}</h3><p><strong>Before:</strong> ${escapeHtml(item.before)}</p><p><strong>After:</strong> ${escapeHtml(item.after)}</p></article>`).join("")}</div><p style="text-align:center;margin-top:24px"><a class="cta" href="/builder">Improve My CV Now</a></p></div></section>`;
 }
 
 function staticVideoSection() {
@@ -285,6 +309,38 @@ function faqSection() {
 }
 
 writePage("/templates", layout({ title: "CV Templates for Global and Gulf Jobs | BuildMyCVNow", description: "Browse free ATS-friendly CV templates for hospitality, finance, engineering, logistics, sales, admin and skilled worker jobs.", canonical: `${baseUrl}/templates`, body: `<main class="section"><div class="wrap"><h1>CV templates for global and Gulf jobs</h1><p class="lead">Choose a template built for your industry, then customize it in the free builder. Each template keeps the layout simple, readable, and friendly for ATS screening.</p><p>Use these templates for local jobs, overseas applications, remote work, and Gulf-market applications where employers may ask for details such as visa status, languages, nationality, driving license, or availability. You can switch templates without losing your current CV data.</p><div class="grid grid-4">${seoJobs.slice(0, 16).map((job) => `<a class="card" href="/cv/${job.slug}-dubai"><h3>${job.title}</h3><p>${job.skills.slice(0, 5).join(", ")}</p><p class="muted">Includes role-specific wording ideas, skills, example duties, and salary guidance where available.</p></a>`).join("")}</div></div></main>` }));
+
+const cvTemplateSlugs = [
+  "software-engineer",
+  "nurse",
+  "accountant",
+  "hotel-manager",
+  "civil-engineer",
+  "admin-assistant",
+  "teacher",
+  "sales-executive",
+  "customer-service",
+  "virtual-assistant",
+];
+
+cvTemplateSlugs.forEach((slug) => {
+  const job = seoJobs.find((item) => item.slug === slug);
+  if (!job) return;
+  const related = seoJobs.filter((item) => item.industry === job.industry && item.slug !== job.slug).slice(0, 4);
+  const faqs = [
+    [`What should a ${job.title} CV include?`, `Include a clear professional summary, recent work experience, role-specific skills, education, certifications, and measurable achievements.`],
+    [`Is this ${job.title} CV template ATS-friendly?`, `Yes. The layout uses readable headings, simple formatting, and text-based sections so applicant tracking systems can scan the CV.`],
+    [`Can I upload my existing ${job.title} CV?`, `Yes. You can upload an existing CV, let the AI import the content, review every field, then download an improved version.`],
+  ];
+  writePage(`/cv-templates/${job.slug}`, layout({
+    title: `${job.title} CV Template - Free ATS-Friendly Resume | BuildMyCVNow`,
+    description: `Use a free ${job.title} CV template with role-specific tips, skills, example summary, FAQ, and an ATS-friendly format you can download as PDF.`,
+    canonical: `${baseUrl}/cv-templates/${job.slug}`,
+    jsonLd: [{ "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [{ "@type": "ListItem", position: 1, name: "Home", item: baseUrl }, { "@type": "ListItem", position: 2, name: "Templates", item: `${baseUrl}/templates` }, { "@type": "ListItem", position: 3, name: `${job.title} CV Template`, item: `${baseUrl}/cv-templates/${job.slug}` }] }, { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: faqs.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })) }],
+    body: `<main class="section"><div class="wrap"><h1>${job.title} CV Template</h1><p class="lead">${job.intro}</p>${ctaCard(`Use this ${job.title} template free`)}<h2>Example professional summary</h2><div class="cv-snippet">${job.sampleSummary}</div><h2>Best skills for a ${job.title} CV</h2><div class="chips">${job.skills.map((skill) => `<span class="chip">${skill}</span>`).join("")}</div><h2>Role-specific CV tips</h2><ul>${job.tips.map((tip) => `<li>${tip}</li>`).join("")}</ul><h2>Work experience ideas</h2><ul>${job.sampleBullets.map((bullet) => `<li>${bullet}</li>`).join("")}</ul><h2>Related CV templates</h2><p>${related.map((item) => `<a href="/cv-templates/${item.slug}">${item.title}</a>`).join(" · ")} · <a href="/templates">All templates</a> · <a href="/">Home</a> · <a href="/builder">CV builder</a></p><h2>FAQ</h2>${faqs.map(([q, a]) => `<details><summary>${q}</summary><p>${a}</p></details>`).join("")}<section class="cta-band card"><h2>Create your ${job.title} CV now</h2><a class="cta" href="/builder?role=${job.slug}">Use this template</a></section></div></main>`,
+  }));
+});
+
 writePage("/about", layout({ title: "About BuildMyCVNow | Free Global CV Builder", description: "BuildMyCVNow helps job seekers worldwide create professional CVs for free.", canonical: `${baseUrl}/about`, body: `<main class="section"><div class="wrap"><h1>About BuildMyCVNow</h1><p class="lead">BuildMyCVNow was created to help job seekers build better CVs without paying before download.</p><p>We support applicants worldwide, including people applying locally, overseas, remotely, or across competitive international job markets. The mission is simple: make professional CV creation easy, mobile-friendly, and free.</p></div></main>` }));
 writePage("/contact", layout({ title: "Contact BuildMyCVNow | CV Builder Support", description: "Contact BuildMyCVNow with questions, support requests, feedback, or partnership messages. Messages are forwarded to info@buildmycvnow.com.", canonical: `${baseUrl}/contact`, body: `<main class="section"><div class="wrap"><h1>Contact BuildMyCVNow</h1><p class="lead">Have a question, support request, or suggestion? Send a message and it will be forwarded to info@buildmycvnow.com.</p><form class="card" method="post" action="/.netlify/functions/contact" style="display:grid;gap:14px;max-width:680px"><input type="hidden" name="form-name" value="contact"><label style="display:none">Website<input name="website" tabindex="-1" autocomplete="off"></label><label><strong>Name</strong><br><input name="name" required style="width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:8px"></label><label><strong>Email</strong><br><input name="email" type="email" required style="width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:8px"></label><label><strong>Message</strong><br><textarea name="message" required rows="6" style="width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:8px"></textarea></label><button class="cta" type="submit" style="border:0;max-width:190px">Send message</button><p class="muted">All contact form messages are forwarded to info@buildmycvnow.com.</p></form></div></main>` }));
 const ofwFaqs = [

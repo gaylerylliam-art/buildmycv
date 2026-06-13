@@ -35,8 +35,12 @@ import {
   HOME_H1,
   HOME_META_DESCRIPTION,
   HOME_META_TITLE,
+  HOME_ATS_PREVIEW,
+  HOME_PORTFOLIO_FLOW,
   HOME_SUBHEAD,
+  HOME_TRANSFORMATION_EXAMPLES,
   HOME_TRUST_ITEMS,
+  HOME_TRUST_METRICS,
   HOME_VIDEO,
 } from "./content/homepage";
 import { downloadCoverLetterFile, downloadCvFile } from "./utils/downloads";
@@ -486,6 +490,13 @@ function Seo({ title, description, image = "https://buildmycvnow.com/assets/og-i
     setMeta("meta[name='twitter:title']", "content", fullTitle);
     setMeta("meta[name='twitter:description']", "content", description);
     setMeta("meta[name='twitter:image']", "content", image);
+    let canonicalTag = document.querySelector("link[rel='canonical']");
+    if (!canonicalTag) {
+      canonicalTag = document.createElement("link");
+      canonicalTag.setAttribute("rel", "canonical");
+      document.head.appendChild(canonicalTag);
+    }
+    canonicalTag.setAttribute("href", canonical);
   }, [title, description, image, type]);
   return null;
 }
@@ -576,17 +587,135 @@ function Header({ onStart }) {
           <Link to="/blog" className="nav-link">Blog</Link>
         </nav>
         <button onClick={onStart} className="nav-cta">
-          Build my CV - it's free
+          Create and download CV for free
         </button>
       </div>
-      <button onClick={onStart} className="nav-mobile-cta" aria-label="Build my CV">
+      <button onClick={onStart} className="nav-mobile-cta" aria-label="Create and download CV for free">
         CV
       </button>
     </header>
   );
 }
 
-function LandingPage({ onStart }) {
+function TrustMetricsBar() {
+  return (
+    <section className="growth-trust-strip" aria-label="BuildMyCVNow trust metrics">
+      <div className="growth-trust-grid">
+        {HOME_TRUST_METRICS.map(([value, label]) => (
+          <div key={label} className="growth-trust-item">
+            <strong>{value}</strong>
+            <span>{label}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PortfolioWebsiteSection({ onStart }) {
+  return (
+    <section className="growth-section growth-portfolio" aria-labelledby="portfolio-heading">
+      <div className="growth-section-copy">
+        <div className="section-eyebrow">More than a CV builder</div>
+        <h2 id="portfolio-heading" className="section-title">Create a CV, portfolio, and personal website in one platform</h2>
+        <p className="section-sub">
+          BuildMyCVNow helps job seekers move from a professional CV to an online professional profile. It is built for applicants who want a portfolio website builder, a personal website for job seekers, and a clean CV workflow in one place.
+        </p>
+      </div>
+      <div className="portfolio-flow" aria-label="CV to portfolio to personal website flow">
+        {HOME_PORTFOLIO_FLOW.map(([title, text], index) => (
+          <article key={title} className="portfolio-step-card">
+            <span>{index + 1}</span>
+            <h3>{title}</h3>
+            <p>{text}</p>
+          </article>
+        ))}
+      </div>
+      <div className="portfolio-mockup" aria-label="Portfolio and personal website preview">
+        <div className="portfolio-browser-bar">
+          <span />
+          <span />
+          <span />
+          <strong>buildmycvnow.com/profile</strong>
+        </div>
+        <div className="portfolio-preview-grid">
+          <div>
+            <div className="portfolio-avatar">CV</div>
+            <h3>Professional Profile</h3>
+            <p>CV, projects, skills, links, and contact details in one shareable page.</p>
+          </div>
+          <div className="portfolio-preview-lines" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+            <span />
+          </div>
+        </div>
+      </div>
+      <button type="button" className="growth-primary-link" onClick={onStart}>Start with my CV</button>
+    </section>
+  );
+}
+
+function AtsPreviewSection({ onStart }) {
+  return (
+    <section className="growth-section growth-ats" aria-labelledby="ats-preview-heading">
+      <div className="ats-score-card">
+        <div className="ats-score-ring" aria-label={`Example ATS score ${HOME_ATS_PREVIEW.score} out of 100`}>
+          <strong>{HOME_ATS_PREVIEW.score}</strong>
+          <span>/100</span>
+        </div>
+        <div>
+          <h2 id="ats-preview-heading">{HOME_ATS_PREVIEW.title}</h2>
+          <p>{HOME_ATS_PREVIEW.description}</p>
+        </div>
+      </div>
+      <div className="ats-check-list">
+        {HOME_ATS_PREVIEW.checks.map((item) => (
+          <div key={item}>
+            <Icon name="check" className="h-4 w-4" />
+            <span>{item}</span>
+          </div>
+        ))}
+      </div>
+      <button type="button" className="growth-primary-link" onClick={onStart}>Check my CV score</button>
+    </section>
+  );
+}
+
+function BeforeAfterSection({ onStart }) {
+  return (
+    <section className="growth-section growth-transform" aria-labelledby="transform-heading">
+      <div className="growth-section-copy">
+        <div className="section-eyebrow">AI resume improvement</div>
+        <h2 id="transform-heading" className="section-title">Turn weak CV wording into professional resume writing</h2>
+        <p className="section-sub">
+          Show recruiters stronger summaries, clearer work experience, and better skills with CV content enhancement you can approve before it changes your document.
+        </p>
+      </div>
+      <div className="transform-grid">
+        {HOME_TRANSFORMATION_EXAMPLES.map((item) => (
+          <article key={item.label} className="transform-card">
+            <h3>{item.label}</h3>
+            <div className="transform-columns">
+              <div>
+                <span>Before</span>
+                <p>{item.before}</p>
+              </div>
+              <div>
+                <span>After</span>
+                <p>{item.after}</p>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+      <button type="button" className="growth-primary-link" onClick={onStart}>Improve My CV Now</button>
+    </section>
+  );
+}
+
+function LandingPage({ onStart, onUpload }) {
   const videoRef = useRef(null);
   const [playing, setPlaying] = useState(false);
   const [activeChapter, setActiveChapter] = useState(0);
@@ -699,10 +828,14 @@ function LandingPage({ onStart }) {
             <div className="global-hero-cta-row">
               <button type="button" onClick={onStart} className="global-hero-primary">
                 <Icon name="file" className="h-4 w-4" />
-                Build my CV - it's free
+                Create and download CV for free
               </button>
-              <a href="/templates" className="global-hero-secondary">Browse templates <Icon name="arrow" className="h-4 w-4" /></a>
+              <button type="button" onClick={onUpload || onStart} className="global-hero-secondary upload-hero-cta">
+                <Icon name="upload" className="h-4 w-4" />
+                Upload Existing CV
+              </button>
             </div>
+            <p className="global-upload-note">Upload your existing CV and improve it with AI.</p>
             <div className="global-hero-trust" role="list">
               {HOME_TRUST_ITEMS.map((item) => (
                 <span key={item} role="listitem"><i aria-hidden="true" /> {item}</span>
@@ -749,6 +882,14 @@ function LandingPage({ onStart }) {
           </div>
         </div>
       </section>
+
+      <TrustMetricsBar />
+
+      <TemplatesSectionV3 onStart={onStart} />
+
+      <PortfolioWebsiteSection onStart={onStart} />
+
+      <AtsPreviewSection onStart={onStart} />
 
       <section className="video-section" id="how-it-works">
         <div className="section-eyebrow">See it in action</div>
@@ -820,8 +961,6 @@ function LandingPage({ onStart }) {
         </div>
       </section>
 
-      <TemplatesSectionV3 onStart={onStart} />
-
       <section className="features-section">
         <div className="section-inner">
           <div className="section-eyebrow">Why BuildMyCVNow</div>
@@ -837,6 +976,8 @@ function LandingPage({ onStart }) {
           </div>
         </div>
       </section>
+
+      <BeforeAfterSection onStart={onStart} />
 
       <section className="testimonials-section">
         <div className="section-inner">
@@ -4545,7 +4686,7 @@ export default function App() {
           element={
             <>
               <Header onStart={goToBuilder} />
-              <LandingPage onStart={goToBuilder} />
+              <LandingPage onStart={goToBuilder} onUpload={goToBuilder} />
             </>
           }
         />

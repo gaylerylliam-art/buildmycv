@@ -3,6 +3,8 @@ export const faqs = [
   ["Do I need technical skills?", "No. Choose a category, fill in simple fields, then review the live preview."],
   ["Can I use it on mobile?", "Yes. The layout adapts for mobile, tablet, and desktop screens."],
   ["Can I edit after uploading an existing CV?", "Yes. Uploaded CV details are filled into the form, and every field remains editable."],
+  ["Can I upload my existing CV?", "Yes. Upload your existing CV and improve it with AI. The app analyzes the content, fills the form, and lets you review every section before download."],
+  ["Can I create a portfolio website?", "BuildMyCVNow is built around a CV to portfolio to personal website workflow so job seekers can create a stronger online professional profile."],
   ["Can I add a profile photo?", "Yes. You can upload a square 1:1 image up to 2 MB and choose round or square display."],
   ["Is OTP required before download?", "Yes. Download-only users verify by email OTP before unlocking free downloads. If EmailJS is not fully configured, the app may show test-mode messaging during setup."],
   ["Can I save CVs online?", "Yes. Registered users can save up to 10 CVs online for 15 days. Download your files regularly because expired online CVs may be deleted automatically."],

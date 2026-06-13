@@ -25,6 +25,7 @@ const templates = [
     skillClr: "#1e40af",
     typeChar: "Business",
     tag: "All industries",
+    category: "Professional",
   },
   {
     name: "Hospitality Pro",
@@ -50,6 +51,7 @@ const templates = [
     skillClr: "#166534",
     typeChar: "Hospitality",
     tag: "Hotels & F&B",
+    category: "Creative",
   },
   {
     name: "IT & Tech",
@@ -74,6 +76,7 @@ const templates = [
     skillClr: "#5b21b6",
     typeChar: "Software",
     tag: "Dev & IT",
+    category: "ATS-Friendly",
   },
   {
     name: "Engineering",
@@ -98,6 +101,7 @@ const templates = [
     skillClr: "#9a3412",
     typeChar: "Engineer",
     tag: "Civil & MEP",
+    category: "Executive",
   },
   {
     name: "Finance & Banking",
@@ -123,6 +127,7 @@ const templates = [
     skillClr: "#1e40af",
     typeChar: "Finance",
     tag: "Finance",
+    category: "ATS-Friendly",
   },
   {
     name: "General / OFW",
@@ -146,8 +151,11 @@ const templates = [
     skillClr: "#166534",
     typeChar: "General",
     tag: "Any industry",
+    category: "Fresh Graduate",
   },
 ];
+
+const filters = ["All", "Professional", "Creative", "ATS-Friendly", "Fresh Graduate", "Executive", "Freelancer"];
 
 function Avatar({ template, hovered }) {
   const t = template;
@@ -332,18 +340,35 @@ function TemplateCard({ template, onStart }) {
 }
 
 export default function TemplatesSectionV3({ onStart }) {
+  const [activeFilter, setActiveFilter] = useState("All");
+  const visibleTemplates = activeFilter === "All"
+    ? templates
+    : templates.filter((template) => template.category === activeFilter || (activeFilter === "Freelancer" && template.name === "General / OFW"));
+
   return (
     <section className="tsv3" id="templates" aria-labelledby="tsv3-heading">
       <div className="tsv3-inner">
         <div className="tsv3-header">
           <div className="tsv3-eyebrow">Templates</div>
-          <h2 className="tsv3-heading" id="tsv3-heading">Built for every career, everywhere.</h2>
+          <h2 className="tsv3-heading" id="tsv3-heading">Professional CV templates for every career</h2>
           <p className="tsv3-subtitle">
-            Choose a premium-looking CV template with friendly avatar previews for business, hospitality, IT, engineering, finance, and general roles.
+            Choose from professional CV templates, ATS-friendly resume templates, and online CV builder layouts for business, hospitality, IT, engineering, finance, freelance, and general roles.
           </p>
         </div>
+        <div className="tsv3-filter-row" aria-label="Template category filters">
+          {filters.map((filter) => (
+            <button
+              key={filter}
+              type="button"
+              className={activeFilter === filter ? "active" : ""}
+              onClick={() => setActiveFilter(filter)}
+            >
+              {filter}
+            </button>
+          ))}
+        </div>
         <div className="tsv3-grid">
-          {templates.map((template) => (
+          {visibleTemplates.map((template) => (
             <TemplateCard key={template.name} template={template} onStart={onStart} />
           ))}
         </div>

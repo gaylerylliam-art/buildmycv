@@ -61,6 +61,7 @@ const industryDefaults = {
 };
 
 const jobRows = [
+  ["software-engineer", "Software Engineer", "it", "AED 8,000 - 22,000"],
   ["sales-executive", "Sales Executive", "sales-marketing", "AED 4,000 - 9,000"],
   ["business-development-executive", "Business Development Executive", "sales-marketing", "AED 5,000 - 12,000"],
   ["accountant", "Accountant", "finance", "AED 4,500 - 10,000"],
@@ -75,6 +76,7 @@ const jobRows = [
   ["chef-de-partie", "Chef de Partie", "hospitality", "AED 3,500 - 7,000"],
   ["housekeeping-attendant", "Housekeeping Attendant", "hospitality", "AED 1,500 - 3,000"],
   ["front-desk-receptionist", "Front Desk Receptionist", "hospitality", "AED 2,500 - 5,000"],
+  ["hotel-manager", "Hotel Manager", "hospitality", "AED 8,000 - 22,000"],
   ["guest-service-agent", "Guest Service Agent", "hospitality", "AED 2,500 - 5,000"],
   ["security-guard", "Security Guard", "skilled", "AED 1,800 - 3,200"],
   ["driver-light-vehicle", "Driver (Light Vehicle)", "logistics", "AED 2,500 - 5,000"],
@@ -85,6 +87,7 @@ const jobRows = [
   ["logistics-coordinator", "Logistics Coordinator", "logistics", "AED 4,000 - 8,000"],
   ["procurement-officer", "Procurement Officer", "logistics", "AED 4,500 - 9,500"],
   ["office-administrator", "Office Administrator", "admin", "AED 3,000 - 6,500"],
+  ["admin-assistant", "Admin Assistant", "admin", "AED 2,500 - 5,500"],
   ["executive-assistant", "Executive Assistant", "admin", "AED 5,000 - 12,000"],
   ["hr-officer", "HR Officer", "admin", "AED 4,500 - 9,500"],
   ["receptionist", "Receptionist", "admin", "AED 2,500 - 5,000"],
@@ -94,6 +97,8 @@ const jobRows = [
   ["graphic-designer", "Graphic Designer", "sales-marketing", "AED 3,500 - 8,000"],
   ["digital-marketing-executive", "Digital Marketing Executive", "sales-marketing", "AED 4,500 - 10,000"],
   ["customer-service-representative", "Customer Service Representative", "admin", "AED 3,000 - 6,000"],
+  ["customer-service", "Customer Service", "admin", "AED 3,000 - 6,000"],
+  ["virtual-assistant", "Virtual Assistant", "admin", "AED 3,000 - 8,000"],
   ["retail-sales-associate", "Retail Sales Associate", "sales-marketing", "AED 2,500 - 5,000"],
   ["cashier", "Cashier", "sales-marketing", "AED 2,000 - 4,000"],
   ["nurse", "Nurse", "healthcare", "AED 4,500 - 10,000"],

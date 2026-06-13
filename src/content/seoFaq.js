@@ -36,6 +36,14 @@ export const homepageFaqs = [
     answer: "Yes. The app includes a cover letter builder that uses your CV details and selected job category to create a simple professional letter. You can edit every paragraph before download.",
   },
   {
+    question: "Can I upload my existing CV?",
+    answer: "Yes. You can upload an existing CV, let AI analyze the content, review the imported fields, improve weak wording, and download a cleaner professional CV.",
+  },
+  {
+    question: "Can I create a portfolio website?",
+    answer: "BuildMyCVNow is being positioned as one platform for a CV, portfolio, and personal website. The CV builder is live now, with portfolio and online professional profile features presented as part of the product direction.",
+  },
+  {
     question: "Is my data safe?",
     answer: "You can use download-only mode if you do not want cloud saving. In that mode your CV stays in your browser, and your email address is processed only for OTP verification before download. If you sign in to save CVs, your data is stored using Supabase under your account for up to 15 days.",
   },
