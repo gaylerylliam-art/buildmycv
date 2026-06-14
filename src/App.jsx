@@ -4410,6 +4410,7 @@ function CVBuilderApp({ onHome }) {
   const [completionMessage, setCompletionMessage] = useState("");
   const [completionModalOpen, setCompletionModalOpen] = useState(false);
   const [showSharePrompt, setShowSharePrompt] = useState(() => sessionStorage.getItem("bmcv_share_prompt_seen") !== "1");
+  const [accountDashboardRequested, setAccountDashboardRequested] = useState(() => window.location.hash === "#account-dashboard");
   const [userMode, setUserMode] = useState(() => localStorage.getItem("cvforall:user-mode") || "guest");
   const theme = useMemo(() => themes.find((item) => item.id === themeId), [themeId]);
   const coverTheme = useMemo(() => themes.find((item) => item.id === coverThemeId), [coverThemeId]);
@@ -4431,18 +4432,40 @@ function CVBuilderApp({ onHome }) {
     }
     setDownloadTarget("cv");
   };
+  const requestAccountDashboard = () => {
+    setAccountDashboardRequested(true);
+    setActiveBuilder("cv");
+    if (window.location.hash !== "#account-dashboard") {
+      window.location.hash = "account-dashboard";
+    }
+  };
   useEffect(() => {
     if (window.location.hash === "#signin") {
       setAuthOpen(true);
     }
     if (window.location.hash === "#account-dashboard") {
-      setActiveBuilder("cv");
+      requestAccountDashboard();
     }
   }, []);
   useEffect(() => {
-    if (!cloudSavingEnabled || window.location.hash !== "#account-dashboard") return;
-    window.setTimeout(() => document.getElementById("account-dashboard")?.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
-  }, [cloudSavingEnabled]);
+    if (!accountDashboardRequested || !cloudSavingEnabled) return undefined;
+    setAuthOpen(false);
+    setActiveBuilder("cv");
+    let attempts = 0;
+    const scrollToDashboard = () => {
+      attempts += 1;
+      const target = document.getElementById("account-dashboard");
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      return Boolean(target) || attempts >= 12;
+    };
+    if (scrollToDashboard()) return undefined;
+    const timer = window.setInterval(() => {
+      if (scrollToDashboard()) window.clearInterval(timer);
+    }, 150);
+    return () => window.clearInterval(timer);
+  }, [accountDashboardRequested, cloudSavingEnabled]);
   const dismissSharePrompt = () => {
     sessionStorage.setItem("bmcv_share_prompt_seen", "1");
     setShowSharePrompt(false);
@@ -4769,9 +4792,7 @@ function CVBuilderApp({ onHome }) {
     trackEvent("logout");
   };
   const openAccountDashboard = () => {
-    setActiveBuilder("cv");
-    window.location.hash = "account-dashboard";
-    window.setTimeout(() => document.getElementById("account-dashboard")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+    requestAccountDashboard();
   };
   const startUrgentMode = (method) => {
     setUserMode("urgent-local");
@@ -4779,7 +4800,8 @@ function CVBuilderApp({ onHome }) {
   };
   const startRegisteredMode = () => {
     setUserMode("registered");
-    openAccountDashboard();
+    setAuthOpen(false);
+    requestAccountDashboard();
   };
   return (
     <main className="builder-app-shell">
