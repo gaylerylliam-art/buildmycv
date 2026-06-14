@@ -3410,11 +3410,14 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
                 placeholder="6-digit code"
                 required
               />
+              <span className="mt-2 block text-xs font-bold leading-5 text-slate-500">
+                Enter the code from your email, then click the green proceed button to create your account and open the dashboard.
+              </span>
             </label>
           )}
           {isRecaptchaConfigured && <p className="text-xs font-bold text-slate-500">Protected by Google reCAPTCHA.</p>}
           <button disabled={!isSupabaseConfigured || loading} className="rounded bg-green-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
-            {loading ? "Please wait..." : mode === "signin" ? "Login" : signupOtp.sent ? "Verify code and create account" : "Send signup OTP"}
+            {loading ? "Please wait..." : mode === "signin" ? "Login" : signupOtp.sent ? "Proceed: create account and open dashboard" : "Send signup OTP"}
           </button>
           {mode === "signup" && signupOtp.sent && (
             <button
