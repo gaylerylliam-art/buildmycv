@@ -1105,7 +1105,7 @@ function PolicySections() {
       <PolicyCard id="privacy" title="Privacy Policy">
         <p>BuildMyCVNow has two modes. In download-only mode, users can create a free CV without an account and verify by email OTP before downloading. In account mode, users can sign in and save CV versions online for a limited time.</p>
         <p>Download-only CV content stays in the browser and is not intentionally saved to Supabase. The email address entered for OTP may be processed by EmailJS only to send or verify the download code.</p>
-        <p>Registered users can save up to 10 CVs online and generate/save up to 10 CVs per day. Saved CVs are stored with Supabase under the user account for up to 14 days, then are designed to expire so users are encouraged to download their own records.</p>
+        <p>Registered users can save up to 10 CVs online and generate/save up to 10 CVs per day. Saved CVs are stored with Supabase under the user account for up to 15 days, then are designed to expire so users are encouraged to download their own records.</p>
         <p>Google Analytics, reCAPTCHA, and AdSense may use cookies or similar technologies when enabled. Ads are intended to support the free service without interfering with CV creation.</p>
       </PolicyCard>
       <PolicyCard id="terms" title="Terms & Conditions">
@@ -1211,7 +1211,7 @@ function PrivacyPage({ onStart }) {
           <p>BuildMyCVNow may collect the information needed to create, verify, save, and download CVs, including name, email address, phone number, country, nationality, visa status, job history, education, skills, uploaded CV text, profile photos, saved drafts, saved CV versions, and download verification details.</p>
           <p><strong>Download-only mode:</strong> Users can create and download a CV without creating an account. The CV data stays in browser state or localStorage and is not intentionally saved to Supabase. Before download, the user may verify by email OTP. The email address entered for OTP may be processed by EmailJS only to send or verify the code. Users should download their file before closing the browser because no online copy is kept in this mode.</p>
           <p><strong>Registered account mode:</strong> Users can sign up or sign in with email/password, passwordless email OTP, or another enabled Supabase Auth provider. Registered users can save and manage up to 10 CVs online. Saved CVs, drafts, and related profile photo data may be stored with Supabase Auth, Supabase Database, and Supabase Storage under the authenticated account.</p>
-          <p><strong>Retention:</strong> Online saved CVs are stored for up to 14 days. After that period, saved CV records are designed to expire and may be automatically deleted. Users are responsible for downloading and keeping their own copies before the storage period ends. Browser-local drafts may also be lost if the user clears browser storage, changes device, or uses private browsing.</p>
+          <p><strong>Retention:</strong> Online saved CVs are stored for up to 15 days. After that period, saved CV records are designed to expire and may be automatically deleted. Users are responsible for downloading and keeping their own copies before the storage period ends. Browser-local drafts may also be lost if the user clears browser storage, changes device, or uses private browsing.</p>
           <p><strong>Service providers:</strong> BuildMyCVNow may use Supabase for authentication, database, and storage; EmailJS for email messages and email OTP; OpenAI or similar AI services for optional writing assistance and CV parsing; Google Analytics for traffic measurement; Google reCAPTCHA for spam protection; and Google AdSense for advertising. These providers may process limited data needed to deliver their service.</p>
           <p><strong>Advertising and cookies:</strong> Ad areas support the free service. When Google AdSense, Google Analytics, or reCAPTCHA are enabled, Google and its partners may use cookies or similar technologies to measure traffic, protect forms, serve ads, and personalize ads where allowed by law and user settings.</p>
           <p><strong>User rights:</strong> Users can request access, correction, export, or deletion of stored personal data by using the Contact page. Users should avoid uploading or entering unnecessary sensitive information, passport numbers, national ID numbers, medical details, or private family information unless they intentionally choose to include it in their CV.</p>
@@ -1234,7 +1234,7 @@ function TermsPage({ onStart }) {
         <PolicyCard title="Terms of Use">
           <p><strong>Last updated:</strong> June 13, 2026.</p>
           <p><strong>Free download-only use:</strong> Users may create and download a CV for free without creating an account. Before downloading, users must complete email OTP verification when requested. Download-only mode does not save CVs online, so users must download their file before closing the browser.</p>
-          <p><strong>Registered account use:</strong> Users may create a free account to save and manage CVs online. Each account may save up to 10 CVs and generate/save up to 10 CVs per day. Saved CVs are kept for up to 14 days and may be automatically deleted after that period. Users are responsible for downloading their own files before expiry.</p>
+          <p><strong>Registered account use:</strong> Users may create a free account to save and manage CVs online. Each account may save up to 10 CVs and generate/save up to 10 CVs per day. Saved CVs are kept for up to 15 days and may be automatically deleted after that period. Users are responsible for downloading their own files before expiry.</p>
           <p><strong>User responsibility:</strong> Users are responsible for the accuracy, honesty, and completeness of the information they enter into BuildMyCVNow. Do not include false work history, certificates, education, licenses, salaries, visa status, references, or employer details.</p>
           <p><strong>CV ownership:</strong> Users own the CV content they create. BuildMyCVNow provides templates, formatting tools, download tools, AI assistance, and general guidance, but the user's personal information and work history remain their responsibility.</p>
           <p><strong>AI and imported CVs:</strong> AI-assisted parsing, grammar checks, rephrasing, and suggested wording may contain mistakes. Users must review, approve, edit, or reject suggestions before using them in a CV or cover letter.</p>
@@ -3337,7 +3337,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
               {loading ? "Please wait..." : accountOtp.sent ? "Verify OTP and open account" : "Send email OTP"}
             </button>
             <p className="rounded bg-blue-50 p-3 text-xs font-bold leading-5 text-blue-800">
-              Free account mode lets you save up to 10 CVs online and generate/save up to 10 CVs per day. Saved CVs expire after 14 days.
+              Free account mode lets you save up to 10 CVs online and generate/save up to 10 CVs per day. Saved CVs expire after 15 days.
             </p>
             {isRecaptchaConfigured && <p className="text-xs font-bold text-slate-500">Protected by Google reCAPTCHA.</p>}
           </form>
@@ -3458,6 +3458,23 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
 function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDraft, onLoadDraft, draftStatus }) {
   const [items, setItems] = useState([]);
   const [message, setMessage] = useState(user ? "Load your saved CVs." : `Login to save and manage up to ${SAVED_CV_LIMIT} CVs.`);
+  const formatDateTime = (value) => {
+    if (!value) return "Not available";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "Not available";
+    return date.toLocaleString(undefined, { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  };
+  const formatDate = (value) => {
+    if (!value) return "Not available";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "Not available";
+    return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  };
+  const expiryDateFor = (item) => {
+    if (item.expires_at) return item.expires_at;
+    if (!item.created_at) return "";
+    return new Date(new Date(item.created_at).getTime() + SAVED_CV_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  };
   const refresh = async () => {
     if (!user) return;
     try {
@@ -3503,7 +3520,7 @@ function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDra
     <section className="rounded border border-slate-200 bg-white p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h3 className="panel-title">My CVs dashboard</h3>
+          <h3 className="panel-title">Account dashboard</h3>
           <p className="mt-1 text-[11px] font-bold text-slate-500">{items.length} saved version{items.length === 1 ? "" : "s"} of {SAVED_CV_LIMIT}</p>
         </div>
         <button onClick={saveCurrent} className="rounded bg-green-600 px-3 py-2 text-xs font-black text-white">Save</button>
@@ -3511,7 +3528,7 @@ function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDra
       <div className="mt-3 rounded border border-blue-100 bg-blue-50 p-3">
         <p className="text-xs font-black text-blue-950">Save progress and come back later</p>
         <p className="mt-1 text-xs font-bold leading-5 text-blue-800">{draftStatus || "Cloud draft sync is ready."}</p>
-        <p className="mt-1 text-xs font-bold leading-5 text-blue-900">Online CVs are stored for {SAVED_CV_RETENTION_DAYS} days, then removed automatically. Download your files regularly.</p>
+        <p className="mt-1 text-xs font-bold leading-5 text-blue-900">Saved CVs are stored for {SAVED_CV_RETENTION_DAYS} days from their creation date, then removed automatically. Download your files regularly.</p>
         <div className="mt-3 grid grid-cols-2 gap-2">
           <button onClick={onSaveDraft} className="rounded bg-blue-600 px-3 py-2 text-xs font-black text-white">Save draft</button>
           <button onClick={onLoadDraft} className="rounded bg-white px-3 py-2 text-xs font-black text-blue-700 ring-1 ring-blue-200">Restore draft</button>
@@ -3527,12 +3544,21 @@ function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDra
         {items.map((item) => (
           <div key={item.id} className="rounded border border-slate-200 p-3">
             <p className="text-sm font-black text-slate-900">{item.title}</p>
-            <p className="text-xs text-slate-500">
-              {item.category_id || "CV version"} - Last updated {new Date(item.updated_at || item.created_at).toLocaleString()}
-            </p>
-            <p className="mt-1 text-xs font-bold text-amber-700">
-              Expires {item.expires_at ? new Date(item.expires_at).toLocaleDateString() : `${SAVED_CV_RETENTION_DAYS} days after saving once database expiry is enabled`}
-            </p>
+            <p className="text-xs font-bold text-slate-500">{item.category_id || "CV version"}</p>
+            <dl className="mt-2 grid gap-1 rounded bg-slate-50 p-2 text-xs leading-5 text-slate-600 sm:grid-cols-2">
+              <div>
+                <dt className="font-black text-slate-800">Date created</dt>
+                <dd>{formatDateTime(item.created_at)}</dd>
+              </div>
+              <div>
+                <dt className="font-black text-slate-800">Expiration date</dt>
+                <dd className="font-bold text-amber-700">{formatDate(expiryDateFor(item))}</dd>
+              </div>
+              <div className="sm:col-span-2">
+                <dt className="font-black text-slate-800">Last updated</dt>
+                <dd>{formatDateTime(item.updated_at || item.created_at)}</dd>
+              </div>
+            </dl>
             <div className="mt-2 flex flex-wrap gap-2">
               <button onClick={() => onLoad(item)} className="rounded bg-blue-50 px-3 py-2 text-xs font-black text-blue-700">Edit</button>
               <button onClick={() => duplicate(item)} className="rounded bg-slate-100 px-3 py-2 text-xs font-black text-slate-700">Duplicate</button>

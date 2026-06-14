@@ -16,7 +16,7 @@ export const supabase = isSupabaseConfigured
   : null;
 
 export const SAVED_CV_LIMIT = 10;
-export const SAVED_CV_RETENTION_DAYS = 14;
+export const SAVED_CV_RETENTION_DAYS = 15;
 
 export async function submitContactMessage({ name, email, message }) {
   const response = await fetch("/.netlify/functions/contact", {
