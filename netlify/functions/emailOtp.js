@@ -71,7 +71,7 @@ const verifyStoredOtp = async ({ email, otp, purpose }) => {
   }
 
   const activeRows = (data || []).filter((row) => new Date(row.expires_at).getTime() > Date.now());
-  if (!activeRows.length) return { checked: true, ok: false, message: "OTP expired. Please request a new code." };
+  if (!activeRows.length) return { checked: false };
 
   const expectedHash = otpHash({ email, otp, purpose: normalizedPurpose });
   const matched = activeRows.find((row) => timingSafeEqual(row.otp_hash, expectedHash));
