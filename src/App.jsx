@@ -4544,6 +4544,12 @@ function CVBuilderApp({ onHome }) {
       window.location.hash = "account-dashboard";
     }
   };
+  const closeAccountDashboard = () => {
+    setAccountDashboardRequested(false);
+    if (window.location.hash === "#account-dashboard") {
+      window.location.hash = "builder";
+    }
+  };
   useEffect(() => {
     if (window.location.hash === "#signin") {
       setAuthOpen(true);
@@ -5011,6 +5017,38 @@ function CVBuilderApp({ onHome }) {
           </div>
         </section>
       )}
+      {activeBuilder === "cv" && accountDashboardRequested && cloudSavingEnabled && (
+        <section className="border-b border-blue-100 bg-slate-50 px-5 py-5">
+          <div className="mx-auto max-w-7xl">
+            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-wide text-blue-700">User account</p>
+                <h2 className="text-2xl font-black text-slate-950">Saved CV dashboard</h2>
+                <p className="mt-1 text-sm font-bold text-slate-600">View, restore, duplicate, or delete the CVs saved to your account.</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeAccountDashboard}
+                className="rounded border border-slate-300 bg-white px-4 py-3 text-sm font-black text-slate-700 hover:bg-slate-100"
+              >
+                Back to builder
+              </button>
+            </div>
+            <MyCvsPanel
+              user={user}
+              cv={cv}
+              categoryId={categoryId}
+              themeId={themeId}
+              layoutId={layoutId}
+              onLoad={loadSavedCv}
+              onSaveDraft={() => saveCloudDraft()}
+              onLoadDraft={restoreCloudDraft}
+              draftStatus={draftStatus}
+              refreshKey={savedCvRefreshKey}
+            />
+          </div>
+        </section>
+      )}
       {activeBuilder === "cv" ? (
         <>
         <div className="builder-layout-v2">
@@ -5045,7 +5083,7 @@ function CVBuilderApp({ onHome }) {
                     </button>
                   </div>
                   <div>
-                    {cloudSavingEnabled ? (
+                    {cloudSavingEnabled && !accountDashboardRequested ? (
                       <MyCvsPanel
                         user={user}
                         cv={cv}
@@ -5058,7 +5096,7 @@ function CVBuilderApp({ onHome }) {
                         draftStatus={draftStatus}
                         refreshKey={savedCvRefreshKey}
                       />
-                    ) : (
+                    ) : !cloudSavingEnabled ? (
                       <section className="rounded border border-amber-200 bg-amber-50 p-4">
                         <h3 className="panel-title text-amber-950">Download-only mode</h3>
                         <p className="mt-2 text-xs font-bold leading-5 text-amber-900">
@@ -5066,6 +5104,16 @@ function CVBuilderApp({ onHome }) {
                         </p>
                         <button onClick={() => setAuthOpen(true)} className="mt-3 w-full rounded border border-amber-300 bg-white px-4 py-3 text-sm font-black text-amber-900 hover:bg-amber-100">
                           Sign in to save online
+                        </button>
+                      </section>
+                    ) : (
+                      <section className="rounded border border-blue-100 bg-blue-50 p-4">
+                        <h3 className="panel-title text-blue-950">Dashboard is open</h3>
+                        <p className="mt-2 text-xs font-bold leading-5 text-blue-900">
+                          Your saved CV dashboard is shown above the builder so it is easier to view and manage.
+                        </p>
+                        <button onClick={closeAccountDashboard} className="mt-3 w-full rounded bg-blue-600 px-4 py-3 text-sm font-black text-white hover:bg-blue-700">
+                          Back to builder
                         </button>
                       </section>
                     )}
