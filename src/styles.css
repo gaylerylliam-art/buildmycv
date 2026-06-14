@@ -3087,12 +3087,12 @@ summary {
   top: 0;
   z-index: 40;
   display: flex;
-  height: 56px;
+  min-height: 54px;
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid var(--border);
   background: color-mix(in srgb, var(--bg-surface) 96%, transparent);
-  padding: 0 18px;
+  padding: 0.55rem 1rem;
   backdrop-filter: blur(10px);
 }
 
@@ -3148,9 +3148,9 @@ summary {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  border-radius: 0.5rem;
+  border-radius: 0.55rem;
   background: #185fa5;
-  padding: 0.7rem 1rem;
+  padding: 0.62rem 0.95rem;
   font-size: 0.85rem;
   font-weight: 900;
   color: #ffffff;
@@ -3158,16 +3158,144 @@ summary {
 
 .builder-tabbar {
   border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-surface) 96%, #f8fafc);
+}
+
+.builder-tabbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem;
+  max-width: 82rem;
+  margin: 0 auto;
+  padding: 0.65rem 1rem;
+}
+
+.builder-mode-switch {
+  display: inline-flex;
+  gap: 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--bg-subtle);
+  padding: 0.25rem;
+}
+
+.builder-mode-switch button {
+  border-radius: 0.55rem;
+  padding: 0.58rem 0.9rem;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.builder-mode-switch button.active {
+  background: #0f172a;
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+}
+
+.builder-account-strip {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1.2;
+  min-width: 0;
+}
+
+.builder-account-strip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-dashboard-button,
+.account-logout-button {
+  flex-shrink: 0;
+  border-radius: 0.55rem;
+  padding: 0.58rem 0.82rem;
+  font-size: 0.75rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.account-dashboard-button {
+  border: 1px solid #2563eb;
+  color: #1d4ed8;
+  background: #ffffff;
+}
+
+.account-dashboard-button:hover {
+  background: #eff6ff;
+}
+
+.account-logout-button {
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
   background: var(--bg-surface);
 }
 
+.account-logout-button:hover {
+  background: var(--bg-subtle);
+}
+
+.dark .builder-mode-switch {
+  background: #111827;
+}
+
+.dark .builder-mode-switch button.active {
+  background: #f8fafc;
+  color: #111827;
+}
+
+.dark .account-dashboard-button {
+  background: #172554;
+  color: #dbeafe;
+}
+
+.dark .account-logout-button {
+  background: #111827;
+  color: #e5e7eb;
+}
+
+.dark .builder-guide-strip {
+  border-color: #1f2937;
+  background: #0f172a;
+}
+
+.dark .builder-guide-head h2,
+.dark .builder-guide-steps h3 {
+  color: #f8fafc;
+}
+
+.dark .builder-guide-head p,
+.dark .builder-guide-steps small {
+  color: #cbd5e1;
+}
+
+.dark .builder-guide-steps article {
+  border-color: #334155;
+  background: #111827;
+}
+
+.dark .builder-guide-tip {
+  background: #052e2b;
+  color: #bbf7d0;
+}
+
+.dark .builder-guide-warning {
+  background: #422006;
+  color: #fde68a;
+}
+
 .builder-progress-bar {
-  position: sticky;
-  top: 56px;
-  z-index: 35;
   border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--bg-surface) 96%, transparent);
-  backdrop-filter: blur(10px);
+  background: var(--bg-surface);
 }
 
 .builder-progress-mobile {
@@ -3189,10 +3317,10 @@ summary {
 
 .builder-progress-steps {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.38rem;
   max-width: 82rem;
   margin: 0 auto;
-  padding: 0.7rem 1rem;
+  padding: 0.48rem 1rem;
   overflow-x: auto;
 }
 
@@ -3205,9 +3333,9 @@ summary {
   border-radius: 999px;
   background: var(--bg-surface);
   color: var(--text-muted);
-  font-size: 0.74rem;
+  font-size: 0.7rem;
   font-weight: 900;
-  padding: 0.46rem 0.75rem;
+  padding: 0.38rem 0.62rem;
 }
 
 .builder-progress-steps button span {
@@ -3288,7 +3416,7 @@ summary {
 .builder-guide-strip {
   border-bottom: 1px solid #e5e7eb;
   background: #ffffff;
-  padding: 0.65rem 1rem;
+  padding: 0.5rem 1rem;
 }
 
 .builder-guide-inner {
@@ -3300,20 +3428,20 @@ summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.8rem;
 }
 
 .builder-guide-head h2 {
   color: #0f172a;
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   font-weight: 900;
   line-height: 1.2;
 }
 
 .builder-guide-head p {
-  margin-top: 0.12rem;
+  margin-top: 0.05rem;
   color: #64748b;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 800;
   line-height: 1.35;
 }
@@ -3332,21 +3460,21 @@ summary {
 .builder-guide-steps {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 0.45rem;
-  margin-top: 0.55rem;
+  gap: 0.38rem;
+  margin-top: 0.42rem;
 }
 
 .builder-guide-steps article {
-  min-height: 3.15rem;
+  min-height: 2.35rem;
   border: 1px solid #e2e8f0;
   border-radius: 0.5rem;
   background: #f8fafc;
-  padding: 0.55rem 0.65rem;
+  padding: 0.42rem 0.55rem;
 }
 
 .builder-guide-steps p {
   color: #1d4ed8;
-  font-size: 0.62rem;
+  font-size: 0.56rem;
   font-weight: 900;
   letter-spacing: 0.04em;
   line-height: 1;
@@ -3354,9 +3482,9 @@ summary {
 }
 
 .builder-guide-steps h3 {
-  margin-top: 0.28rem;
+  margin-top: 0.2rem;
   color: #0f172a;
-  font-size: 0.74rem;
+  font-size: 0.66rem;
   font-weight: 900;
   line-height: 1.25;
 }
@@ -3373,16 +3501,16 @@ summary {
 .builder-guide-reminders {
   display: grid;
   grid-template-columns: 0.85fr 1.15fr;
-  gap: 0.45rem;
-  margin-top: 0.55rem;
+  gap: 0.38rem;
+  margin-top: 0.42rem;
 }
 
 .builder-guide-reminders p {
   border-radius: 0.5rem;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 900;
-  line-height: 1.45;
-  padding: 0.5rem 0.65rem;
+  line-height: 1.35;
+  padding: 0.42rem 0.58rem;
 }
 
 .builder-guide-tip {
@@ -3402,14 +3530,14 @@ summary {
 }
 
 @media (min-width: 1180px) {
-  .builder-tabbar > div {
-    gap: 0.75rem !important;
-    padding-top: 0.55rem !important;
-    padding-bottom: 0.55rem !important;
+  .builder-tabbar-inner {
+    gap: 0.75rem;
+    padding-top: 0.55rem;
+    padding-bottom: 0.55rem;
   }
 
-  .builder-tabbar button {
-    padding: 0.65rem 1rem !important;
+  .builder-mode-switch button {
+    padding: 0.62rem 1rem;
   }
 
   .builder-guide-strip {
@@ -4125,6 +4253,24 @@ summary {
 }
 
 @media (max-width: 1179px) {
+  .builder-tabbar-inner {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .builder-mode-switch {
+    align-self: flex-start;
+  }
+
+  .builder-account-strip {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .builder-account-strip span {
+    white-space: normal;
+  }
+
   .builder-guide-strip {
     padding: 0.6rem 0.75rem;
   }
@@ -4494,21 +4640,21 @@ summary {
 
 .completion-bar {
   position: sticky;
-  top: 56px;
+  top: 54px;
   z-index: 39;
   border-bottom: 1px solid var(--border);
   background: var(--bg-surface);
-  padding: 0.45rem 1rem 0;
+  padding: 0.34rem 1rem 0;
 }
 
 .completion-label {
   display: flex;
-  min-height: 1.25rem;
+  min-height: 1.05rem;
   align-items: center;
   justify-content: flex-end;
   gap: 0.5rem;
   color: var(--text-primary);
-  font-size: 0.78rem;
+  font-size: 0.74rem;
 }
 
 .completion-label button {
@@ -4519,8 +4665,8 @@ summary {
 }
 
 .completion-track {
-  height: 6px;
-  margin-top: 0.25rem;
+  height: 4px;
+  margin-top: 0.2rem;
   overflow: hidden;
   border-radius: 999px;
   background: var(--border);
@@ -5217,6 +5363,21 @@ summary {
 @media (max-width: 900px) {
   .builder-progress-bar {
     top: 0;
+  }
+
+  .builder-tabbar-inner {
+    padding: 0.55rem 0.75rem;
+  }
+
+  .builder-mode-switch {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .builder-mode-switch button {
+    width: 100%;
+    padding-inline: 0.55rem;
   }
 
   .builder-progress-mobile {

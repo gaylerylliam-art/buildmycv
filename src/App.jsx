@@ -4980,8 +4980,8 @@ function CVBuilderApp({ onHome }) {
       {activeBuilder === "cv" && <CompletionBar completion={completion} onNextStep={handleNextStep} />}
       {activeBuilder === "cv" && <BuilderProgressBar currentStep={currentStep} completedSteps={completedSteps} onStep={handleNextStep} />}
       <div className="builder-tabbar">
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between">
-          <div className="flex gap-2">
+        <div className="builder-tabbar-inner">
+          <div className="builder-mode-switch">
             {[
               ["cv", "CV Builder"],
               ["cover", "Cover Letter Builder"],
@@ -4989,21 +4989,21 @@ function CVBuilderApp({ onHome }) {
               <button
                 key={id}
                 onClick={() => switchBuilder(id)}
-                className={`rounded px-5 py-3 text-sm font-black ${activeBuilder === id ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
+                className={activeBuilder === id ? "active" : ""}
               >
                 {label}
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+          <div className="builder-account-strip">
             <span>{cloudSavingEnabled ? `Cloud saving as ${user.email}` : noCloudMode ? "Download-only mode. No cloud saving." : "Choose download-only or sign in to save online."}</span>
             {cloudSavingEnabled ? (
               <>
-                <button onClick={openAccountDashboard} className="rounded border border-blue-600 px-3 py-2 text-xs font-black text-blue-700 hover:bg-blue-50">Account dashboard</button>
-                <button onClick={signOut} className="rounded border border-slate-300 px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50">Logout</button>
+                <button onClick={openAccountDashboard} className="account-dashboard-button">Account dashboard</button>
+                <button onClick={signOut} className="account-logout-button">Logout</button>
               </>
             ) : (
-              <button onClick={() => setAuthOpen(true)} className="rounded border border-blue-600 px-3 py-2 text-xs font-black text-blue-700 hover:bg-blue-50">Sign In / Sign Up</button>
+              <button onClick={() => setAuthOpen(true)} className="account-dashboard-button">Sign In / Sign Up</button>
             )}
           </div>
         </div>
