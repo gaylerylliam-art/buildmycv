@@ -4433,6 +4433,386 @@ summary {
   }
 }
 
+@media (min-width: 1180px) and (max-width: 1440px) {
+  .builder-topbar {
+    min-height: 42px;
+    padding: 0.32rem 0.8rem;
+  }
+
+  .builder-logo {
+    font-size: 0.88rem;
+  }
+
+  .builder-logo-icon {
+    height: 1.75rem;
+    width: 1.75rem;
+    border-radius: 0.38rem;
+  }
+
+  .builder-topbar-actions {
+    gap: 0.42rem;
+  }
+
+  .theme-toggle {
+    grid-template-columns: repeat(3, 1.75rem);
+    padding: 0.14rem;
+  }
+
+  .theme-toggle button {
+    height: 1.55rem;
+  }
+
+  .builder-save-badge {
+    padding: 0.24rem 0.58rem;
+    font-size: 0.66rem;
+  }
+
+  .builder-download-button {
+    border-radius: 0.48rem;
+    padding: 0.48rem 0.8rem;
+    font-size: 0.76rem;
+  }
+
+  .completion-bar {
+    top: 42px;
+    padding: 0.18rem 0.8rem 0;
+  }
+
+  .completion-label {
+    min-height: 0.9rem;
+    font-size: 0.68rem;
+  }
+
+  .completion-track {
+    height: 3px;
+    margin-top: 0.14rem;
+  }
+
+  .builder-progress-steps {
+    max-width: none;
+    padding: 0.34rem 0.8rem;
+  }
+
+  .builder-progress-steps button {
+    gap: 0.34rem;
+    padding: 0.28rem 0.52rem;
+    font-size: 0.64rem;
+  }
+
+  .builder-progress-steps button span {
+    height: 1rem;
+    width: 1rem;
+    font-size: 0.58rem;
+  }
+
+  .builder-tabbar-inner {
+    max-width: none;
+    padding: 0.4rem 0.8rem;
+  }
+
+  .builder-mode-switch {
+    border-radius: 0.62rem;
+    padding: 0.18rem;
+  }
+
+  .builder-mode-switch button {
+    border-radius: 0.45rem;
+    padding: 0.46rem 0.75rem;
+    font-size: 0.74rem;
+  }
+
+  .builder-account-strip {
+    gap: 0.42rem;
+    font-size: 0.7rem;
+  }
+
+  .account-dashboard-button,
+  .account-logout-button {
+    border-radius: 0.45rem;
+    padding: 0.46rem 0.72rem;
+    font-size: 0.68rem;
+  }
+
+  .builder-guide-strip {
+    padding: 0.28rem 0.8rem;
+  }
+
+  .builder-guide-inner {
+    display: grid;
+    max-width: none;
+    grid-template-columns: minmax(150px, 0.75fr) minmax(500px, 2.45fr) minmax(285px, 1.05fr);
+    align-items: stretch;
+    gap: 0.4rem;
+  }
+
+  .builder-guide-head {
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.12rem;
+  }
+
+  .builder-guide-head h2 {
+    font-size: 0.78rem;
+  }
+
+  .builder-guide-head p {
+    margin-top: 0;
+    font-size: 0.62rem;
+    line-height: 1.2;
+  }
+
+  .builder-guide-head span {
+    padding: 0.23rem 0.48rem;
+    font-size: 0.56rem;
+  }
+
+  .builder-guide-steps {
+    margin-top: 0;
+    gap: 0.28rem;
+  }
+
+  .builder-guide-steps article {
+    min-height: 1.95rem;
+    border-radius: 0.35rem;
+    padding: 0.32rem 0.42rem;
+  }
+
+  .builder-guide-steps p {
+    font-size: 0.48rem;
+    letter-spacing: 0.025em;
+  }
+
+  .builder-guide-steps h3 {
+    margin-top: 0.12rem;
+    font-size: 0.57rem;
+    line-height: 1.15;
+  }
+
+  .builder-guide-steps small {
+    display: none;
+  }
+
+  .builder-guide-reminders {
+    grid-template-columns: 1fr;
+    gap: 0.28rem;
+    margin-top: 0;
+  }
+
+  .builder-guide-reminders p {
+    border-radius: 0.36rem;
+    padding: 0.31rem 0.48rem;
+    font-size: 0.58rem;
+    line-height: 1.22;
+  }
+
+  .draft-recovery-banner {
+    max-width: none;
+    margin: 0.45rem 0.8rem 0;
+    border-radius: 0.62rem;
+    padding: 0.55rem 0.72rem;
+  }
+
+  .draft-recovery-banner strong {
+    font-size: 0.78rem;
+  }
+
+  .draft-recovery-banner p {
+    font-size: 0.68rem;
+  }
+
+  .draft-recovery-banner button {
+    border-radius: 0.42rem;
+    padding: 0.45rem 0.65rem;
+    font-size: 0.68rem;
+  }
+
+  .builder-layout-v2 {
+    grid-template-columns: 190px minmax(390px, 0.95fr) minmax(520px, 1.05fr);
+    height: calc(100vh - 218px);
+  }
+
+  .builder-sidebar-v2 {
+    padding: 0.72rem 0.48rem;
+  }
+
+  .builder-step {
+    gap: 0.42rem;
+    padding: 0.42rem 0.4rem;
+    font-size: 0.74rem;
+  }
+
+  .builder-step-dot {
+    height: 1.25rem;
+    width: 1.25rem;
+    font-size: 0.62rem;
+  }
+
+  .builder-step-connector {
+    height: 0.45rem;
+    margin-left: 1.02rem;
+  }
+
+  .sidebar-label-v2 {
+    margin-bottom: 0.32rem;
+    font-size: 0.58rem;
+  }
+
+  .template-safe-note {
+    border-radius: 0.45rem;
+    padding: 0.42rem 0.5rem;
+    font-size: 0.62rem;
+  }
+
+  .template-card-grid {
+    gap: 0.36rem;
+  }
+
+  .template-card-button {
+    min-height: 3.75rem;
+    padding: 0.42rem;
+  }
+
+  .template-mini-preview {
+    width: 2.15rem;
+    margin-bottom: 0.32rem;
+  }
+
+  .template-card-name {
+    font-size: 0.64rem;
+  }
+
+  .template-card-sub {
+    font-size: 0.57rem;
+    line-height: 1.18;
+  }
+
+  .sidebar-swatch-row {
+    gap: 0.35rem;
+    padding: 0.18rem 0.32rem;
+  }
+
+  .sidebar-swatch {
+    height: 1.15rem;
+    width: 1.15rem;
+  }
+
+  .builder-form-panel-v2 {
+    padding: 0.72rem;
+  }
+
+  .builder-form-inner {
+    max-width: 760px;
+    gap: 0.65rem;
+  }
+
+  .builder-form-inner > section:first-child {
+    padding: 0.85rem !important;
+  }
+
+  .builder-form-inner > section:first-child .flex.items-start {
+    gap: 0.75rem;
+  }
+
+  .builder-form-inner > section:first-child .h-10.w-10 {
+    height: 2.05rem;
+    width: 2.05rem;
+  }
+
+  .builder-form-inner > section:first-child p.text-sm {
+    font-size: 0.76rem;
+    line-height: 1.45;
+  }
+
+  .builder-form-inner > section:first-child .mt-3.grid {
+    gap: 0.55rem;
+    padding: 0.72rem;
+  }
+
+  .builder-form-inner > section:first-child .mt-2.flex {
+    gap: 0.45rem;
+  }
+
+  .builder-form-inner > section:first-child .mt-2.flex button,
+  .builder-form-inner > section:first-child label.inline-flex {
+    padding: 0.48rem 0.68rem;
+    font-size: 0.68rem;
+  }
+
+  .builder-form-inner > section:first-child label.flex {
+    padding: 0.62rem;
+    font-size: 0.72rem;
+  }
+
+  .form-section-head,
+  .entry-card-header {
+    padding: 0.72rem 0.82rem;
+  }
+
+  .form-section-title,
+  .entry-card-title {
+    font-size: 0.82rem;
+  }
+
+  .form-section-body,
+  .entry-card-body {
+    gap: 0.68rem;
+    padding: 0.8rem;
+  }
+
+  .field-pair {
+    gap: 0.65rem;
+  }
+
+  .preview-topbar-v2 {
+    padding: 0.5rem 0.7rem;
+  }
+
+  .preview-live-label {
+    font-size: 0.7rem;
+  }
+
+  .preview-action-button {
+    padding: 0.3rem 0.55rem;
+    font-size: 0.68rem;
+  }
+
+  .preview-strength {
+    padding: 0.55rem 0.7rem;
+  }
+
+  .preview-sheet-scroll {
+    padding: 0.45rem 0.65rem 0.8rem;
+  }
+}
+
+@media (min-width: 1180px) and (max-width: 1440px) and (max-height: 820px) {
+  .builder-guide-head p,
+  .builder-guide-tip {
+    display: none;
+  }
+
+  .builder-guide-inner {
+    grid-template-columns: minmax(120px, 0.5fr) minmax(500px, 2.4fr) minmax(285px, 1.1fr);
+  }
+
+  .builder-guide-steps article {
+    min-height: 1.75rem;
+  }
+
+  .draft-recovery-banner {
+    padding: 0.45rem 0.65rem;
+  }
+
+  .draft-recovery-banner p {
+    display: none;
+  }
+
+  .builder-layout-v2 {
+    height: calc(100vh - 188px);
+  }
+}
+
 @media (max-width: 1179px) {
   .builder-tabbar-inner {
     align-items: stretch;
