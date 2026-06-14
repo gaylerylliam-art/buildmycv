@@ -381,8 +381,9 @@ const coverLetterToText = (letter, cv) => {
 };
 
 const DRAFT_STORAGE_KEY = "cvforall:draft:v1";
-const AUTH_REDIRECT_URL = import.meta.env.VITE_AUTH_REDIRECT_URL || "https://buildmycvnow.com/#builder";
-const GOOGLE_AUTH_ENABLED = import.meta.env.VITE_ENABLE_GOOGLE_AUTH === "true";
+const DEFAULT_AUTH_REDIRECT_URL =
+  typeof window !== "undefined" ? `${window.location.origin}/builder/#builder` : "https://buildmycvnow.com/builder/#builder";
+const AUTH_REDIRECT_URL = import.meta.env.VITE_AUTH_REDIRECT_URL || DEFAULT_AUTH_REDIRECT_URL;
 const ADSENSE_CLIENT_ID = import.meta.env.VITE_ADSENSE_CLIENT_ID || "";
 const ADSENSE_ENABLED = /^ca-pub-\d+$/.test(ADSENSE_CLIENT_ID);
 const BUILDER_ADS_ENABLED = import.meta.env.VITE_ENABLE_BUILDER_ADS === "true";
@@ -3077,12 +3078,46 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
   };
   const signInWithGoogle = async () => {
     if (!supabase) return;
-    onRegisteredMode();
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: AUTH_REDIRECT_URL },
-    });
-    if (error) setMessage(error.message);
+    setLoading(true);
+    setMessage("Opening Google sign in...");
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: AUTH_REDIRECT_URL },
+      });
+      if (error) throw error;
+      onRegisteredMode();
+    } catch (error) {
+      setMessage(error.message || "Google sign in could not start. Enable Google provider in Supabase first.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  const sendEmailSignInLink = async () => {
+    if (!supabase || !form.email) {
+      setMessage("Enter your email address first, then request the sign-in link.");
+      return;
+    }
+    setLoading(true);
+    setMessage("Sending sign-in link to your email...");
+    try {
+      const captchaToken = await getRecaptchaToken("signin_link");
+      const { error } = await supabase.auth.signInWithOtp({
+        email: form.email,
+        options: {
+          shouldCreateUser: true,
+          emailRedirectTo: AUTH_REDIRECT_URL,
+          captchaToken,
+        },
+      });
+      if (error) throw error;
+      trackEvent("login_link_sent", { method: "email" });
+      setMessage("Sign-in link sent. Please check your inbox and spam folder, then open the link from the same device.");
+    } catch (error) {
+      setMessage(error.message || "Could not send the sign-in link. Check Supabase email settings or try Google sign in.");
+    } finally {
+      setLoading(false);
+    }
   };
   const sendAccountEmailOtp = async (event) => {
     event.preventDefault();
@@ -3274,17 +3309,24 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
           <button disabled={!isSupabaseConfigured || loading} className="rounded bg-green-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
             {loading ? "Please wait..." : mode === "signin" ? "Login" : "Create account"}
           </button>
+          {mode === "signin" && (
+            <button
+              type="button"
+              disabled={!isSupabaseConfigured || loading}
+              onClick={sendEmailSignInLink}
+              className="rounded border border-blue-600 px-5 py-3 font-bold text-blue-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400"
+            >
+              Send email sign-in link
+            </button>
+          )}
         </form>
         )}
-        {GOOGLE_AUTH_ENABLED ? (
-          <button disabled={!isSupabaseConfigured} onClick={signInWithGoogle} className="mt-3 w-full rounded border border-blue-600 px-5 py-3 font-bold text-blue-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400">
-            Continue with Google
-          </button>
-        ) : (
-          <p className="mt-3 rounded bg-blue-50 p-3 text-xs font-bold leading-5 text-blue-800">
-            Google login is hidden until the Google provider is enabled in Supabase.
-          </p>
-        )}
+        <button disabled={!isSupabaseConfigured || loading} onClick={signInWithGoogle} className="mt-3 w-full rounded border border-blue-600 px-5 py-3 font-bold text-blue-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400">
+          Continue with Google
+        </button>
+        <p className="mt-2 rounded bg-blue-50 p-3 text-xs font-bold leading-5 text-blue-800">
+          Google sign in works after the Google provider is enabled in Supabase.
+        </p>
         {lastSignupEmail && (
           <button disabled={loading} onClick={resendConfirmation} className="mt-3 w-full rounded border border-green-600 px-5 py-3 font-bold text-green-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400">
             Resend confirmation email
