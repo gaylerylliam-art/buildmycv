@@ -3130,7 +3130,12 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode, onAuthenticated })
       setMessage("Signed in successfully.");
       await finishAuthenticated(data?.session);
     } catch (error) {
-      setMessage(error.message || "Authentication failed.");
+      const errorMessage = error.message || "Authentication failed.";
+      setMessage(
+        /invalid login credentials/i.test(errorMessage)
+          ? "Password not recognized. Use the Sign up tab to verify your email OTP and set a new password, or use Continue with Google."
+          : errorMessage
+      );
     } finally {
       setLoading(false);
     }

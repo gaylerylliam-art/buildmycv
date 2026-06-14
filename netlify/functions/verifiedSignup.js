@@ -22,6 +22,17 @@ const verifyChallenge = ({ email, otp, challenge }) => {
   return "";
 };
 
+const findUserByEmail = async (admin, email) => {
+  for (let page = 1; page <= 10; page += 1) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) throw error;
+    const user = data?.users?.find((item) => String(item.email || "").toLowerCase() === email);
+    if (user) return user;
+    if (!data?.users || data.users.length < 1000) break;
+  }
+  return null;
+};
+
 export const handler = async (event) => {
   if (event.httpMethod !== "POST") return json(405, { ok: false, message: "Use POST." });
 
@@ -63,6 +74,36 @@ export const handler = async (event) => {
 
   if (error) {
     const alreadyExists = /already|registered|exists/i.test(error.message || "");
+    if (alreadyExists) {
+      try {
+        const existingUser = await findUserByEmail(admin, email);
+        if (!existingUser?.id) {
+          return json(409, {
+            ok: false,
+            message: "This email already has an account. Please use Login or Google sign in.",
+          });
+        }
+
+        const { error: updateError } = await admin.auth.admin.updateUserById(existingUser.id, {
+          password,
+          user_metadata: { ...(existingUser.user_metadata || {}), full_name: name || existingUser.user_metadata?.full_name || "" },
+        });
+
+        if (updateError) throw updateError;
+
+        return json(200, {
+          ok: true,
+          userId: existingUser.id,
+          existing: true,
+          message: "Email verified. Password updated for your existing account.",
+        });
+      } catch (updateError) {
+        return json(400, {
+          ok: false,
+          message: updateError.message || "This email already has an account, but the password could not be updated.",
+        });
+      }
+    }
     return json(alreadyExists ? 409 : 400, {
       ok: false,
       message: alreadyExists ? "This email already has an account. Please use Login instead." : error.message || "Could not create account.",
