@@ -9,6 +9,17 @@ const json = (statusCode, body) => ({
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const secret = () => process.env.OTP_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || "buildmycvnow-local-email-otp-secret";
+const normalizePurpose = (purpose) => {
+  const value = String(purpose || "signup").trim().toLowerCase();
+  return /^[a-z0-9_-]{2,40}$/.test(value) ? value : "signup";
+};
+const otpHash = ({ email, otp, purpose }) =>
+  crypto.createHmac("sha256", secret()).update(`${email}|${normalizePurpose(purpose)}|${String(otp).trim()}`).digest("hex");
+const timingSafeEqual = (left, right) => {
+  const leftBuffer = Buffer.from(String(left || ""), "hex");
+  const rightBuffer = Buffer.from(String(right || ""), "hex");
+  return leftBuffer.length === rightBuffer.length && crypto.timingSafeEqual(leftBuffer, rightBuffer);
+};
 const signChallenge = ({ email, otp, expires }) =>
   crypto.createHmac("sha256", secret()).update(`${email}|${otp}|${expires}`).digest("hex");
 
@@ -20,6 +31,40 @@ const verifyChallenge = ({ email, otp, challenge }) => {
   const expected = signChallenge({ email, otp: String(otp).trim(), expires: challenge.expires });
   if (expected !== challenge.signature) return "Invalid OTP. Please try again.";
   return "";
+};
+
+const verifyStoredOtp = async ({ admin, email, otp, purpose }) => {
+  if (!/^\d{6}$/.test(String(otp || "").trim())) return { checked: true, ok: false, message: "Enter the 6-digit OTP." };
+
+  const normalizedPurpose = normalizePurpose(purpose);
+  const { data, error } = await admin
+    .from("email_otp_challenges")
+    .select("id, otp_hash, expires_at, consumed_at")
+    .eq("email", email)
+    .eq("purpose", normalizedPurpose)
+    .is("consumed_at", null)
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  if (error) {
+    console.warn("Could not verify stored signup OTP:", error.message);
+    return { checked: false };
+  }
+
+  const activeRows = (data || []).filter((row) => new Date(row.expires_at).getTime() > Date.now());
+  if (!activeRows.length) return { checked: true, ok: false, message: "OTP expired. Please request a new code." };
+
+  const expectedHash = otpHash({ email, otp, purpose: normalizedPurpose });
+  const matched = activeRows.find((row) => timingSafeEqual(row.otp_hash, expectedHash));
+  if (!matched) return { checked: true, ok: false, message: "Invalid OTP. Please use the newest code from your email." };
+
+  const { error: consumeError } = await admin
+    .from("email_otp_challenges")
+    .update({ consumed_at: new Date().toISOString() })
+    .eq("id", matched.id);
+  if (consumeError) console.warn("Could not mark signup OTP consumed:", consumeError.message);
+
+  return { checked: true, ok: true };
 };
 
 const findUserByEmail = async (admin, email) => {
@@ -58,12 +103,17 @@ export const handler = async (event) => {
   if (!emailPattern.test(email)) return json(400, { ok: false, message: "Enter a valid email address." });
   if (password.length < 6) return json(400, { ok: false, message: "Password must be at least 6 characters." });
 
-  const challengeError = verifyChallenge({ email, otp: payload.otp, challenge: payload.challenge });
-  if (challengeError) return json(400, { ok: false, message: challengeError });
-
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
+
+  const storedOtpResult = await verifyStoredOtp({ admin, email, otp: payload.otp, purpose: payload.purpose || "signup" });
+  if (storedOtpResult.checked) {
+    if (!storedOtpResult.ok) return json(400, { ok: false, message: storedOtpResult.message || "Invalid OTP. Please try again." });
+  } else {
+    const challengeError = verifyChallenge({ email, otp: payload.otp, challenge: payload.challenge });
+    if (challengeError) return json(400, { ok: false, message: challengeError });
+  }
 
   const { data, error } = await admin.auth.admin.createUser({
     email,

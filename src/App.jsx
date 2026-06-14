@@ -2948,7 +2948,7 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
       const response = await fetch("/.netlify/functions/emailOtp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "send", email: details.email, name: details.name }),
+        body: JSON.stringify({ action: "send", email: details.email, name: details.name, purpose: "download" }),
       });
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.message || "Could not send OTP.");
@@ -2963,7 +2963,7 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
       const response = await fetch("/.netlify/functions/emailOtp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "verify", email: details.email, otp, challenge: otpChallenge }),
+        body: JSON.stringify({ action: "verify", email: details.email, otp, challenge: otpChallenge, purpose: "download" }),
       });
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.message || "Invalid OTP.");
@@ -3080,7 +3080,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode, onAuthenticated })
           const response = await fetch("/.netlify/functions/emailOtp", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "send", email: form.email, name: form.name }),
+            body: JSON.stringify({ action: "send", email: form.email, name: form.name, purpose: "signup" }),
           });
           const result = await response.json().catch(() => ({}));
           if (!response.ok || !result.ok) throw new Error(result.message || "Could not send signup OTP.");
@@ -3098,6 +3098,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode, onAuthenticated })
             name: form.name,
             otp: signupOtp.token,
             challenge: signupOtp.challenge,
+            purpose: "signup",
           }),
         });
         const signupResult = await signupResponse.json().catch(() => ({}));
