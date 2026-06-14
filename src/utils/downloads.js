@@ -71,17 +71,33 @@ const sanitizeCoverLetter = (letter = {}) => ({
   closing: sanitizeCoverLetterText(letter.closing),
 });
 
-const cvContactLines = (cv) =>
+const contactIconPaths = {
+  location: "M12 21s7-4.7 7-11a7 7 0 1 0-14 0c0 6.3 7 11 7 11Zm0-8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z",
+  email: "M3 6.5h18v11H3v-11Zm1.8 1.6 7.2 5.1 7.2-5.1M4.8 16l5.3-4M19.2 16l-5.3-4",
+  phone: "M7 4h4l1 5-2.5 1.5A13 13 0 0 0 14 15l1.5-2.5 5 1v4c0 1.1-.9 2-2 2A14.5 14.5 0 0 1 4 5.9C4 4.8 4.9 4 6 4h1Z",
+  linkedin: "M5 8.5h3v10H5v-10ZM6.5 5a1.7 1.7 0 1 1 0 3.4A1.7 1.7 0 0 1 6.5 5Zm4 3.5h2.9v1.4h.1c.4-.8 1.4-1.6 2.9-1.6 3 0 3.6 2 3.6 4.6v5.6h-3v-5c0-1.2 0-2.7-1.7-2.7s-1.9 1.3-1.9 2.6v5.1h-3v-10Z",
+  link: "M10 13a5 5 0 0 0 7.1 0l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1M14 11a5 5 0 0 0-7.1 0l-2 2a5 5 0 0 0 7.1 7.1l1.1-1.1",
+};
+
+const stripUrlScheme = (value = "") => String(value).replace(/^https?:\/\/(www\.)?/i, "");
+
+const contactIconSvg = (type) =>
+  `<svg class="contact-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="${contactIconPaths[type] || contactIconPaths.link}"></path></svg>`;
+
+const cvContactItems = (cv) =>
   [
-    cv.email,
-    cv.phone,
-    cv.country,
-    cv.linkedIn ? `LinkedIn: ${cv.linkedIn}` : "",
-    cv.portfolioUrl ? `Portfolio: ${cv.portfolioUrl}` : "",
+    cv.country ? { type: "location", text: cv.country } : null,
+    cv.email ? { type: "email", text: cv.email } : null,
+    cv.phone ? { type: "phone", text: cv.phone } : null,
+    cv.linkedIn ? { type: "linkedin", text: stripUrlScheme(cv.linkedIn) } : null,
+    cv.portfolioUrl ? { type: "link", text: stripUrlScheme(cv.portfolioUrl) } : null,
   ].filter(Boolean);
 
-const inlineContactHtml = (lines = []) =>
-  lines.map((line) => `<span>${escapeHtml(line)}</span>`).join("<span class=\"contact-separator\">|</span>");
+const inlineContactHtml = (items = []) =>
+  items.map((item) => `<span class="contact-item">${contactIconSvg(item.type)}<span>${escapeHtml(item.text)}</span></span>`).join("");
+
+const stackedContactHtml = (items = []) =>
+  items.map((item) => `<p class="sidebar-contact-item">${contactIconSvg(item.type)}<span>${escapeHtml(item.text)}</span></p>`).join("");
 
 const cvPersonalDetails = (cv) =>
   [
@@ -512,7 +528,7 @@ const downloadCvDocx = async (cv, filename, theme = { color: "#0f66d0", dark: "#
           ...(photoParagraph ? [photoParagraph] : []),
           paragraph(cleanExportText(cv.fullName) || "Applicant Name", { bold: true, size: 36, after: 50, alignment: AlignmentType.CENTER, color: dark }),
           paragraph(cleanExportText(cv.jobTitle), { bold: true, size: 24, after: 80, alignment: AlignmentType.CENTER, color: accent }),
-          ...cvContactLines(cv).map((line) => paragraph(line, { size: 18, after: 45, alignment: AlignmentType.CENTER, color: "475569" })),
+          ...cvContactItems(cv).map((item) => paragraph(item.text, { size: 18, after: 45, alignment: AlignmentType.CENTER, color: "475569" })),
           paragraph("", { after: layout === "compact" ? 50 : 120 }),
           ...(personalDetails.length ? [sectionHeading("Personal Details"), ...personalDetails.map((line) => paragraph(line))] : []),
           ...visibleSectionOrder(cv).flatMap((id) => sectionChildren(id)),
@@ -551,8 +567,9 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
         li { margin-bottom: 3px; break-inside: auto; page-break-inside: auto; }
         .header { display: flex; gap: 12px; align-items: center; border-bottom: 3px solid ${theme.color}; padding-bottom: 12px; margin-bottom: 10px; min-width: 0; }
         .header-main { flex: 1 1 auto; min-width: 0; }
-        .contact { display: flex; flex-wrap: wrap; gap: 2px 7px; align-items: center; color: #4b5563; font-size: 11px; line-height: 1.35; overflow-wrap: anywhere; }
-        .contact-separator { color: #cbd5e1; }
+        .contact { display: flex; flex-wrap: wrap; gap: 5px 12px; align-items: center; color: #4b5563; font-size: 11px; line-height: 1.35; overflow-wrap: anywhere; }
+        .contact-item { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
+        .contact-icon { width: 12px; height: 12px; flex: 0 0 auto; fill: currentColor; stroke: currentColor; stroke-width: 0.35; }
         .title { color: ${theme.color}; font-weight: 700; }
         .photo { width: 78px; height: 78px; object-fit: cover; flex: 0 0 auto; }
         .round { border-radius: 999px; }
@@ -581,6 +598,7 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
         .sidebar-name { margin: 0; color: #ffffff; font-size: 24px; line-height: 1.15; }
         .sidebar-title { margin: 8px 0 0; color: rgba(255,255,255,0.88); font-size: 14px; font-weight: 700; }
         .sidebar-contact { margin-top: 28px; color: rgba(255,255,255,0.86); font-size: 11px; line-height: 1.8; text-align: left; }
+        .sidebar-contact-item { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 11px; overflow-wrap: anywhere; }
         .main-content { padding: 20px; min-width: 0; }
         .credit-footer { margin: 24px 0 0; padding-top: 12px; border-top: 1px solid #e5e7eb; color: #9ca3af; font-size: 7pt; text-align: center; }
       </style>
@@ -599,7 +617,7 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
             </div>
           </div>
           <div class="sidebar-contact">
-            ${cvContactLines(cv).map((line) => `<p>${escapeHtml(line)}</p>`).join("")}
+            ${stackedContactHtml(cvContactItems(cv))}
           </div>
           ${qrSidebar}
         </aside>
@@ -613,7 +631,7 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
         <div class="header-main">
           <h1>${escapeHtml(cv.fullName)}</h1>
           <p class="title">${escapeHtml(cv.jobTitle)}</p>
-          <p class="contact">${inlineContactHtml(cvContactLines(cv))}</p>
+          <p class="contact">${inlineContactHtml(cvContactItems(cv))}</p>
         </div>
         ${qrHeader}
       </div>

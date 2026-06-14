@@ -2687,6 +2687,40 @@ function PageMarginSelector({ value, onChange }) {
   );
 }
 
+const contactIconPaths = {
+  location: "M12 21s7-4.7 7-11a7 7 0 1 0-14 0c0 6.3 7 11 7 11Zm0-8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z",
+  email: "M3 6.5h18v11H3v-11Zm1.8 1.6 7.2 5.1 7.2-5.1M4.8 16l5.3-4M19.2 16l-5.3-4",
+  phone: "M7 4h4l1 5-2.5 1.5A13 13 0 0 0 14 15l1.5-2.5 5 1v4c0 1.1-.9 2-2 2A14.5 14.5 0 0 1 4 5.9C4 4.8 4.9 4 6 4h1Z",
+  linkedin: "M5 8.5h3v10H5v-10ZM6.5 5a1.7 1.7 0 1 1 0 3.4A1.7 1.7 0 0 1 6.5 5Zm4 3.5h2.9v1.4h.1c.4-.8 1.4-1.6 2.9-1.6 3 0 3.6 2 3.6 4.6v5.6h-3v-5c0-1.2 0-2.7-1.7-2.7s-1.9 1.3-1.9 2.6v5.1h-3v-10Z",
+  link: "M10 13a5 5 0 0 0 7.1 0l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1M14 11a5 5 0 0 0-7.1 0l-2 2a5 5 0 0 0 7.1 7.1l1.1-1.1",
+};
+
+function ContactIcon({ type }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-3.5 w-3.5 flex-none fill-current stroke-current stroke-[0.35]">
+      <path d={contactIconPaths[type] || contactIconPaths.link} />
+    </svg>
+  );
+}
+
+const cvContactItems = (cv) =>
+  [
+    cv.country && { type: "location", text: cv.country },
+    cv.email && { type: "email", text: cv.email },
+    cv.phone && { type: "phone", text: cv.phone },
+    cv.linkedIn && { type: "linkedin", text: cv.linkedIn.replace(/^https?:\/\/(www\.)?/i, "") },
+    cv.portfolioUrl && { type: "link", text: cv.portfolioUrl.replace(/^https?:\/\/(www\.)?/i, "") },
+  ].filter(Boolean);
+
+function ContactItem({ item, compact = false }) {
+  return (
+    <span className={`inline-flex min-w-0 items-center gap-1.5 ${compact ? "" : "mr-3"}`}>
+      <ContactIcon type={item.type} />
+      <span className="break-words">{item.text}</span>
+    </span>
+  );
+}
+
 function LiveCVPreview({ cv, theme, layout }) {
   const isRtl = cv.languageDirection === "rtl" || isArabicLanguage(cv.outputLanguage);
   const pageMarginCss = pageMarginToCss(cv.pageMargin);
@@ -2698,13 +2732,7 @@ function LiveCVPreview({ cv, theme, layout }) {
     for (let index = 0; index < items.length; index += size) result.push(items.slice(index, index + size));
     return result.length ? result : [[]];
   };
-  const contactLines = [
-    cv.email,
-    cv.phone,
-    cv.country,
-    cv.linkedIn && `LinkedIn: ${cv.linkedIn}`,
-    cv.portfolioUrl && `Portfolio: ${cv.portfolioUrl}`,
-  ].filter(Boolean);
+  const contactItems = cvContactItems(cv);
   const personalDetails = [
     cv.nationality && `Nationality: ${cv.nationality}`,
     cv.visaStatus && `Visa Status: ${cv.visaStatus}`,
@@ -2829,7 +2857,12 @@ function LiveCVPreview({ cv, theme, layout }) {
         </div>
       </div>
       <div className="sidebar-contact mt-7 space-y-3 text-[11px] leading-5 text-white/85">
-        {contactLines.map((line) => <p key={line}>{line}</p>)}
+        {contactItems.map((item) => (
+          <p key={`${item.type}-${item.text}`} className="flex min-w-0 items-start gap-2">
+            <ContactIcon type={item.type} />
+            <span className="break-words">{item.text}</span>
+          </p>
+        ))}
       </div>
       {cv.qrCode?.position === "sidebar" && pageIndex === 0 && (
         <div className="mt-7 flex justify-center">
@@ -2844,7 +2877,9 @@ function LiveCVPreview({ cv, theme, layout }) {
       <div>
         <h2 className="text-2xl font-black leading-tight">{cv.fullName}</h2>
         <p className={`mt-1 text-sm font-bold ${layout === "header" ? "text-white/90" : "text-blue-700"}`} style={layout === "header" ? {} : { color: theme.color }}>{cv.jobTitle}</p>
-        <p className={`mt-3 text-[11px] ${layout === "header" ? "text-white/80" : "text-slate-500"}`}>{contactLines.join(" | ")}</p>
+        <p className={`mt-3 flex flex-wrap gap-y-1 text-[11px] ${layout === "header" ? "text-white/80" : "text-slate-500"}`}>
+          {contactItems.map((item) => <ContactItem key={`${item.type}-${item.text}`} item={item} />)}
+        </p>
       </div>
       {cv.qrCode?.position === "header" && <div className="absolute right-4 top-4"><QrBlock qrCode={cv.qrCode} color={layout === "header" ? "#ffffff" : "#1E293B"} /></div>}
     </header>
@@ -2855,7 +2890,9 @@ function LiveCVPreview({ cv, theme, layout }) {
         <h2>{cv.fullName || "Candidate Name"}</h2>
         <p>{cv.jobTitle || "Job title"}</p>
       </div>
-      <p>{[cv.email, cv.phone, cv.country].filter(Boolean).join(" | ")}</p>
+      <p className="flex flex-wrap gap-y-1">
+        {contactItems.filter((item) => ["location", "email", "phone"].includes(item.type)).map((item) => <ContactItem key={`${item.type}-${item.text}`} item={item} compact />)}
+      </p>
     </header>
   );
   return (
