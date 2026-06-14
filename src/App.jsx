@@ -3044,24 +3044,27 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
     onUrgentMode("local");
     onClose();
   };
+  const verifyHuman = async (action) => {
+    if (!isRecaptchaConfigured) return "";
+    const captchaToken = await getRecaptchaToken(action);
+    const captchaResponse = await fetch("/.netlify/functions/verifyRecaptcha", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: captchaToken, action }),
+    });
+    const captchaResult = await captchaResponse.json().catch(() => ({}));
+    if (!captchaResponse.ok || captchaResult.success === false) {
+      throw new Error(captchaResult.error || captchaResult.message || "reCAPTCHA verification failed. Please try again.");
+    }
+    return captchaToken;
+  };
   const submit = async (event) => {
     event.preventDefault();
     if (!supabase) return;
     setLoading(true);
     setMessage("");
     try {
-      const captchaToken = await getRecaptchaToken(mode === "signup" ? "signup" : "signin");
-      if (isRecaptchaConfigured) {
-        const captchaResponse = await fetch("/.netlify/functions/verifyRecaptcha", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: captchaToken, action: mode === "signup" ? "signup" : "signin" }),
-        });
-        if (captchaResponse.ok && captchaResponse.headers.get("content-type")?.includes("application/json")) {
-          const captchaResult = await captchaResponse.json();
-          if (captchaResult.success === false) throw new Error("reCAPTCHA verification failed.");
-        }
-      }
+      const captchaToken = await verifyHuman(mode === "signup" ? "signup" : "signin");
       const options = {
         emailRedirectTo: AUTH_REDIRECT_URL,
         data: { full_name: form.name },
@@ -3092,10 +3095,11 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
     setLoading(true);
     setMessage("Sending confirmation email again...");
     try {
+      const captchaToken = await verifyHuman("resend_confirmation");
       const { error } = await supabase.auth.resend({
         type: "signup",
         email: lastSignupEmail,
-        options: { emailRedirectTo: AUTH_REDIRECT_URL },
+        options: { emailRedirectTo: AUTH_REDIRECT_URL, captchaToken },
       });
       if (error) {
         const fallback = await fetch("/.netlify/functions/resendSignupConfirmation", {
@@ -3118,6 +3122,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
     setLoading(true);
     setMessage("Opening Google sign in...");
     try {
+      await verifyHuman("google_signin");
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: { redirectTo: AUTH_REDIRECT_URL },
@@ -3138,7 +3143,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
     setLoading(true);
     setMessage("Sending sign-in link to your email...");
     try {
-      const captchaToken = await getRecaptchaToken("signin_link");
+      const captchaToken = await verifyHuman("signin_link");
       const { error } = await supabase.auth.signInWithOtp({
         email: form.email,
         options: {
@@ -3162,12 +3167,14 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
     setLoading(true);
     setMessage("Sending account verification code...");
     try {
+      const captchaToken = await verifyHuman("account_email_otp");
       const { error } = await supabase.auth.signInWithOtp({
         email: accountOtp.email,
         options: {
           shouldCreateUser: true,
           emailRedirectTo: AUTH_REDIRECT_URL,
           data: { full_name: accountOtp.name },
+          captchaToken,
         },
       });
       if (error) throw error;
@@ -3207,9 +3214,10 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
     setLoading(true);
     setMessage("Sending mobile OTP...");
     try {
+      const captchaToken = await verifyHuman("account_mobile_otp");
       const { error } = await supabase.auth.signInWithOtp({
         phone: accountOtp.phone,
-        options: { shouldCreateUser: true },
+        options: { shouldCreateUser: true, captchaToken },
       });
       if (error) throw error;
       setAccountOtp((current) => ({ ...current, sent: true, token: "", channel: "mobile" }));
@@ -3306,6 +3314,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
             <p className="rounded bg-blue-50 p-3 text-xs font-bold leading-5 text-blue-800">
               Free account mode lets you save up to 10 CVs online and generate/save up to 10 CVs per day. Saved CVs expire after 14 days.
             </p>
+            {isRecaptchaConfigured && <p className="text-xs font-bold text-slate-500">Protected by Google reCAPTCHA.</p>}
           </form>
         ) : mode === "mobileOtp" ? (
           <form onSubmit={accountOtp.sent && accountOtp.channel === "mobile" ? verifyAccountMobileOtp : sendAccountMobileOtp} className="mt-5 grid gap-3">
@@ -3325,6 +3334,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
             <p className="rounded bg-blue-50 p-3 text-xs font-bold leading-5 text-blue-800">
               Mobile OTP requires phone auth and an SMS provider to be enabled in Supabase.
             </p>
+            {isRecaptchaConfigured && <p className="text-xs font-bold text-slate-500">Protected by Google reCAPTCHA.</p>}
           </form>
         ) : (
         <form onSubmit={submit} className="mt-5 grid gap-3">

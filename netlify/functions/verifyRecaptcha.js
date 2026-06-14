@@ -11,7 +11,10 @@ export const handler = async (event) => {
 
   const secret = process.env.RECAPTCHA_SECRET_KEY;
   if (!secret) {
-    return json(200, { success: true, mode: "mock", message: "RECAPTCHA_SECRET_KEY is not configured." });
+    return json(503, {
+      success: false,
+      error: "reCAPTCHA is enabled in the app but RECAPTCHA_SECRET_KEY is missing in Netlify.",
+    });
   }
 
   let body;
@@ -40,6 +43,7 @@ export const handler = async (event) => {
 
   return json(200, {
     success: Boolean(result.success && scoreOk && actionOk),
+    message: result.success && scoreOk && actionOk ? "reCAPTCHA verified." : "reCAPTCHA verification failed.",
     score: result.score,
     action: result.action,
     challenge_ts: result.challenge_ts,
