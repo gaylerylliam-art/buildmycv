@@ -3101,7 +3101,21 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode, onAuthenticated })
           }),
         });
         const signupResult = await signupResponse.json().catch(() => ({}));
-        if (!signupResponse.ok || !signupResult.ok) throw new Error(signupResult.message || "Could not create account.");
+        if (!signupResponse.ok || !signupResult.ok) {
+          const alreadyHasAccount = signupResponse.status === 409 || /already has an account|already|registered|exists/i.test(signupResult.message || "");
+          if (alreadyHasAccount) {
+            const { data: existingLoginData, error: existingLoginError } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password, captchaToken });
+            if (existingLoginError) {
+              throw new Error("This email already has an account. Please use the Login tab with the same email and password.");
+            }
+            trackEvent("login", { method: "existing_signup_email" });
+            setSignupOtp({ sent: false, token: "", challenge: null });
+            setMessage("Account already exists. Signed in and opening your dashboard.");
+            await finishAuthenticated(existingLoginData?.session);
+            return;
+          }
+          throw new Error(signupResult.message || "Could not create account.");
+        }
         const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password, captchaToken });
         if (loginError) throw loginError;
         trackEvent("signup", { method: "email_otp" });
