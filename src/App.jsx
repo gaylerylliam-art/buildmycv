@@ -3430,9 +3430,9 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode, onAuthenticated })
   );
 }
 
-function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDraft, onLoadDraft, draftStatus, refreshKey = 0 }) {
+function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDraft, onLoadDraft, draftStatus, refreshKey = 0, dashboardOnly = false }) {
   const [items, setItems] = useState([]);
-  const [message, setMessage] = useState(user ? "Load your saved CVs." : `Login to save and manage up to ${SAVED_CV_LIMIT} CVs.`);
+  const [message, setMessage] = useState(user ? "Loading your saved CVs." : `Login to save and manage up to ${SAVED_CV_LIMIT} CVs.`);
   const formatDateTime = (value) => {
     if (!value) return "Not available";
     const date = new Date(value);
@@ -3492,34 +3492,39 @@ function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDra
     }
   };
   return (
-    <section id="account-dashboard" className="scroll-mt-28 rounded border border-slate-200 bg-white p-4">
-      <div className="flex items-center justify-between gap-3">
+    <section id="account-dashboard" className={dashboardOnly ? "account-dashboard-panel" : "scroll-mt-28 rounded border border-slate-200 bg-white p-4"}>
+      <div className={dashboardOnly ? "account-dashboard-panel-head" : "flex items-center justify-between gap-3"}>
         <div>
-          <h3 className="panel-title">Account dashboard</h3>
-          <p className="mt-1 text-[11px] font-bold text-slate-500">{items.length} saved version{items.length === 1 ? "" : "s"} of {SAVED_CV_LIMIT}</p>
+          <p className={dashboardOnly ? "account-dashboard-kicker" : "hidden"}>User account</p>
+          <h3 className={dashboardOnly ? "account-dashboard-title" : "panel-title"}>{dashboardOnly ? "Saved CVs" : "Account dashboard"}</h3>
+          <p className={dashboardOnly ? "account-dashboard-subtitle" : "mt-1 text-[11px] font-bold text-slate-500"}>
+            {items.length} saved CV{items.length === 1 ? "" : "s"} of {SAVED_CV_LIMIT}. Saved CVs expire after {SAVED_CV_RETENTION_DAYS} days.
+          </p>
         </div>
-        <button onClick={saveCurrent} className="rounded bg-green-600 px-3 py-2 text-xs font-black text-white">Save</button>
+        {!dashboardOnly && <button onClick={saveCurrent} className="rounded bg-green-600 px-3 py-2 text-xs font-black text-white">Save</button>}
       </div>
-      <div className="mt-3 rounded border border-blue-100 bg-blue-50 p-3">
-        <p className="text-xs font-black text-blue-950">Save progress and come back later</p>
-        <p className="mt-1 text-xs font-bold leading-5 text-blue-800">{draftStatus || "Cloud draft sync is ready."}</p>
-        <p className="mt-1 text-xs font-bold leading-5 text-blue-900">Saved CVs are stored for {SAVED_CV_RETENTION_DAYS} days from their creation date, then removed automatically. Download your files regularly.</p>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <button onClick={onSaveDraft} className="rounded bg-blue-600 px-3 py-2 text-xs font-black text-white">Save draft</button>
-          <button onClick={onLoadDraft} className="rounded bg-white px-3 py-2 text-xs font-black text-blue-700 ring-1 ring-blue-200">Restore draft</button>
+      {!dashboardOnly && (
+        <div className="mt-3 rounded border border-blue-100 bg-blue-50 p-3">
+          <p className="text-xs font-black text-blue-950">Save progress and come back later</p>
+          <p className="mt-1 text-xs font-bold leading-5 text-blue-800">{draftStatus || "Cloud draft sync is ready."}</p>
+          <p className="mt-1 text-xs font-bold leading-5 text-blue-900">Saved CVs are stored for {SAVED_CV_RETENTION_DAYS} days from their creation date, then removed automatically. Download your files regularly.</p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button onClick={onSaveDraft} className="rounded bg-blue-600 px-3 py-2 text-xs font-black text-white">Save draft</button>
+            <button onClick={onLoadDraft} className="rounded bg-white px-3 py-2 text-xs font-black text-blue-700 ring-1 ring-blue-200">Restore draft</button>
+          </div>
         </div>
-      </div>
-      <p className="mt-2 text-xs font-bold leading-5 text-slate-500">{message}</p>
-      <div className="mt-3 space-y-2">
+      )}
+      {message && <p className={dashboardOnly ? "account-dashboard-message" : "mt-2 text-xs font-bold leading-5 text-slate-500"}>{message}</p>}
+      <div className={dashboardOnly ? "account-dashboard-grid" : "mt-3 space-y-2"}>
         {items.length === 0 && (
-          <div className="rounded border border-dashed border-slate-300 bg-slate-50 p-3 text-xs font-bold leading-5 text-slate-500">
-            No saved CV versions yet. Use Save to store this CV online, then duplicate versions for different job applications.
+          <div className={dashboardOnly ? "account-dashboard-empty" : "rounded border border-dashed border-slate-300 bg-slate-50 p-3 text-xs font-bold leading-5 text-slate-500"}>
+            No saved CVs yet. Go back to the builder, finish a CV, then use Download PDF or Save to store an online copy.
           </div>
         )}
         {items.map((item) => (
-          <div key={item.id} className="rounded border border-slate-200 p-3">
-            <p className="text-sm font-black text-slate-900">{item.title}</p>
-            <p className="text-xs font-bold text-slate-500">{item.category_id || "CV version"}</p>
+          <div key={item.id} className={dashboardOnly ? "account-dashboard-card" : "rounded border border-slate-200 p-3"}>
+            <p className={dashboardOnly ? "account-dashboard-card-title" : "text-sm font-black text-slate-900"}>{item.title}</p>
+            <p className={dashboardOnly ? "account-dashboard-card-meta" : "text-xs font-bold text-slate-500"}>{item.category_id || "CV version"}</p>
             <dl className="mt-2 grid gap-1 rounded bg-slate-50 p-2 text-xs leading-5 text-slate-600 sm:grid-cols-2">
               <div>
                 <dt className="font-black text-slate-800">Date created</dt>
@@ -3535,7 +3540,7 @@ function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDra
               </div>
             </dl>
             <div className="mt-2 flex flex-wrap gap-2">
-              <button onClick={() => onLoad(item)} className="rounded bg-blue-50 px-3 py-2 text-xs font-black text-blue-700">Edit</button>
+              <button onClick={() => onLoad(item)} className={dashboardOnly ? "account-dashboard-edit" : "rounded bg-blue-50 px-3 py-2 text-xs font-black text-blue-700"}>Edit in builder</button>
               <button onClick={() => duplicate(item)} className="rounded bg-slate-100 px-3 py-2 text-xs font-black text-slate-700">Duplicate</button>
               <button onClick={() => remove(item.id)} className="rounded bg-red-50 px-3 py-2 text-xs font-black text-red-700">Delete</button>
             </div>
@@ -4882,6 +4887,10 @@ function CVBuilderApp({ onHome }) {
     setThemeId(item.theme_id || "blue");
     setLayoutId(item.layout_id || "sidebar");
     setCoverLetter(createCoverLetterFromCv(nextCv, item.category_id || defaultCategory.id));
+    setAccountDashboardRequested(false);
+    setCurrentStep("personal");
+    window.location.hash = "builder";
+    window.setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
     trackEvent("load_saved_cv");
   };
   const updateCvFromCoverLetter = (key, value) => {
@@ -4974,11 +4983,12 @@ function CVBuilderApp({ onHome }) {
     setAuthOpen(false);
     requestAccountDashboard();
   };
+  const accountDashboardView = activeBuilder === "cv" && accountDashboardRequested && cloudSavingEnabled;
   return (
     <main className="builder-app-shell">
       <BuilderTopBar onHome={onHome} saveStatus={saveStatus} onDownload={() => (activeBuilder === "cv" ? requestCvDownload() : setDownloadTarget("cover"))} />
-      {activeBuilder === "cv" && <CompletionBar completion={completion} onNextStep={handleNextStep} />}
-      {activeBuilder === "cv" && <BuilderProgressBar currentStep={currentStep} completedSteps={completedSteps} onStep={handleNextStep} />}
+      {activeBuilder === "cv" && !accountDashboardView && <CompletionBar completion={completion} onNextStep={handleNextStep} />}
+      {activeBuilder === "cv" && !accountDashboardView && <BuilderProgressBar currentStep={currentStep} completedSteps={completedSteps} onStep={handleNextStep} />}
       <div className="builder-tabbar">
         <div className="builder-tabbar-inner">
           <div className="builder-mode-switch">
@@ -5008,8 +5018,8 @@ function CVBuilderApp({ onHome }) {
           </div>
         </div>
       </div>
-      {activeBuilder === "cv" && <BuilderHeaderGuide cloudSavingEnabled={cloudSavingEnabled} noCloudMode={noCloudMode} />}
-      {activeBuilder === "cv" && <DraftRecoveryBanner draft={localDraftNotice} onContinue={continueLocalDraft} onStartFresh={startFreshLocalDraft} />}
+      {activeBuilder === "cv" && !accountDashboardView && <BuilderHeaderGuide cloudSavingEnabled={cloudSavingEnabled} noCloudMode={noCloudMode} />}
+      {activeBuilder === "cv" && !accountDashboardView && <DraftRecoveryBanner draft={localDraftNotice} onContinue={continueLocalDraft} onStartFresh={startFreshLocalDraft} />}
       {noCloudMode && (
         <section className="border-b border-amber-200 bg-amber-50 px-5 py-3">
           <div className="mx-auto max-w-7xl text-sm font-bold leading-6 text-amber-950">
@@ -5017,22 +5027,16 @@ function CVBuilderApp({ onHome }) {
           </div>
         </section>
       )}
-      {activeBuilder === "cv" && accountDashboardRequested && cloudSavingEnabled && (
-        <section className="border-b border-blue-100 bg-slate-50 px-5 py-5">
-          <div className="mx-auto max-w-7xl">
-            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      {accountDashboardView ? (
+        <section className="account-dashboard-page">
+          <div className="account-dashboard-shell">
+            <div className="account-dashboard-hero">
               <div>
-                <p className="text-xs font-black uppercase tracking-wide text-blue-700">User account</p>
-                <h2 className="text-2xl font-black text-slate-950">Saved CV dashboard</h2>
-                <p className="mt-1 text-sm font-bold text-slate-600">View, restore, duplicate, or delete the CVs saved to your account.</p>
+                <p className="account-dashboard-kicker">Cloud saving as {user.email}</p>
+                <h1>Saved CV dashboard</h1>
+                <p>View the CVs saved in your account. Each CV shows its creation date and automatic expiration date.</p>
               </div>
-              <button
-                type="button"
-                onClick={closeAccountDashboard}
-                className="rounded border border-slate-300 bg-white px-4 py-3 text-sm font-black text-slate-700 hover:bg-slate-100"
-              >
-                Back to builder
-              </button>
+              <button type="button" onClick={closeAccountDashboard}>Create or edit CV</button>
             </div>
             <MyCvsPanel
               user={user}
@@ -5045,11 +5049,11 @@ function CVBuilderApp({ onHome }) {
               onLoadDraft={restoreCloudDraft}
               draftStatus={draftStatus}
               refreshKey={savedCvRefreshKey}
+              dashboardOnly
             />
           </div>
         </section>
-      )}
-      {activeBuilder === "cv" ? (
+      ) : activeBuilder === "cv" ? (
         <>
         <div className="builder-layout-v2">
           <BuilderSidebar

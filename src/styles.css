@@ -3244,6 +3244,156 @@ summary {
   background: var(--bg-subtle);
 }
 
+.account-dashboard-page {
+  min-height: calc(100vh - 110px);
+  background: #f8fafc;
+  padding: 1.25rem;
+}
+
+.account-dashboard-shell {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+}
+
+.account-dashboard-hero,
+.account-dashboard-panel {
+  border: 1px solid #dbe4f0;
+  border-radius: 0.9rem;
+  background: #ffffff;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+}
+
+.account-dashboard-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 1.1rem;
+}
+
+.account-dashboard-hero h1 {
+  color: #0f172a;
+  font-size: 1.55rem;
+  font-weight: 950;
+  line-height: 1.15;
+}
+
+.account-dashboard-hero p {
+  margin-top: 0.35rem;
+  max-width: 42rem;
+  color: #475569;
+  font-size: 0.88rem;
+  font-weight: 750;
+  line-height: 1.5;
+}
+
+.account-dashboard-hero button,
+.account-dashboard-edit {
+  border-radius: 0.65rem;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.account-dashboard-hero button {
+  padding: 0.78rem 1rem;
+}
+
+.account-dashboard-panel {
+  scroll-margin-top: 7rem;
+  padding: 1.1rem;
+}
+
+.account-dashboard-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 0.9rem;
+}
+
+.account-dashboard-kicker {
+  color: #2563eb;
+  font-size: 0.68rem;
+  font-weight: 950;
+  letter-spacing: 0.06em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.account-dashboard-title {
+  margin-top: 0.22rem;
+  color: #0f172a;
+  font-size: 1.2rem;
+  font-weight: 950;
+}
+
+.account-dashboard-subtitle,
+.account-dashboard-message {
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.account-dashboard-subtitle {
+  margin-top: 0.24rem;
+}
+
+.account-dashboard-message {
+  margin-top: 0.75rem;
+}
+
+.account-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.85rem;
+  margin-top: 0.9rem;
+}
+
+.account-dashboard-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.85rem;
+  background: #ffffff;
+  padding: 0.95rem;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
+}
+
+.account-dashboard-card-title {
+  color: #0f172a;
+  font-size: 0.98rem;
+  font-weight: 950;
+  line-height: 1.2;
+}
+
+.account-dashboard-card-meta {
+  margin-top: 0.18rem;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.account-dashboard-edit {
+  padding: 0.5rem 0.75rem;
+}
+
+.account-dashboard-empty {
+  grid-column: 1 / -1;
+  border: 1px dashed #cbd5e1;
+  border-radius: 0.85rem;
+  background: #f8fafc;
+  padding: 1.25rem;
+  color: #475569;
+  font-size: 0.9rem;
+  font-weight: 850;
+  line-height: 1.55;
+  text-align: center;
+}
+
 .dark .builder-mode-switch {
   background: #111827;
 }
@@ -3261,6 +3411,37 @@ summary {
 .dark .account-logout-button {
   background: #111827;
   color: #e5e7eb;
+}
+
+.dark .account-dashboard-page {
+  background: #020617;
+}
+
+.dark .account-dashboard-hero,
+.dark .account-dashboard-panel,
+.dark .account-dashboard-card {
+  border-color: #1e293b;
+  background: #0f172a;
+  box-shadow: none;
+}
+
+.dark .account-dashboard-hero h1,
+.dark .account-dashboard-title,
+.dark .account-dashboard-card-title {
+  color: #f8fafc;
+}
+
+.dark .account-dashboard-hero p,
+.dark .account-dashboard-subtitle,
+.dark .account-dashboard-message,
+.dark .account-dashboard-card-meta {
+  color: #cbd5e1;
+}
+
+.dark .account-dashboard-empty {
+  border-color: #334155;
+  background: #111827;
+  color: #e2e8f0;
 }
 
 .dark .builder-guide-strip {
@@ -5363,6 +5544,23 @@ summary {
 @media (max-width: 900px) {
   .builder-progress-bar {
     top: 0;
+  }
+
+  .account-dashboard-page {
+    padding: 0.85rem;
+  }
+
+  .account-dashboard-hero {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .account-dashboard-hero button {
+    width: 100%;
+  }
+
+  .account-dashboard-grid {
+    grid-template-columns: 1fr;
   }
 
   .builder-tabbar-inner {
