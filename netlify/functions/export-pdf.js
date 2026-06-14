@@ -15,9 +15,10 @@ const safeFilename = (value = "BuildMyCVNow-CV.pdf") => {
 };
 
 const injectPrintCss = (html = "") => {
+  const hasPageRule = /@page\s*{/i.test(html);
   const printCss = `
     <style>
-      @page { size: A4; margin: 1in; }
+      ${hasPageRule ? "" : "@page { size: A4; margin: 1in; }"}
       html { background: #ffffff !important; }
       body { width: auto !important; max-width: none !important; min-height: auto !important; margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       .section { break-inside: auto; page-break-inside: auto; }

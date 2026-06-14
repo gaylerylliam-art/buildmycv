@@ -95,6 +95,32 @@ const defaultSectionOrder = ["summary", "experience", "education", "skills", "ed
 const defaultQrCode = { enabled: false, url: "", label: "Scan for LinkedIn", position: "header" };
 const PDF_PAGE_MARGIN_IN = 1;
 const DOCX_PAGE_MARGIN_TWIPS = 1440;
+export const DEFAULT_PAGE_MARGIN = { type: "default" };
+
+export const normalizePageMargin = (setting = DEFAULT_PAGE_MARGIN) => {
+  if (!setting || setting.type === "default") return DEFAULT_PAGE_MARGIN;
+  const unit = setting.unit === "cm" ? "cm" : "in";
+  const value = Number(setting.value);
+  if (!Number.isFinite(value) || value <= 0) return DEFAULT_PAGE_MARGIN;
+  return {
+    type: setting.type === "custom" ? "custom" : "preset",
+    value,
+    unit,
+  };
+};
+
+export const pageMarginToCss = (setting = DEFAULT_PAGE_MARGIN) => {
+  const margin = normalizePageMargin(setting);
+  return margin.type === "default" ? `${PDF_PAGE_MARGIN_IN}in` : `${margin.value}${margin.unit}`;
+};
+
+export const pageMarginToInches = (setting = DEFAULT_PAGE_MARGIN) => {
+  const margin = normalizePageMargin(setting);
+  if (margin.type === "default") return PDF_PAGE_MARGIN_IN;
+  return margin.unit === "cm" ? margin.value / 2.54 : margin.value;
+};
+
+const pageMarginToTwips = (setting = DEFAULT_PAGE_MARGIN) => Math.round(pageMarginToInches(setting) * DOCX_PAGE_MARGIN_TWIPS);
 const isArabicLanguage = (language = "") => /arabic|عربي|العربية/i.test(String(language || ""));
 
 const normalizeSectionOrder = (cv = {}) => {
@@ -291,7 +317,7 @@ const downloadPdfFromServer = async (html, filename) => {
   saveBlob(blob, filename);
 };
 
-const downloadPdfFromHtml = async (html, filename) => {
+const downloadPdfFromHtml = async (html, filename, pageMargin = DEFAULT_PAGE_MARGIN) => {
   try {
     await downloadPdfFromServer(html, filename);
     return;
@@ -311,7 +337,7 @@ const downloadPdfFromHtml = async (html, filename) => {
     await html2pdf()
       .set({
         filename,
-        margin: PDF_PAGE_MARGIN_IN,
+        margin: pageMarginToInches(pageMargin),
         image: { type: "jpeg", quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
         jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
@@ -429,6 +455,7 @@ const downloadCvDocx = async (cv, filename, theme = { color: "#0f66d0", dark: "#
     : null;
   const personalDetails = cvPersonalDetails(cv);
   const workExperiences = normalizeCvWorkExperiences(cv);
+  const pageMarginTwips = pageMarginToTwips(cv.pageMargin);
   const referenceParagraphs = () => {
     const references = normalizeReferences(cv.references);
     if (references.mode === "on-request") return [paragraph("References available upon request")];
@@ -474,10 +501,10 @@ const downloadCvDocx = async (cv, filename, theme = { color: "#0f66d0", dark: "#
         properties: {
           page: {
             margin: {
-              top: DOCX_PAGE_MARGIN_TWIPS,
-              right: DOCX_PAGE_MARGIN_TWIPS,
-              bottom: DOCX_PAGE_MARGIN_TWIPS,
-              left: DOCX_PAGE_MARGIN_TWIPS,
+              top: pageMarginTwips,
+              right: pageMarginTwips,
+              bottom: pageMarginTwips,
+              left: pageMarginTwips,
             },
           },
         },
@@ -499,6 +526,8 @@ const downloadCvDocx = async (cv, filename, theme = { color: "#0f66d0", dark: "#
 
 export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a" }, layout = "classic") => {
   const isRtl = cv.languageDirection === "rtl" || isArabicLanguage(cv.outputLanguage);
+  const pageMarginCss = pageMarginToCss(cv.pageMargin);
+  const pageContentHeightCss = `calc(297mm - ${pageMarginCss} - ${pageMarginCss})`;
   const qrConfig = { ...defaultQrCode, ...(cv.qrCode || {}) };
   const qrSvg = await buildQrSvg(qrConfig, cv.linkedIn || cv.portfolioUrl, layout === "sidebar" && qrConfig.position === "sidebar" ? "#FFFFFF" : "#1E293B");
   const qrHeader = qrConfig.position === "header" ? qrBlockHtml(qrSvg, qrConfig.label, 64) : "";
@@ -510,7 +539,7 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
       <meta charset="UTF-8" />
       <style>
         * { box-sizing: border-box; }
-        @page { size: A4; margin: 1in; }
+        @page { size: A4; margin: ${pageMarginCss}; }
         html { background: #ffffff; }
         body { width: auto; min-height: auto; margin: 0; padding: 0; font-family: Arial, sans-serif; font-size: 11px; color: #111827; line-height: 1.38; background: #ffffff; overflow-wrap: anywhere; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         body.rtl { direction: rtl; text-align: right; }
@@ -539,7 +568,7 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
         .qr-block { display: grid; justify-items: center; gap: 3px; text-align: center; color: inherit; }
         .qr-svg svg { display: block; width: 100%; height: 100%; }
         .qr-block p { margin: 0; font-size: 8pt; line-height: 1.15; }
-        .sidebar-paper { display: grid; grid-template-columns: 38% 62%; min-height: calc(297mm - 2in); padding: 0; }
+        .sidebar-paper { display: grid; grid-template-columns: 38% 62%; min-height: ${pageContentHeightCss}; padding: 0; }
         .sidebar { background: ${theme.dark}; color: #ffffff; padding: 20px 24px 28px; }
         .sidebar-header { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 20px; }
         .photo-container { width: 100%; display: flex; justify-content: center; margin-bottom: 20px; }
@@ -613,7 +642,7 @@ export const downloadCvFile = async (cv, type, theme, layout = "classic") => {
     return;
   }
   const html = await buildCvHtml(cv, theme, layout);
-  await downloadPdfFromHtml(html, `${baseName}.pdf`);
+  await downloadPdfFromHtml(html, `${baseName}.pdf`, cv.pageMargin);
 };
 
 export const buildCoverLetterHtml = (letter, cv, theme = { color: "#0f66d0", dark: "#0f172a" }) => {

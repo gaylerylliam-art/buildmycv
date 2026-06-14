@@ -43,7 +43,7 @@ import {
   HOME_TRUST_METRICS,
   HOME_VIDEO,
 } from "./content/homepage";
-import { downloadCoverLetterFile, downloadCvFile } from "./utils/downloads";
+import { downloadCoverLetterFile, downloadCvFile, normalizePageMargin, pageMarginToCss, pageMarginToInches } from "./utils/downloads";
 import { initAnalytics, trackEvent } from "./utils/analytics";
 import { getRecaptchaToken, isRecaptchaConfigured } from "./utils/recaptcha";
 import {
@@ -284,6 +284,7 @@ const initialCv = {
   industry: "general",
   tipsEnabled: true,
   qrCode: defaultQrCode,
+  pageMargin: { type: "default" },
   showCredit: true,
   references: defaultReferences,
   sectionOrder: defaultSectionOrder,
@@ -2591,8 +2592,105 @@ function LayoutSelector({ selected, onSelect }) {
   );
 }
 
+function PageMarginSelector({ value, onChange }) {
+  const margin = normalizePageMargin(value);
+  const [customValue, setCustomValue] = useState(margin.type === "custom" ? String(margin.value) : "1");
+  const [customUnit, setCustomUnit] = useState(margin.type === "custom" ? margin.unit : "in");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const next = normalizePageMargin(value);
+    if (next.type === "custom") {
+      setCustomValue(String(next.value));
+      setCustomUnit(next.unit);
+    }
+  }, [value]);
+
+  const applyCustom = (nextValue = customValue, nextUnit = customUnit) => {
+    const numeric = Number(nextValue);
+    if (!String(nextValue).trim() || !Number.isFinite(numeric) || numeric <= 0) {
+      setError("Enter a positive margin value.");
+      return;
+    }
+    setError("");
+    onChange({ type: "custom", value: numeric, unit: nextUnit });
+  };
+
+  const choose = (next) => {
+    setError("");
+    if (next.type === "custom") {
+      applyCustom(customValue, customUnit);
+      return;
+    }
+    onChange(next);
+  };
+
+  const active = (type, unit, presetValue) => {
+    if (type === "default") return margin.type === "default";
+    if (type === "custom") return margin.type === "custom";
+    return margin.type === "preset" && margin.unit === unit && Number(margin.value) === Number(presetValue);
+  };
+
+  return (
+    <section className="rounded border border-slate-200 bg-white p-4">
+      <h3 className="panel-title">Page Margins</h3>
+      <p className="mt-1 text-xs font-bold leading-5 text-slate-500">Controls spacing around every CV page before download.</p>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        {[
+          ["Default", { type: "default" }],
+          ["5 cm", { type: "preset", value: 5, unit: "cm" }],
+          ["1 inch", { type: "preset", value: 1, unit: "in" }],
+          ["Custom", { type: "custom" }],
+        ].map(([label, option]) => (
+          <button
+            key={label}
+            type="button"
+            onClick={() => choose(option)}
+            className={`rounded border px-3 py-2 text-sm font-black ${active(option.type, option.unit, option.value) ? "border-blue-600 bg-blue-50 text-blue-800" : "border-slate-200 text-slate-700 hover:bg-slate-50"}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {margin.type === "custom" && (
+        <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
+          <input
+            type="number"
+            min="0.01"
+            step="0.01"
+            value={customValue}
+            onChange={(event) => {
+              setCustomValue(event.target.value);
+              applyCustom(event.target.value, customUnit);
+            }}
+            onBlur={() => applyCustom()}
+            className="form-field"
+            aria-label="Custom page margin value"
+          />
+          <select
+            value={customUnit}
+            onChange={(event) => {
+              setCustomUnit(event.target.value);
+              applyCustom(customValue, event.target.value);
+            }}
+            className="form-field"
+            aria-label="Custom page margin unit"
+          >
+            <option value="cm">cm</option>
+            <option value="in">inch</option>
+          </select>
+        </div>
+      )}
+      {error && <p className="mt-2 rounded border border-red-200 bg-red-50 p-2 text-xs font-bold text-red-700">{error}</p>}
+    </section>
+  );
+}
+
 function LiveCVPreview({ cv, theme, layout }) {
   const isRtl = cv.languageDirection === "rtl" || isArabicLanguage(cv.outputLanguage);
+  const pageMarginCss = pageMarginToCss(cv.pageMargin);
+  const previewMarginPx = Math.min(260, Math.max(0, pageMarginToInches(cv.pageMargin) * 96));
+  const pageMarginStyle = { padding: `${previewMarginPx}px`, "--cv-page-margin": pageMarginCss };
   const lines = (value) => String(value || "").split("\n").filter(Boolean);
   const chunks = (items, size) => {
     const result = [];
@@ -2762,14 +2860,14 @@ function LiveCVPreview({ cv, theme, layout }) {
   return (
     <div className={`cv-page-stack ${isRtl ? "cv-rtl" : ""}`} dir={isRtl ? "rtl" : "ltr"} aria-label={`${pages.length} page CV preview`}>
       {pages.map((pageBlocks, pageIndex) => pageIndex > 0 ? (
-        <article key={pageIndex} className={`cv-paper cv-paper-page ${isRtl ? "cv-rtl" : ""} ${layout === "compact" ? "p-6" : "p-8"}`}>
+        <article key={pageIndex} className={`cv-paper cv-paper-page ${isRtl ? "cv-rtl" : ""} ${layout === "compact" ? "p-6" : "p-8"}`} style={pageMarginStyle}>
           {renderContinuationHeader()}
           <div className="mt-6">{renderPageContent(pageBlocks)}</div>
           {cv.qrCode?.position === "footer" && pageIndex === pages.length - 1 && <div className="mt-6 flex justify-center"><QrBlock qrCode={cv.qrCode} color="#1E293B" /></div>}
           <p className="cv-page-number">Page {pageIndex + 1} of {pages.length}</p>
         </article>
       ) : layout === "sidebar" ? (
-        <article key={pageIndex} className={`cv-paper cv-paper-page grid grid-cols-[0.38fr_0.62fr] overflow-hidden p-0 ${isRtl ? "cv-rtl" : ""}`}>
+        <article key={pageIndex} className={`cv-paper cv-paper-page grid grid-cols-[0.38fr_0.62fr] overflow-hidden p-0 ${isRtl ? "cv-rtl" : ""}`} style={pageMarginStyle}>
           {renderSidebar(pageIndex)}
           <div className="p-7">
             {renderPageContent(pageBlocks)}
@@ -2777,7 +2875,7 @@ function LiveCVPreview({ cv, theme, layout }) {
           </div>
         </article>
       ) : (
-        <article key={pageIndex} className={`cv-paper cv-paper-page ${isRtl ? "cv-rtl" : ""} ${layout === "compact" ? "p-6" : "p-8"}`}>
+        <article key={pageIndex} className={`cv-paper cv-paper-page ${isRtl ? "cv-rtl" : ""} ${layout === "compact" ? "p-6" : "p-8"}`} style={pageMarginStyle}>
           {renderHeader()}
           <div className="mt-6">{renderPageContent(pageBlocks)}</div>
           {cv.qrCode?.position === "footer" && pageIndex === pages.length - 1 && <div className="mt-6 flex justify-center"><QrBlock qrCode={cv.qrCode} color="#1E293B" /></div>}
@@ -4543,6 +4641,7 @@ function CVBuilderApp({ onHome }) {
                 <div className="mt-4 grid gap-4 lg:grid-cols-2">
                   <div className="grid gap-4">
                     <LayoutSelector selected={layoutId} onSelect={setLayoutId} />
+                    <PageMarginSelector value={cv.pageMargin} onChange={(pageMargin) => updateCvField("pageMargin", pageMargin)} />
                     <button
                       type="button"
                       onClick={() => setSectionReorderOpen(true)}
