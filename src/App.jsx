@@ -3442,7 +3442,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
           Continue with Google
         </button>
         <p className="mt-2 rounded bg-blue-50 p-3 text-xs font-bold leading-5 text-blue-800">
-          Use Google sign in to save CVs online without waiting for an email link.
+          Use Google sign in if you want to save CVs online without email OTP.
         </p>
         {lastSignupEmail && (
           <button disabled={loading} onClick={resendConfirmation} className="mt-3 w-full rounded border border-green-600 px-5 py-3 font-bold text-green-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400">
@@ -3517,7 +3517,7 @@ function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDra
     }
   };
   return (
-    <section className="rounded border border-slate-200 bg-white p-4">
+    <section id="account-dashboard" className="scroll-mt-28 rounded border border-slate-200 bg-white p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="panel-title">Account dashboard</h3>
@@ -4432,7 +4432,14 @@ function CVBuilderApp({ onHome }) {
     if (window.location.hash === "#signin") {
       setAuthOpen(true);
     }
+    if (window.location.hash === "#account-dashboard") {
+      setActiveBuilder("cv");
+    }
   }, []);
+  useEffect(() => {
+    if (!cloudSavingEnabled || window.location.hash !== "#account-dashboard") return;
+    window.setTimeout(() => document.getElementById("account-dashboard")?.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
+  }, [cloudSavingEnabled]);
   const dismissSharePrompt = () => {
     sessionStorage.setItem("bmcv_share_prompt_seen", "1");
     setShowSharePrompt(false);
@@ -4758,12 +4765,18 @@ function CVBuilderApp({ onHome }) {
     setUserMode("guest");
     trackEvent("logout");
   };
+  const openAccountDashboard = () => {
+    setActiveBuilder("cv");
+    window.location.hash = "account-dashboard";
+    window.setTimeout(() => document.getElementById("account-dashboard")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+  };
   const startUrgentMode = (method) => {
     setUserMode("urgent-local");
     setAuthOpen(false);
   };
   const startRegisteredMode = () => {
     setUserMode("registered");
+    openAccountDashboard();
   };
   return (
     <main className="builder-app-shell">
@@ -4788,7 +4801,10 @@ function CVBuilderApp({ onHome }) {
           <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
             <span>{cloudSavingEnabled ? `Cloud saving as ${user.email}` : noCloudMode ? "Download-only mode. No cloud saving." : "Choose download-only or sign in to save online."}</span>
             {cloudSavingEnabled ? (
-              <button onClick={signOut} className="rounded border border-slate-300 px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50">Logout</button>
+              <>
+                <button onClick={openAccountDashboard} className="rounded border border-blue-600 px-3 py-2 text-xs font-black text-blue-700 hover:bg-blue-50">Account dashboard</button>
+                <button onClick={signOut} className="rounded border border-slate-300 px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50">Logout</button>
+              </>
             ) : (
               <button onClick={() => setAuthOpen(true)} className="rounded border border-blue-600 px-3 py-2 text-xs font-black text-blue-700 hover:bg-blue-50">Sign In / Sign Up</button>
             )}
