@@ -3442,7 +3442,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
           Continue with Google
         </button>
         <p className="mt-2 rounded bg-blue-50 p-3 text-xs font-bold leading-5 text-blue-800">
-          Google sign in works after the Google provider is enabled in Supabase.
+          Use Google sign in to save CVs online without waiting for an email link.
         </p>
         {lastSignupEmail && (
           <button disabled={loading} onClick={resendConfirmation} className="mt-3 w-full rounded border border-green-600 px-5 py-3 font-bold text-green-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400">
