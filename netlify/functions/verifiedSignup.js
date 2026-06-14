@@ -20,6 +20,9 @@ const timingSafeEqual = (left, right) => {
   const rightBuffer = Buffer.from(String(right || ""), "hex");
   return leftBuffer.length === rightBuffer.length && crypto.timingSafeEqual(leftBuffer, rightBuffer);
 };
+const isSupabaseKeyError = (error) => /invalid api key|jwt|api key/i.test(error?.message || "");
+const supabaseKeyMessage =
+  "Supabase server key is invalid in Netlify. Set SUPABASE_SERVICE_ROLE_KEY to the service_role key from your Supabase project API settings, then redeploy.";
 const signChallenge = ({ email, otp, expires }) =>
   crypto.createHmac("sha256", secret()).update(`${email}|${otp}|${expires}`).digest("hex");
 
@@ -48,6 +51,7 @@ const verifyStoredOtp = async ({ admin, email, otp, purpose }) => {
 
   if (error) {
     console.warn("Could not verify stored signup OTP:", error.message);
+    if (isSupabaseKeyError(error)) return { checked: true, ok: false, message: supabaseKeyMessage };
     return { checked: false };
   }
 
@@ -123,6 +127,7 @@ export const handler = async (event) => {
   });
 
   if (error) {
+    if (isSupabaseKeyError(error)) return json(500, { ok: false, message: supabaseKeyMessage });
     const alreadyExists = /already|registered|exists/i.test(error.message || "");
     if (alreadyExists) {
       try {

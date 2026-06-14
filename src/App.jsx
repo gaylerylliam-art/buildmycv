@@ -3231,7 +3231,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode, onAuthenticated })
       if (error) throw error;
       setAccountOtp((current) => ({ ...current, sent: true, token: "", channel: "email" }));
       trackEvent("account_email_otp_sent");
-      setMessage("Account email sent. If your email contains a 6-digit OTP, enter it here. If Supabase sends a sign-in link, click that link to open your account.");
+      setMessage("Account email sent. Enter the full code from your email. If Supabase sends a sign-in link, click that link to open your account.");
     } catch (error) {
       setMessage(error.message || "Could not send account OTP.");
     } finally {
@@ -3246,7 +3246,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode, onAuthenticated })
     try {
       const { data, error } = await supabase.auth.verifyOtp({
         email: accountOtp.email,
-        token: accountOtp.token,
+        token: accountOtp.token.trim(),
         type: "email",
       });
       if (error) throw error;
@@ -3355,7 +3355,16 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode, onAuthenticated })
             {accountOtp.sent && (
               <label>
                 <span className="form-label">Email OTP code</span>
-                <input className="form-field" inputMode="numeric" maxLength={6} value={accountOtp.token} onChange={(event) => setAccountOtp({ ...accountOtp, token: event.target.value })} required />
+                <input
+                  className="form-field"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={8}
+                  value={accountOtp.token}
+                  onChange={(event) => setAccountOtp({ ...accountOtp, token: event.target.value.replace(/\D/g, "").slice(0, 8) })}
+                  placeholder="Enter the full email code"
+                  required
+                />
               </label>
             )}
             <button disabled={!isSupabaseConfigured || loading} className="rounded bg-green-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
