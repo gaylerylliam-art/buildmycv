@@ -3036,6 +3036,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
   const [mode, setMode] = useState("signin");
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [accountOtp, setAccountOtp] = useState({ name: "", email: "", phone: "", token: "", sent: false, channel: "email" });
+  const [signupOtp, setSignupOtp] = useState({ sent: false, token: "", challenge: null });
   const [message, setMessage] = useState(isSupabaseConfigured ? "" : "Add VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY or REACT_APP_SUPABASE_URL/REACT_APP_SUPABASE_ANON_KEY to .env to enable login.");
   const [loading, setLoading] = useState(false);
   const [lastSignupEmail, setLastSignupEmail] = useState("");
@@ -3065,25 +3066,48 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
     setMessage("");
     try {
       const captchaToken = await verifyHuman(mode === "signup" ? "signup" : "signin");
-      const options = {
-        emailRedirectTo: AUTH_REDIRECT_URL,
-        data: { full_name: form.name },
-        captchaToken,
-      };
-      const { error } =
-        mode === "signup"
-          ? await supabase.auth.signUp({ email: form.email, password: form.password, options })
-          : await supabase.auth.signInWithPassword({ email: form.email, password: form.password, captchaToken });
-      if (error) throw error;
-      trackEvent(mode === "signup" ? "signup" : "login", { method: "email" });
       if (mode === "signup") {
-        setLastSignupEmail(form.email);
-        setMessage("Signup request sent. Please check your inbox and spam folder for the confirmation email. If it does not arrive, use Resend confirmation email below.");
-      } else {
-        setMessage("Signed in successfully.");
+        if (!signupOtp.sent) {
+          const response = await fetch("/.netlify/functions/emailOtp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "send", email: form.email, name: form.name }),
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok || !result.ok) throw new Error(result.message || "Could not send signup OTP.");
+          setSignupOtp({ sent: true, token: "", challenge: result.challenge });
+          setLastSignupEmail(form.email);
+          setMessage("Verification code sent. Please check your inbox and spam folder, then enter the 6-digit code here.");
+          return;
+        }
+        const signupResponse = await fetch("/.netlify/functions/verifiedSignup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: form.email,
+            password: form.password,
+            name: form.name,
+            otp: signupOtp.token,
+            challenge: signupOtp.challenge,
+          }),
+        });
+        const signupResult = await signupResponse.json().catch(() => ({}));
+        if (!signupResponse.ok || !signupResult.ok) throw new Error(signupResult.message || "Could not create account.");
+        const { error: loginError } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password, captchaToken });
+        if (loginError) throw loginError;
+        trackEvent("signup", { method: "email_otp" });
+        setSignupOtp({ sent: false, token: "", challenge: null });
+        setMessage("Account created and signed in successfully.");
         onRegisteredMode();
+        onClose();
+        return;
       }
-      if (mode === "signin") onClose();
+      const { error } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password, captchaToken });
+      if (error) throw error;
+      trackEvent("login", { method: "email" });
+      setMessage("Signed in successfully.");
+      onRegisteredMode();
+      onClose();
     } catch (error) {
       setMessage(error.message || "Authentication failed.");
     } finally {
@@ -3282,6 +3306,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
               onClick={() => {
                 setMode(id);
                 setAccountOtp((current) => ({ ...current, token: "", sent: false, channel: id === "mobileOtp" ? "mobile" : "email" }));
+                setSignupOtp({ sent: false, token: "", challenge: null });
               }}
               className={`rounded px-4 py-3 text-sm font-black ${mode === id ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-700"}`}
             >
@@ -3346,16 +3371,61 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
           )}
           <label>
             <span className="form-label">Email address</span>
-            <input className="form-field" type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} required />
+            <input
+              className="form-field"
+              type="email"
+              value={form.email}
+              onChange={(event) => {
+                setForm({ ...form, email: event.target.value });
+                setSignupOtp({ sent: false, token: "", challenge: null });
+              }}
+              required
+              disabled={mode === "signup" && signupOtp.sent}
+            />
           </label>
           <label>
             <span className="form-label">Password</span>
-            <input className="form-field" type="password" minLength={6} value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} required />
+            <input
+              className="form-field"
+              type="password"
+              minLength={6}
+              value={form.password}
+              onChange={(event) => {
+                setForm({ ...form, password: event.target.value });
+                setSignupOtp({ sent: false, token: "", challenge: null });
+              }}
+              required
+              disabled={mode === "signup" && signupOtp.sent}
+            />
           </label>
+          {mode === "signup" && signupOtp.sent && (
+            <label>
+              <span className="form-label">Email verification code</span>
+              <input
+                className="form-field"
+                inputMode="numeric"
+                maxLength={6}
+                value={signupOtp.token}
+                onChange={(event) => setSignupOtp({ ...signupOtp, token: event.target.value })}
+                placeholder="6-digit code"
+                required
+              />
+            </label>
+          )}
           {isRecaptchaConfigured && <p className="text-xs font-bold text-slate-500">Protected by Google reCAPTCHA.</p>}
           <button disabled={!isSupabaseConfigured || loading} className="rounded bg-green-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
-            {loading ? "Please wait..." : mode === "signin" ? "Login" : "Create account"}
+            {loading ? "Please wait..." : mode === "signin" ? "Login" : signupOtp.sent ? "Verify code and create account" : "Send signup OTP"}
           </button>
+          {mode === "signup" && signupOtp.sent && (
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => setSignupOtp({ sent: false, token: "", challenge: null })}
+              className="rounded border border-slate-300 px-5 py-3 font-bold text-slate-700 disabled:cursor-not-allowed disabled:text-slate-400"
+            >
+              Change email or resend code
+            </button>
+          )}
           {mode === "signin" && (
             <button
               type="button"
