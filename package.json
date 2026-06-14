@@ -2,7 +2,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "vite build && node scripts/generate-og-images.mjs && node scripts/generate-static-seo.mjs && node scripts/verify-crawlability.mjs && node scripts/verify-og.mjs",
+    "build": "vite build --configLoader runner && node scripts/generate-og-images.mjs && node scripts/generate-static-seo.mjs && node scripts/verify-crawlability.mjs && node scripts/verify-og.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {

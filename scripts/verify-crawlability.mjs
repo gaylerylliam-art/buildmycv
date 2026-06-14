@@ -60,8 +60,10 @@ const homeHtml = readBuiltHtml("/");
 const homeText = stripTags(homeHtml);
 if (!homeText.includes(HOME_H1)) failures.push(`/: missing shared homepage H1 "${HOME_H1}"`);
 if (/â€|Â·/.test(homeHtml)) failures.push("/: contains mojibake byte sequences");
-if (!/<video[^>]+class=["'][^"']*static-video-player[^"']*["'][^>]+controls[^>]*>/i.test(homeHtml) || !/<source[^>]+src=["']https:\/\/resource2\.heygen\.ai\/video\/transcode\//i.test(homeHtml)) {
-  failures.push("/: missing embedded static video player");
+const hasStaticVideo = /<video[^>]+class=["'][^"']*static-video-player[^"']*["'][^>]+controls[^>]*>/i.test(homeHtml) && /<source[^>]+src=["'](?:https:\/\/resource2\.heygen\.ai\/video\/transcode\/|\/assets\/buildmycvnow-demo\.mp4)/i.test(homeHtml);
+const hasVideoPlaceholder = /static-video-placeholder/i.test(homeHtml) && /Demo video coming soon/i.test(homeHtml);
+if (!hasStaticVideo && !hasVideoPlaceholder) {
+  failures.push("/: missing embedded static video player or current video placeholder");
 }
 if (/app\.heygen\.com\/videos/i.test(homeHtml)) {
   failures.push("/: should not link visitors away to the HeyGen video page");

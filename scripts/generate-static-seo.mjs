@@ -35,10 +35,11 @@ const stripMd = (value = "") => value.replace(/[#*_`>\[\]\(\)]/g, "").replace(/\
 const slugify = (value = "") => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 function parseFrontmatter(raw) {
-  const match = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
-  if (!match) return { data: {}, body: raw };
+  const normalized = raw.replace(/^\uFEFF/, "");
+  const match = normalized.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
+  if (!match) return { data: {}, body: normalized };
   const data = {};
-  match[1].split("\n").forEach((line) => {
+  match[1].split(/\r?\n/).forEach((line) => {
     const [key, ...rest] = line.split(":");
     if (!key) return;
     const value = rest.join(":").trim();
@@ -192,11 +193,20 @@ function staticTrustMetrics() {
 }
 
 function staticPortfolioSection() {
-  return `<section class="section static-features"><div class="wrap"><div class="static-section-title"><h2>Create a CV, portfolio, and personal website in one platform</h2><p class="lead">BuildMyCVNow combines an online CV builder, portfolio website builder, and personal website for job seekers so applicants can share one online professional profile.</p></div><div class="grid grid-3">${HOME_PORTFOLIO_FLOW.map(([title, text], index) => `<article class="card"><span class="static-badge">Step ${index + 1}</span><h3>${title}</h3><p>${text}</p></article>`).join("")}</div><p style="text-align:center;margin-top:24px"><a class="cta" href="/builder">Start with my CV</a></p></div></section>`;
+  return `<section class="section static-features"><div class="wrap"><div class="static-section-title"><h2>Start with your CV. Portfolio and website coming soon.</h2><p class="lead">BuildMyCVNow is live today as a free CV builder. Portfolio and personal website tools are planned next, so job seekers can grow from a strong CV into a fuller online profile.</p></div><div class="grid grid-3">${HOME_PORTFOLIO_FLOW.map((item, index) => {
+    const title = Array.isArray(item) ? item[0] : item.label;
+    const text = Array.isArray(item) ? item[1] : item.description;
+    const badge = Array.isArray(item) ? `Step ${index + 1}` : item.status === "live" ? "Live now" : "Coming soon";
+    return `<article class="card"><span class="static-badge">${badge}</span><h3>${title}</h3><p>${text}</p></article>`;
+  }).join("")}</div><p style="text-align:center;margin-top:24px"><a class="cta" href="/builder">Start with my CV</a></p></div></section>`;
 }
 
 function staticAtsPreviewSection() {
-  return `<section class="section"><div class="wrap"><div class="grid grid-3"><article class="card" style="grid-column:span 1"><strong style="font-size:44px;color:#16a34a">${HOME_ATS_PREVIEW.score}/100</strong><h2>${HOME_ATS_PREVIEW.title}</h2><p>${HOME_ATS_PREVIEW.description}</p></article>${HOME_ATS_PREVIEW.checks.map((item) => `<article class="card"><h3>${item}</h3><p>Use ATS-friendly resumes to improve readability, keyword matching, and clean formatting.</p></article>`).join("")}</div><p style="text-align:center;margin-top:24px"><a class="cta" href="/builder">Check my CV score</a></p></div></section>`;
+  return `<section class="section"><div class="wrap"><div class="grid grid-3"><article class="card" style="grid-column:span 1"><strong style="font-size:44px;color:#16a34a">${HOME_ATS_PREVIEW.score}/100</strong><h2>${HOME_ATS_PREVIEW.title}</h2><p>${HOME_ATS_PREVIEW.description}</p></article>${HOME_ATS_PREVIEW.checks.map((item) => {
+    const title = typeof item === "string" ? item : item.label;
+    const text = typeof item === "string" ? "Use ATS-friendly resumes to improve readability, keyword matching, and clean formatting." : item.desc;
+    return `<article class="card"><h3>${title}</h3><p>${text}</p></article>`;
+  }).join("")}</div><p style="text-align:center;margin-top:24px"><a class="cta" href="/builder">Check my CV score</a></p></div></section>`;
 }
 
 function staticTransformSection() {
@@ -206,7 +216,7 @@ function staticTransformSection() {
 function staticVideoSection() {
   const steps = ["Pick a template", "Fill details", "AI polishes", "Download"];
   const chapters = ["0:00 Choose a template", "0:25 Add your details", "0:55 Improve with AI", "1:30 Download PDF"];
-  return `<section class="section static-video" id="how-it-works"><div class="wrap static-video-grid"><div><div class="static-browser"><div class="static-browser-bar"><span>BuildMyCVNow demo</span><span class="static-video-label">Watch on this page</span></div><video class="static-video-player" controls playsinline preload="metadata" poster="/assets/heygen-demo-poster.svg" aria-label="BuildMyCVNow tutorial video"><source src="${HOME_VIDEO.url}" type="video/mp4">Your browser cannot play this video.</video></div><div class="static-pills">${steps.map((step, index) => `<span class="static-pill">${index + 1}. ${step}</span>`).join("")}</div><div class="static-chapters">${chapters.map((chapter) => `<span class="chip">${chapter}</span>`).join("")}</div></div><div><div class="static-section-title" style="text-align:left;margin:0 0 22px"><h2>${HOME_VIDEO.title}</h2><p class="lead">${HOME_VIDEO.subtitle}</p></div><div class="static-step-list">${HOME_BUILD_STEPS.map((step, index) => `<div class="static-step"><strong>Step ${index + 1}</strong><br>${step}</div>`).join("")}</div><p class="muted"><strong>Tip:</strong> You can switch templates at any time without losing your data.</p><div class="static-stat-row"><div class="static-stat"><strong>5 min</strong>Average build</div><div class="static-stat"><strong>8+</strong>Job categories</div><div class="static-stat"><strong>100%</strong>Free PDF</div></div></div></div></section>`;
+  return `<section class="section static-video" id="how-it-works"><div class="wrap static-video-grid"><div><div class="static-browser"><div class="static-browser-bar"><span>BuildMyCVNow demo</span><span class="static-video-label">Watch on this page</span></div><video class="static-video-player" controls playsinline preload="metadata" poster="/assets/cv-video-thumb.jpg" aria-label="BuildMyCVNow tutorial video"><source src="${HOME_VIDEO.file}" type="video/mp4">Your browser cannot play this video.</video></div><div class="static-pills">${steps.map((step, index) => `<span class="static-pill">${index + 1}. ${step}</span>`).join("")}</div><div class="static-chapters">${chapters.map((chapter) => `<span class="chip">${chapter}</span>`).join("")}</div></div><div><div class="static-section-title" style="text-align:left;margin:0 0 22px"><h2>${HOME_VIDEO.title}</h2><p class="lead">${HOME_VIDEO.subtitle}</p></div><div class="static-step-list">${HOME_BUILD_STEPS.map((step, index) => `<div class="static-step"><strong>Step ${index + 1}</strong><br>${step}</div>`).join("")}</div><p class="muted"><strong>Tip:</strong> You can switch templates at any time without losing your data.</p><div class="static-stat-row"><div class="static-stat"><strong>5 min</strong>Average build</div><div class="static-stat"><strong>8+</strong>Job categories</div><div class="static-stat"><strong>100%</strong>Free PDF</div></div></div></div></section>`;
 }
 
 function staticWhySection() {
@@ -416,10 +426,10 @@ function writeCvPage(job, city) {
 const articles = fs.readdirSync(blogDir).filter((file) => file.endsWith(".md")).map((file) => {
   const parsed = parseFrontmatter(fs.readFileSync(path.join(blogDir, file), "utf8"));
   const rendered = renderMarkdown(parsed.body);
-  return { ...parsed.data, body: parsed.body, html: rendered.html, toc: rendered.toc };
+  return { slug: path.basename(file, ".md"), ...parsed.data, body: parsed.body, html: rendered.html, toc: rendered.toc };
 });
 
-writePage("/blog", layout({ title: "CV Writing and Career Tips Blog | BuildMyCVNow", description: "Read practical CV writing and job search tips about ATS, visa status, CV photos, no-experience CVs and international job preparation.", canonical: `${baseUrl}/blog`, body: `<main class="section"><div class="wrap"><h1>CV writing and career tips</h1><p class="lead">Read practical guides for writing a stronger CV, preparing for job applications, avoiding common mistakes, and tailoring your profile for local, remote, overseas, and Gulf-market roles.</p><p>These articles are written for first-time CV creators, fresh graduates, hospitality workers, skilled workers, drivers, finance assistants, IT applicants, domestic workers, OFWs, and job seekers who want simple language instead of confusing career jargon.</p><div class="grid grid-3">${articles.map((article) => `<a class="card" href="/blog/${article.slug}"><h2>${article.title}</h2><p>${article.description}</p><p class="muted">${article.date}</p></a>`).join("")}</div></div></main>` }));
+writePage("/blog", layout({ title: "CV Writing and Career Tips Blog | BuildMyCVNow", description: "Read practical CV writing and job search tips about ATS, visa status, CV photos, no-experience CVs and international job preparation.", canonical: `${baseUrl}/blog`, body: `<main class="section"><div class="wrap"><h1>CV writing and career tips</h1><p class="lead">Read practical guides for writing a stronger CV, preparing for job applications, avoiding common mistakes, and tailoring your profile for local, remote, overseas, and Gulf-market roles.</p><p>These articles are written for first-time CV creators, fresh graduates, hospitality workers, skilled workers, drivers, finance assistants, IT applicants, domestic workers, OFWs, and job seekers who want simple language instead of confusing career jargon.</p><p>Use these guides before you download your CV from BuildMyCVNow. They explain how to choose the right job title, write a stronger professional summary, describe duties with measurable achievements, prepare an ATS-friendly skills section, and decide when optional details like photo, nationality, visa status, driving license, LinkedIn, references, and expected salary should appear. The goal is simple: help every applicant create a CV that is clear to recruiters, readable by hiring software, and honest about real experience.</p><p>You can read a guide, open the free CV builder, upload an old CV, and improve the wording without starting from zero. Each article focuses on practical decisions that affect real applications: what recruiters scan first, what ATS systems can read, how to avoid overcrowded layouts, and how to present international work experience in a professional way.</p><div class="grid grid-3">${articles.map((article) => `<a class="card" href="/blog/${article.slug}"><h2>${article.title}</h2><p>${article.description}</p><p class="muted">${article.date}</p></a>`).join("")}</div></div></main>` }));
 
 for (const article of articles) {
   const relatedRoles = (article.relatedRoles || []).slice(0, 3);

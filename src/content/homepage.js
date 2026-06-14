@@ -21,16 +21,50 @@ export const HOME_TRUST_METRICS = [
 ];
 
 export const HOME_PORTFOLIO_FLOW = [
-  ["CV", "Create a recruiter-ready CV with clean sections, AI wording help, and instant PDF download."],
-  ["Portfolio", "Turn your best work, achievements, projects, and links into an online professional profile."],
-  ["Personal Website", "Share one polished personal website for job applications, referrals, and freelance leads."],
+  {
+    number: "01",
+    label: "CV Builder",
+    description: "Create a recruiter-ready CV with clean sections, AI wording help, live preview, and instant PDF download.",
+    status: "live",
+  },
+  {
+    number: "02",
+    label: "Portfolio",
+    description: "Turn your best work, achievements, projects, and links into a shareable online professional profile.",
+    status: "coming-soon",
+  },
+  {
+    number: "03",
+    label: "Personal Website",
+    description: "One polished link for job applications, referrals, freelance leads, and professional networking.",
+    status: "coming-soon",
+  },
 ];
 
 export const HOME_ATS_PREVIEW = {
   score: 82,
   title: "ATS score preview",
   description: "ATS-friendly resumes improve readability, keyword matching, and recruiter scanning before a human opens the CV.",
-  checks: ["Strong keywords", "Clean formatting", "Add more achievements"],
+  checks: [
+    {
+      icon: "check",
+      status: "pass",
+      label: "Strong keywords",
+      desc: "Job-relevant keywords are present in your summary and experience so your CV mirrors recruiter search language.",
+    },
+    {
+      icon: "check",
+      status: "pass",
+      label: "Clean formatting",
+      desc: "Simple headings, readable spacing, and no ATS-blocking layout tricks make the CV easier for systems to parse.",
+    },
+    {
+      icon: "alert",
+      status: "warn",
+      label: "Add more achievements",
+      desc: "Measurable results make duties stronger. Try adding numbers, volume handled, savings, speed, or quality improvements.",
+    },
+  ],
 };
 
 export const HOME_TRANSFORMATION_EXAMPLES = [
@@ -64,13 +98,14 @@ export const HOME_BUILD_STEPS = [
 
 export const HOME_VIDEO = {
   title: "See it in action - CV ready in 5 minutes",
-  subtitle: "Watch the full walkthrough: template, details, preview, download.",
+  subtitle: "Watch the full walkthrough: choose a template, add details, preview, and download.",
   name: "How to Build a Free CV in 5 Minutes",
   description: "A short BuildMyCVNow walkthrough showing how to choose a template, add details, preview, and download a free CV.",
   duration: "PT1M15S",
   uploadDate: "2026-06-12",
-  url: "https://resource2.heygen.ai/video/transcode/37034e74791e4040830908c8fe32f8a0/v45300492faf240b39a88f9905a3267a9/1920x1080_caption.mp4",
-  poster: "https://buildmycvnow.com/assets/heygen-demo-poster.svg",
+  file: "/assets/buildmycvnow-demo.mp4",
+  url: "https://buildmycvnow.com/assets/buildmycvnow-demo.mp4",
+  poster: "https://buildmycvnow.com/assets/cv-video-thumb.jpg",
 };
 
 export const HOME_PROOF_CARDS = [
@@ -84,7 +119,7 @@ export const HOME_FEATURES = [
   ["sparkle", "AI writing assist", "Check spelling, grammar, and rewrite rough duties into clear professional wording before you approve it."],
   ["eye", "Live preview", "See your CV update as you type, with a strength score to guide what still needs attention."],
   ["qr", "Share via link or QR", "Export and share your finished CV in ways that work for recruiters and mobile users."],
-  ["briefcase", "Global-ready fields", "Add languages, visa status, nationality, driving license, LinkedIn, salary, and references only when needed."],
+  ["globe", "Global-ready fields", "Add languages, visa status, nationality, driving license, LinkedIn, salary, and references only when needed."],
 ];
 
 export const HOME_TESTIMONIALS = [

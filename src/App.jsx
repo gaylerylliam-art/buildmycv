@@ -448,6 +448,9 @@ function Icon({ name, className = "h-5 w-5" }) {
     sparkle: <><path d="M12 3l1.7 5.1L19 10l-5.3 1.9L12 17l-1.7-5.1L5 10l5.3-1.9L12 3z" /><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z" /></>,
     share: <><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.6 10.7l6.8-4.4" /><path d="M8.6 13.3l6.8 4.4" /></>,
     qr: <><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 14h2v2h-2z" /><path d="M19 14h2v2h-2z" /><path d="M14 19h2v2h-2z" /><path d="M19 19h2v2h-2z" /></>,
+    globe: <><circle cx="12" cy="12" r="10" /><path d="M2 12h20" /><path d="M12 2a15.3 15.3 0 0 1 0 20" /><path d="M12 2a15.3 15.3 0 0 0 0 20" /></>,
+    alert: <><circle cx="12" cy="12" r="10" /><path d="M12 8v4" /><path d="M12 16h.01" /></>,
+    info: <><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></>,
     chevron: <path d="m6 9 6 6 6-6" />,
     sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></>,
     moon: <path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5 7 7 0 1 0 20.5 14.5z" />,
@@ -623,18 +626,24 @@ function PortfolioWebsiteSection({ onStart }) {
   return (
     <section className="growth-section growth-portfolio" aria-labelledby="portfolio-heading">
       <div className="growth-section-copy">
-        <div className="section-eyebrow">More than a CV builder</div>
-        <h2 id="portfolio-heading" className="section-title">Create a CV, portfolio, and personal website in one platform</h2>
+        <div className="section-eyebrow">Product roadmap</div>
+        <h2 id="portfolio-heading" className="section-title">Start with your CV. Portfolio and website coming soon.</h2>
         <p className="section-sub">
-          BuildMyCVNow helps job seekers move from a professional CV to an online professional profile. It is built for applicants who want a portfolio website builder, a personal website for job seekers, and a clean CV workflow in one place.
+          BuildMyCVNow is live today as a free CV builder. Portfolio and personal website tools are planned next, so job seekers can grow from a strong CV into a fuller online profile.
         </p>
       </div>
       <div className="portfolio-flow" aria-label="CV to portfolio to personal website flow">
-        {HOME_PORTFOLIO_FLOW.map(([title, text], index) => (
-          <article key={title} className="portfolio-step-card">
-            <span>{index + 1}</span>
-            <h3>{title}</h3>
-            <p>{text}</p>
+        {HOME_PORTFOLIO_FLOW.map((step) => (
+          <article key={step.label} className={`portfolio-step-card ${step.status === "coming-soon" ? "coming-soon" : "live"}`}>
+            {step.status === "coming-soon" && <em>Coming soon</em>}
+            <span>{step.number}</span>
+            <h3>{step.label}</h3>
+            <p>{step.description}</p>
+            {step.status === "live" ? (
+              <button type="button" onClick={onStart}>Start building -&gt;</button>
+            ) : (
+              <button type="button" disabled>Notify me when live</button>
+            )}
           </article>
         ))}
       </div>
@@ -679,9 +688,12 @@ function AtsPreviewSection({ onStart }) {
       </div>
       <div className="ats-check-list">
         {HOME_ATS_PREVIEW.checks.map((item) => (
-          <div key={item}>
-            <Icon name="check" className="h-4 w-4" />
-            <span>{item}</span>
+          <div key={item.label} className={item.status === "warn" ? "warn" : "pass"}>
+            <Icon name={item.icon} className="h-5 w-5" />
+            <span>
+              <strong>{item.label}</strong>
+              <small>{item.desc}</small>
+            </span>
           </div>
         ))}
       </div>
@@ -723,21 +735,15 @@ function BeforeAfterSection({ onStart }) {
 }
 
 function LandingPage({ onStart, onUpload }) {
-  const videoRef = useRef(null);
-  const [playing, setPlaying] = useState(false);
-  const [activeChapter, setActiveChapter] = useState(0);
-  const chapters = [
-    { label: "1. Pick a template", short: "Choose template", time: 0, ts: "0:00" },
-    { label: "2. Fill details", short: "Fill details", time: 28, ts: "0:28" },
-    { label: "3. AI polishes", short: "AI improve", time: 70, ts: "1:10" },
-    { label: "4. Download", short: "Download", time: 105, ts: "1:45" },
-  ];
   const buildSteps = HOME_BUILD_STEPS;
   const features = HOME_FEATURES;
   const testimonials = [
-    ["Maria G.", "F&B Supervisor - Dubai", "MG", "#E6F1FB", "#0C447C", "Got a callback from a Dubai hotel within 3 days of sending my new CV. The hospitality template was exactly what I needed."],
-    ["Raj S.", "IT Support - Abu Dhabi", "RS", "#E1F5EE", "#085041", "Super easy. The AI fixed my job descriptions in one click. Downloaded my CV in under 10 minutes."],
-    ["Ana N.", "Admin Assistant - Sharjah", "AN", "#EEEDFE", "#3C3489", "Finally a free CV builder that does not ask for my credit card. The PDF looks clean and professional."],
+    ["Maria Santos", "Hotel Receptionist - Dubai, UAE", "MS", "#E6F1FB", "#0C447C", "I built my hotel CV on my phone in 15 minutes. Got a callback from a Dubai property within the week.", "PH"],
+    ["Raj Menon", "IT Support Specialist - Abu Dhabi, UAE", "RM", "#E1F5EE", "#085041", "The ATS tips helped me land interviews at two IT firms in Abu Dhabi. I had been applying for months with no results before.", "IN"],
+    ["Ana Cruz", "Admin Assistant - Riyadh, Saudi Arabia", "AC", "#EEEDFE", "#3C3489", "I uploaded my old CV and the AI rewrote my experience bullets. The difference was immediately obvious.", "PH"],
+    ["James Okafor", "Civil Engineer - Lagos, Nigeria", "JO", "#FEF3C7", "#92400E", "Free, fast, and no hidden paywall at the end. I have recommended it to everyone in my batch.", "NG"],
+    ["Fatima Al Nuaimi", "Accounts Assistant - Sharjah, UAE", "FA", "#DBEAFE", "#1E40AF", "The finance template helped me organize VAT, payroll, and supplier payment experience in a cleaner way.", "AE"],
+    ["Liza Fernandez", "Domestic Services - Doha, Qatar", "LF", "#DCFCE7", "#166534", "I needed a simple CV for overseas applications. The builder gave me a clear PDF without asking for payment.", "PH"],
   ];
   const heroCards = [
     {
@@ -787,31 +793,6 @@ function LandingPage({ onStart, onUpload }) {
       className: "global-cv-card-right",
     },
   ];
-  const videoUrl = HEYGEN_DEMO_VIDEO_URL;
-
-  const toggleVideo = async () => {
-    const video = videoRef.current;
-    if (!video) return;
-    if (video.paused) {
-      video.muted = false;
-      await video.play();
-      setPlaying(true);
-    } else {
-      video.pause();
-      setPlaying(false);
-    }
-  };
-
-  const seekTo = async (time, index) => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.currentTime = time;
-    video.muted = false;
-    await video.play();
-    setActiveChapter(index);
-    setPlaying(true);
-  };
-
   return (
     <main id="top" className="landing-page-redesign">
       <Seo
@@ -910,39 +891,15 @@ function LandingPage({ onStart, onUpload }) {
             </div>
             <div className="video-screen">
               <video
-                ref={videoRef}
                 className="demo-video"
-                src={videoUrl}
-                poster={HEYGEN_DEMO_POSTER_URL}
+                src={HOME_VIDEO.file}
+                poster="/assets/cv-video-thumb.jpg"
                 preload="metadata"
                 playsInline
-                loop
-                onPlay={() => setPlaying(true)}
-                onPause={() => setPlaying(false)}
                 controls
+                aria-label="BuildMyCVNow CV builder demo"
               />
-              {!playing && (
-                <button type="button" className="play-overlay" onClick={toggleVideo} aria-label="Play CV builder demo">
-                  <span className="play-btn"><svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3" /></svg></span>
-                  <span className="video-badge">2 min demo - no audio needed</span>
-                </button>
-              )}
             </div>
-          </div>
-          <div className="chapter-pills" aria-label="Demo steps">
-            {chapters.map((chapter, index) => (
-              <button key={chapter.label} type="button" className={`chapter-pill ${activeChapter === index ? "active" : ""}`} onClick={() => seekTo(chapter.time, index)}>
-                {chapter.label}
-              </button>
-            ))}
-          </div>
-          <div className="chapter-timestamps">
-            {chapters.map((chapter, index) => (
-              <button key={chapter.ts} type="button" className="ts-link" onClick={() => seekTo(chapter.time, index)}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-                {chapter.ts} - {chapter.short}
-              </button>
-            ))}
           </div>
         </div>
         <div className="build-steps-panel">
@@ -976,8 +933,10 @@ function LandingPage({ onStart, onUpload }) {
             {features.map(([icon, title, desc], index) => (
               <div key={title} className="feature-card">
                 <div className={`feature-icon feature-icon-${index}`}><Icon name={icon} className="h-5 w-5" /></div>
-                <div className="feature-title">{title}</div>
-                <p className="feature-desc">{desc}</p>
+                <div>
+                  <div className="feature-title">{title}</div>
+                  <p className="feature-desc">{desc}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -989,15 +948,15 @@ function LandingPage({ onStart, onUpload }) {
       <section className="testimonials-section">
         <div className="section-inner">
           <div className="section-eyebrow">Real stories</div>
-          <h2 className="section-title">Job seekers who got hired</h2>
+          <h2 className="section-title">Job seekers across 60+ countries</h2>
           <div className="testi-grid">
-            {testimonials.map(([name, role, initialsText, bg, color, quote]) => (
+            {testimonials.map(([name, role, initialsText, bg, color, quote, country]) => (
               <div key={name} className="testi-card">
                 <div className="testi-stars" aria-label="5 star rating">*****</div>
                 <p className="testi-quote">"{quote}"</p>
                 <div className="testi-person">
                   <div className="testi-avatar" style={{ background: bg, color }}>{initialsText}</div>
-                  <div><div className="testi-name">{name}</div><div className="testi-role">{role}</div></div>
+                  <div><div className="testi-name">{name} <span>{country}</span></div><div className="testi-role">{role}</div></div>
                 </div>
               </div>
             ))}
@@ -1343,9 +1302,6 @@ function SiteFooter({ onStart }) {
   );
 }
 
-const HEYGEN_DEMO_VIDEO_URL = "https://resource2.heygen.ai/video/transcode/37034e74791e4040830908c8fe32f8a0/v45300492faf240b39a88f9905a3267a9/1920x1080_caption.mp4";
-const HEYGEN_DEMO_POSTER_URL = "https://dynamic.heygen.ai/aws_pacific/avatar_tmp/021c62749e9c473098175a3fcc2354c1/v45300492faf240b39a88f9905a3267a9/37034e74791e4040830908c8fe32f8a0.jpeg";
-
 function IPhonePortraitDisplay({ onStart }) {
   return (
     <section id="mobile-preview" className="border-y border-slate-200 bg-white px-5 py-16">
@@ -1363,9 +1319,9 @@ function IPhonePortraitDisplay({ onStart }) {
             </span>
           </div>
           <div className="landing-video-frame">
-            <video controls playsInline preload="metadata" poster={HEYGEN_DEMO_POSTER_URL} aria-label="How to create and download your CV for free">
-              <source src={HEYGEN_DEMO_VIDEO_URL} type="video/mp4" />
-              Your browser cannot play this video. Please open the video in a new tab.
+            <video controls playsInline preload="metadata" poster="/assets/cv-video-thumb.jpg" aria-label="How to create and download your CV for free">
+              <source src={HOME_VIDEO.file} type="video/mp4" />
+              Your browser cannot play this video.
             </video>
           </div>
           <p className="mt-3 text-xs font-bold leading-5 text-slate-500">
@@ -1390,7 +1346,7 @@ function IPhonePortraitDisplay({ onStart }) {
               Try the CV builder
             </button>
             <a href="#how-it-works" className="inline-flex items-center justify-center rounded border border-blue-600 px-6 py-4 font-bold text-blue-700 hover:bg-blue-50">
-              Watch demo on this page
+              See how it works
             </a>
           </div>
         </div>
@@ -1410,19 +1366,28 @@ function CVLine({ title, text }) {
 
 function CategorySelector({ selected, onSelect }) {
   return (
-    <div className="template-card-grid">
-      {categories.map((category) => (
-        <button
-          type="button"
-          value={category.id}
-          key={category.id}
-          onClick={() => onSelect(category.id)}
-          className={`template-card-button ${selected === category.id ? "selected" : ""}`}
-        >
-          <span className="template-card-name">{category.name}</span>
-          <span className="template-card-sub">{category.title}</span>
-        </button>
-      ))}
+    <div>
+      <p className="template-safe-note">Change template anytime. Your CV details stay saved.</p>
+      <div className="template-card-grid">
+        {categories.map((category, index) => (
+          <button
+            type="button"
+            value={category.id}
+            key={category.id}
+            onClick={() => onSelect(category.id)}
+            className={`template-card-button ${selected === category.id ? "selected" : ""}`}
+          >
+            {index === 0 && <span className="template-popular-badge">Popular</span>}
+            <span className="template-mini-preview" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </span>
+            <span className="template-card-name">{category.name}</span>
+            <span className="template-card-sub">{category.title}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1513,15 +1478,21 @@ function ExistingCVImporter({ onImport }) {
 
 function ProfilePhotoUploader({ cv, onChange }) {
   return (
-    <PhotoUploadCrop
-      value={cv.profilePhoto}
-      shape={cv.photoShape === "round" ? "circle" : cv.photoShape}
-      onPhotoSaved={(dataUrl, shape) => {
-        onChange("photoShape", shape);
-        onChange("profilePhoto", dataUrl);
-      }}
-      onPhotoRemoved={() => onChange("profilePhoto", "")}
-    />
+    <section className="optional-guidance-card">
+      <div className="optional-guidance-head">
+        <strong>Profile photo <em>(optional)</em></strong>
+        <FieldHelp content="Required in UAE, GCC, and most Asian job markets. Omit for EU, US, and Canada applications." />
+      </div>
+      <PhotoUploadCrop
+        value={cv.profilePhoto}
+        shape={cv.photoShape === "round" ? "circle" : cv.photoShape}
+        onPhotoSaved={(dataUrl, shape) => {
+          onChange("photoShape", shape);
+          onChange("profilePhoto", dataUrl);
+        }}
+        onPhotoRemoved={() => onChange("profilePhoto", "")}
+      />
+    </section>
   );
 }
 
@@ -1807,10 +1778,33 @@ function CollapsibleFormSection({ id, title, icon = "file", defaultOpen = false,
   );
 }
 
-function FormField({ label, value, onChange, type = "text", rows = 3, placeholder = "" }) {
+function FieldHelp({ content }) {
+  const [open, setOpen] = useState(false);
+  if (!content) return null;
+  return (
+    <span
+      className="field-help"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onFocus={() => setOpen(true)}
+      onBlur={() => setOpen(false)}
+      tabIndex={0}
+      aria-label={content}
+    >
+      <Icon name="info" className="h-3.5 w-3.5" />
+      {open && <span role="tooltip">{content}</span>}
+    </span>
+  );
+}
+
+function FormField({ label, value, onChange, type = "text", rows = 3, placeholder = "", optional = false, help = "" }) {
   return (
     <label className="block">
-      <span className="form-label">{label}</span>
+      <span className="form-label">
+        {label}
+        {optional && <em>(optional)</em>}
+        <FieldHelp content={help} />
+      </span>
       {type === "textarea" ? (
         <textarea value={value || ""} onChange={(event) => onChange(event.target.value)} rows={rows} className="form-field resize-y" placeholder={placeholder} />
       ) : (
@@ -1962,6 +1956,11 @@ function ReferencesSection({ cv, onChange }) {
   };
   return (
     <CollapsibleFormSection id="references" title="References" icon="file" badge={referencesHasContent(references) ? "Done" : ""}>
+      <div className="optional-section-note">
+        <strong>References <em>(optional)</em></strong>
+        <FieldHelp content="Usually omitted until requested. Include only if the job post asks or your reference has approved sharing their details." />
+        <span>Recommended default: References available upon request.</span>
+      </div>
       <div className="reference-mode-grid">
         {[
           ["none", "Do not include", "Hide references from this CV"],
@@ -2077,15 +2076,15 @@ function CVBuilderForm({ cv, onChange }) {
         </div>
         <div className="field-pair">
           <FormField label="Country" value={cv.country} onChange={(value) => onChange("country", value)} placeholder="United Arab Emirates" />
-          <FormField label="Nationality" value={cv.nationality} onChange={(value) => onChange("nationality", value)} placeholder="Filipino" />
+          <FormField label="Nationality" optional help="Include for UAE/GCC applications. It may be omitted for western markets." value={cv.nationality} onChange={(value) => onChange("nationality", value)} placeholder="Filipino" />
         </div>
         <div className="field-pair">
-          <FormField label="Visa status" value={cv.visaStatus} onChange={(value) => onChange("visaStatus", value)} placeholder="Visit visa / Own visa / Employment visa" />
-          <FormField label="Driving license" value={cv.drivingLicense} onChange={(value) => onChange("drivingLicense", value)} placeholder="UAE driving license / No UAE license" />
+          <FormField label="Visa status" optional help="Include if you are applying in a country where work authorization matters." value={cv.visaStatus} onChange={(value) => onChange("visaStatus", value)} placeholder="Visit visa / Own visa / Employment visa" />
+          <FormField label="Driving license" optional help="Include if the job requires driving, delivery, site visits, or vehicle ownership." value={cv.drivingLicense} onChange={(value) => onChange("drivingLicense", value)} placeholder="UAE driving license / No UAE license" />
         </div>
         <div className="field-pair">
-          <FormField label="LinkedIn URL" type="url" value={cv.linkedIn} onChange={(value) => onChange("linkedIn", value)} placeholder="https://linkedin.com/in/yourname" />
-          <FormField label="Portfolio URL" type="url" value={cv.portfolioUrl} onChange={(value) => onChange("portfolioUrl", value)} placeholder="Portfolio, GitHub, or work sample link" />
+          <FormField label="LinkedIn URL" optional help="Highly recommended. Recruiters check LinkedIn for many professional roles." type="url" value={cv.linkedIn} onChange={(value) => onChange("linkedIn", value)} placeholder="https://linkedin.com/in/yourname" />
+          <FormField label="Portfolio URL" optional help="Use this for GitHub, Behance, a work sample, or a personal website if relevant." type="url" value={cv.portfolioUrl} onChange={(value) => onChange("portfolioUrl", value)} placeholder="Portfolio, GitHub, or work sample link" />
         </div>
         <label className="flex items-start gap-3">
           <input
@@ -2114,8 +2113,8 @@ function CVBuilderForm({ cv, onChange }) {
 
       <CollapsibleFormSection id="education" title="Education and certifications" icon="file" badge={cv.education ? "Done" : ""}>
         <FormField label="Education" type="textarea" rows={4} value={cv.education} onChange={(value) => onChange("education", value)} placeholder="Example: High School Diploma, Manila High School, 2018" />
-        <FormField label="Projects (optional)" type="textarea" rows={4} value={cv.projects} onChange={(value) => onChange("projects", value)} placeholder="Example: Website redesign, inventory tracking project, school capstone, or work improvement project" />
-        <FormField label="Certifications & licenses" type="textarea" rows={3} value={cv.certifications} onChange={(value) => onChange("certifications", value)} placeholder="Example: Basic Food Safety Certificate, TESDA NC II, UAE driving license" />
+        <FormField label="Projects" optional type="textarea" rows={4} value={cv.projects} onChange={(value) => onChange("projects", value)} placeholder="Example: Website redesign, inventory tracking project, school capstone, or work improvement project" />
+        <FormField label="Certifications & licenses" optional type="textarea" rows={3} value={cv.certifications} onChange={(value) => onChange("certifications", value)} placeholder="Example: Basic Food Safety Certificate, TESDA NC II, UAE driving license" />
       </CollapsibleFormSection>
 
       <ReferencesSection cv={cv} onChange={onChange} />
@@ -3154,7 +3153,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
       if (error) throw error;
       onRegisteredMode();
     } catch (error) {
-      setMessage(error.message || "Google sign in could not start. Enable Google provider in Supabase first.");
+      setMessage(error.message || "Google sign in could not start. Please check the Google provider settings in Supabase.");
     } finally {
       setLoading(false);
     }
@@ -3445,7 +3444,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
           Continue with Google
         </button>
         <p className="mt-2 rounded bg-blue-50 p-3 text-xs font-bold leading-5 text-blue-800">
-          Use Google sign in if you want to save CVs online without email OTP.
+          Use Google sign in to save CVs online without waiting for an email link.
         </p>
         {lastSignupEmail && (
           <button disabled={loading} onClick={resendConfirmation} className="mt-3 w-full rounded border border-green-600 px-5 py-3 font-bold text-green-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400">
@@ -4004,6 +4003,12 @@ const builderSteps = [
   { id: "summary", label: "Summary" },
 ];
 
+const builderProgressSteps = [
+  { id: "template", label: "Template" },
+  ...builderSteps,
+  { id: "download", label: "Preview & download" },
+];
+
 const cvBuildGuideSteps = [
   { step: "Step 1", title: "Choose a template" },
   { step: "Step 2", title: "Upload your existing CV", note: "Optional" },
@@ -4015,12 +4020,48 @@ const cvBuildGuideSteps = [
 
 function getBuilderStepState(cv) {
   return {
+    template: true,
     personal: Boolean(cv.fullName && cv.email && cv.phone && cv.country),
     experience: normalizeWorkExperiences(cv).some((entry) => entry.employer && entry.responsibilities),
     education: Boolean(cv.education),
     skills: Boolean(cv.skills && cv.languages),
     summary: Boolean(cv.summary && cv.summary.length > 40),
+    download: getCompleteness(cv).score >= 80,
   };
+}
+
+function BuilderProgressBar({ currentStep, completedSteps, onStep }) {
+  const currentIndex = Math.max(0, builderProgressSteps.findIndex((step) => step.id === currentStep));
+  const progress = Math.round((currentIndex / Math.max(1, builderProgressSteps.length - 1)) * 100);
+  return (
+    <section className="builder-progress-bar" aria-label="Builder progress">
+      <div className="builder-progress-mobile">
+        <button type="button" onClick={() => onStep(builderProgressSteps[Math.max(0, currentIndex - 1)].id)} aria-label="Previous step">
+          <Icon name="chevron" className="h-4 w-4 rotate-90" />
+        </button>
+        <div>
+          <p>Step {currentIndex + 1} of {builderProgressSteps.length}</p>
+          <strong>{builderProgressSteps[currentIndex]?.label || "Builder"}</strong>
+        </div>
+        <span>{progress}% done</span>
+      </div>
+      <div className="builder-progress-track" aria-hidden="true">
+        <span style={{ width: `${progress}%` }} />
+      </div>
+      <nav className="builder-progress-steps">
+        {builderProgressSteps.map((step, index) => {
+          const done = completedSteps[step.id] || index < currentIndex;
+          const active = step.id === currentStep;
+          return (
+            <button key={step.id} type="button" onClick={() => (step.id === "download" ? onStep("download") : onStep(step.id))} className={`${active ? "active" : ""} ${done ? "done" : ""}`}>
+              <span>{done ? <Icon name="check" className="h-3 w-3" /> : index + 1}</span>
+              {step.label}
+            </button>
+          );
+        })}
+      </nav>
+    </section>
+  );
 }
 
 function BuilderTopBar({ onHome, onDownload, saveStatus }) {
@@ -4097,6 +4138,27 @@ function CompletionBar({ completion, onNextStep }) {
       </div>
       <div className="completion-track">
         <div className="completion-fill" style={{ width: `${completion.percent}%`, background: color }} />
+      </div>
+    </section>
+  );
+}
+
+function DraftRecoveryBanner({ draft, onContinue, onStartFresh }) {
+  if (!draft) return null;
+  const savedValue = draft.updatedAt || draft.savedAt || draft.createdAt;
+  const savedDate = savedValue ? new Date(savedValue) : null;
+  const ageMinutes = savedDate && !Number.isNaN(savedDate.getTime())
+    ? Math.max(0, Math.round((Date.now() - savedDate.getTime()) / 60000))
+    : null;
+  return (
+    <section className="draft-recovery-banner" aria-label="Saved browser draft">
+      <div>
+        <strong>You have a saved draft{ageMinutes !== null ? ` from ${ageMinutes} min ago` : ""}</strong>
+        <p>Continue where you left off, or clear it and start a fresh CV.</p>
+      </div>
+      <div>
+        <button type="button" onClick={onContinue}>Continue draft</button>
+        <button type="button" onClick={onStartFresh}>Start fresh</button>
       </div>
     </section>
   );
@@ -4215,7 +4277,7 @@ function BuilderSidebar({ currentStep, onStep, completedSteps, categoryId, onCat
   );
 }
 
-function BuilderPreviewPanel({ cv, theme, layout, onDownload }) {
+function BuilderPreviewPanel({ cv, theme, layout, onDownload, onCoverLetter }) {
   const [message, setMessage] = useState("");
   const [previewZoom, setPreviewZoom] = useState(56);
   const completeness = getCompleteness(cv);
@@ -4261,6 +4323,57 @@ function BuilderPreviewPanel({ cv, theme, layout, onDownload }) {
         <button type="button" onClick={onDownload} className="mt-4 flex w-full items-center justify-center gap-2 rounded bg-green-600 px-4 py-3 text-sm font-black text-white hover:bg-green-700">
           <Icon name="download" className="h-4 w-4" /> Download CV
         </button>
+        <div className="cover-letter-cta">
+          <div>
+            <strong>Also need a cover letter?</strong>
+            <p>Auto-filled from your CV. Edit and download as PDF.</p>
+          </div>
+          <button type="button" onClick={onCoverLetter}>Build cover letter</button>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function DownloadSuccessScreen({ isSignedIn, onSaveAccount, onCoverLetter, onDownloadAgain, onEdit }) {
+  const [copyStatus, setCopyStatus] = useState("Share via link");
+  const copyShareLink = async () => {
+    const url = "https://buildmycvnow.com/builder?utm_source=download_success&utm_medium=share";
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopyStatus("Link copied");
+    } catch {
+      setCopyStatus("buildmycvnow.com/builder");
+    }
+    trackEvent("post_download_share_link");
+  };
+  return (
+    <aside className="download-success-panel">
+      <div className="download-success-icon"><Icon name="check" className="h-8 w-8" /></div>
+      <h2>Your CV is downloaded!</h2>
+      <p>Check your Downloads folder for your BuildMyCVNow CV file.</p>
+      <div className="download-next-grid">
+        {!isSignedIn && (
+          <button type="button" onClick={onSaveAccount} className="download-next-card highlighted">
+            <Icon name="lock" className="h-5 w-5" />
+            <strong>Save to account</strong>
+            <span>Access this CV from any device for up to 15 days.</span>
+          </button>
+        )}
+        <button type="button" onClick={onCoverLetter} className="download-next-card">
+          <Icon name="file" className="h-5 w-5" />
+          <strong>Build a cover letter</strong>
+          <span>Use your CV details to create a matching letter.</span>
+        </button>
+        <button type="button" onClick={copyShareLink} className="download-next-card">
+          <Icon name="share" className="h-5 w-5" />
+          <strong>{copyStatus}</strong>
+          <span>Send BuildMyCVNow to someone job hunting.</span>
+        </button>
+      </div>
+      <div className="download-success-actions">
+        <button type="button" onClick={onDownloadAgain}>Download again</button>
+        <button type="button" onClick={onEdit}>Edit CV</button>
       </div>
     </aside>
   );
@@ -4409,8 +4522,8 @@ function CVBuilderApp({ onHome }) {
   const [storageMessage, setStorageMessage] = useState("");
   const [completionMessage, setCompletionMessage] = useState("");
   const [completionModalOpen, setCompletionModalOpen] = useState(false);
-  const [showSharePrompt, setShowSharePrompt] = useState(() => sessionStorage.getItem("bmcv_share_prompt_seen") !== "1");
   const [accountDashboardRequested, setAccountDashboardRequested] = useState(() => window.location.hash === "#account-dashboard");
+  const [localDraftNotice, setLocalDraftNotice] = useState(null);
   const [userMode, setUserMode] = useState(() => localStorage.getItem("cvforall:user-mode") || "guest");
   const theme = useMemo(() => themes.find((item) => item.id === themeId), [themeId]);
   const coverTheme = useMemo(() => themes.find((item) => item.id === coverThemeId), [coverThemeId]);
@@ -4421,6 +4534,17 @@ function CVBuilderApp({ onHome }) {
   const noCloudMode = userMode === "urgent-local";
   const completedSteps = useMemo(() => getBuilderStepState(cv), [cv]);
   const jumpToStep = (id) => {
+    if (id === "download") {
+      setCurrentStep("download");
+      requestCvDownload();
+      return;
+    }
+    if (id === "template") {
+      setCurrentStep("template");
+      const target = document.querySelector(".builder-sidebar-v2");
+      if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
     setCurrentStep(id);
     const target = document.getElementById(`builder-section-${id}`);
     if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -4429,6 +4553,13 @@ function CVBuilderApp({ onHome }) {
     if (completion.percent < 40) {
       logEvent("export_below_threshold", { percent: completion.percent });
       if (!window.confirm(`Your CV is only ${completion.percent}% complete. Recruiters may reject incomplete CVs. Export anyway?`)) return;
+    }
+    setCurrentStep("download");
+    if (cloudSavingEnabled) {
+      handleDownload("pdf").catch((error) => {
+        alert(error.message || "Could not download your CV. Please try again.");
+      });
+      return;
     }
     setDownloadTarget("cv");
   };
@@ -4466,13 +4597,10 @@ function CVBuilderApp({ onHome }) {
     }, 150);
     return () => window.clearInterval(timer);
   }, [accountDashboardRequested, cloudSavingEnabled]);
-  const dismissSharePrompt = () => {
-    sessionStorage.setItem("bmcv_share_prompt_seen", "1");
-    setShowSharePrompt(false);
-  };
   const handleNextStep = (section) => {
     logEvent("nextstep_clicked", { step: section });
     if (section === "download") requestCvDownload();
+    else if (section === "template") jumpToStep("template");
     else jumpToStep(section);
   };
   useEffect(() => {
@@ -4566,6 +4694,25 @@ function CVBuilderApp({ onHome }) {
     setCoverLayoutId(draftData.coverLayoutId || "classic");
     return true;
   };
+  const continueLocalDraft = () => {
+    if (!localDraftNotice) return;
+    if (applyDraftPayload(localDraftNotice)) {
+      setSaveStatus("Draft restored");
+      setLocalDraftNotice(null);
+      trackEvent("restore_local_draft");
+    }
+  };
+  const startFreshLocalDraft = () => {
+    localStorage.removeItem(DRAFT_STORAGE_KEY);
+    setCv(initialCv);
+    setCoverLetter(createCoverLetterFromCv(initialCv, defaultCategory.id));
+    setCategoryId(defaultCategory.id);
+    setThemeId("blue");
+    setLayoutId("sidebar");
+    setLocalDraftNotice(null);
+    setSaveStatus("Fresh CV started");
+    trackEvent("clear_local_draft");
+  };
   const draftPayload = () => createDraftPayload({ cv, coverLetter, categoryId, themeId, layoutId, coverThemeId, coverFontId, coverLayoutId });
   const saveCloudDraft = async (statusMessage = "Saving cloud draft...") => {
     if (!cloudSavingEnabled) {
@@ -4627,7 +4774,33 @@ function CVBuilderApp({ onHome }) {
     return () => window.removeEventListener("beforeunload", warnBeforeLeave);
   }, [noCloudMode, downloaded, coverDownloaded]);
   useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed?.cv && hasUserEnteredCvData(parsed.cv)) {
+        setLocalDraftNotice(parsed);
+      }
+    } catch {
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+    }
+  }, []);
+  useEffect(() => {
+    if (localDraftNotice) return undefined;
+    const timer = window.setTimeout(() => {
+      try {
+        setSaveStatus("Saving locally...");
+        localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draftPayload()));
+        setSaveStatus("Draft saved");
+      } catch {
+        setSaveStatus("Save failed");
+      }
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, [cv, coverLetter, categoryId, themeId, layoutId, coverThemeId, coverFontId, coverLayoutId, localDraftNotice]);
+  useEffect(() => {
     const saveDraft = async () => {
+      if (localDraftNotice) return;
       const payload = draftPayload();
       localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payload));
       setSaveStatus("Saved locally");
@@ -4643,7 +4816,7 @@ function CVBuilderApp({ onHome }) {
     };
     const timer = window.setInterval(saveDraft, 30000);
     return () => window.clearInterval(timer);
-  }, [cv, coverLetter, categoryId, themeId, layoutId, coverThemeId, coverFontId, coverLayoutId, cloudSavingEnabled, user?.id]);
+  }, [cv, coverLetter, categoryId, themeId, layoutId, coverThemeId, coverFontId, coverLayoutId, cloudSavingEnabled, user?.id, localDraftNotice]);
   const keepCurrentDataForTemplate = (id) => {
     if (!id || id === categoryId) {
       setPendingTemplateId(null);
@@ -4773,7 +4946,6 @@ function CVBuilderApp({ onHome }) {
     await downloadCvFile(cv, type, theme, layoutId);
     logEvent("cv_downloaded", { format: type, templateId: categoryId, completionPercent: completion.percent });
     setDownloaded(true);
-    if (showSharePrompt) sessionStorage.setItem("bmcv_share_prompt_seen", "1");
     setDownloadTarget(null);
   };
   const handleCoverDownload = async (type) => {
@@ -4807,6 +4979,7 @@ function CVBuilderApp({ onHome }) {
     <main className="builder-app-shell">
       <BuilderTopBar onHome={onHome} saveStatus={saveStatus} onDownload={() => (activeBuilder === "cv" ? requestCvDownload() : setDownloadTarget("cover"))} />
       {activeBuilder === "cv" && <CompletionBar completion={completion} onNextStep={handleNextStep} />}
+      {activeBuilder === "cv" && <BuilderProgressBar currentStep={currentStep} completedSteps={completedSteps} onStep={handleNextStep} />}
       <div className="builder-tabbar">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between">
           <div className="flex gap-2">
@@ -4837,6 +5010,7 @@ function CVBuilderApp({ onHome }) {
         </div>
       </div>
       {activeBuilder === "cv" && <BuilderHeaderGuide cloudSavingEnabled={cloudSavingEnabled} noCloudMode={noCloudMode} />}
+      {activeBuilder === "cv" && <DraftRecoveryBanner draft={localDraftNotice} onContinue={continueLocalDraft} onStartFresh={startFreshLocalDraft} />}
       {noCloudMode && (
         <section className="border-b border-amber-200 bg-amber-50 px-5 py-3">
           <div className="mx-auto max-w-7xl text-sm font-bold leading-6 text-amber-950">
@@ -4920,7 +5094,20 @@ function CVBuilderApp({ onHome }) {
             </div>
           </section>
           <div className="builder-right-stack">
-            <BuilderPreviewPanel cv={cv} theme={theme} layout={layoutId} onDownload={requestCvDownload} />
+            {downloaded ? (
+              <DownloadSuccessScreen
+                isSignedIn={cloudSavingEnabled}
+                onSaveAccount={() => setAuthOpen(true)}
+                onCoverLetter={() => switchBuilder("cover")}
+                onDownloadAgain={requestCvDownload}
+                onEdit={() => {
+                  setDownloaded(false);
+                  setCurrentStep("personal");
+                }}
+              />
+            ) : (
+              <BuilderPreviewPanel cv={cv} theme={theme} layout={layoutId} onDownload={requestCvDownload} onCoverLetter={() => switchBuilder("cover")} />
+            )}
             <ATSPanel cv={cv} />
           </div>
         </div>
@@ -4966,23 +5153,8 @@ function CVBuilderApp({ onHome }) {
           </div>
         )}
         {downloaded && (
-          <div className="download-success-stack">
-            <div className="rounded border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-900 shadow-lg">Download confirmed. Your CV file is ready.</div>
-            {showSharePrompt && (
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={dismissSharePrompt}
-                  className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-base font-black leading-none text-slate-600 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  aria-label="Close job hunting popup"
-                  title="Close"
-                >
-                  x
-                </button>
-                <ShareTool moment="post_download" />
-                <EmailCapture source="download" roleInterest={cv.jobTitle} />
-              </div>
-            )}
+          <div className="download-confirm-toast">
+            Download confirmed. Your next steps are shown in the preview panel.
           </div>
         )}
         {completionMessage && (

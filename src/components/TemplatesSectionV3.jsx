@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 const templates = [
   {
+    id: "modern-blue",
     name: "Modern Blue",
     desc: "All industries - ATS",
     badge: "Most popular",
@@ -28,6 +29,7 @@ const templates = [
     category: "Professional",
   },
   {
+    id: "hospitality-pro",
     name: "Hospitality Pro",
     desc: "Hotels - F&B - Tourism",
     badge: "Global favourite",
@@ -54,6 +56,7 @@ const templates = [
     category: "Creative",
   },
   {
+    id: "it-tech",
     name: "IT & Tech",
     desc: "Dev - QA - IT Support",
     badge: "ATS optimised",
@@ -79,6 +82,7 @@ const templates = [
     category: "ATS-Friendly",
   },
   {
+    id: "engineering",
     name: "Engineering",
     desc: "Civil - Structural - MEP",
     badge: "GCC & global",
@@ -104,6 +108,7 @@ const templates = [
     category: "Executive",
   },
   {
+    id: "finance-banking",
     name: "Finance & Banking",
     desc: "Banks - Accounting - CFA",
     badge: "ATS optimised",
@@ -130,6 +135,7 @@ const templates = [
     category: "ATS-Friendly",
   },
   {
+    id: "general-ofw",
     name: "General / OFW",
     desc: "Any role - Worldwide",
     badge: "Beginner friendly",
@@ -310,17 +316,23 @@ function CVBody({ template }) {
 function TemplateCard({ template, onStart }) {
   const [hovered, setHovered] = useState(false);
   return (
-    <button
-      type="button"
+    <a
+      href={`/builder?template=${template.id}`}
       aria-label={`Start with ${template.name} CV template`}
       className="tsv3-card"
       style={{ "--template-accent": template.accent }}
-      onClick={onStart}
+      onClick={(event) => {
+        event.preventDefault();
+        onStart?.(template.id);
+      }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onFocus={() => setHovered(true)}
       onBlur={() => setHovered(false)}
     >
+      <span className="tsv3-preview-overlay" aria-hidden="true">
+        <span>Use this template -&gt;</span>
+      </span>
       <CVHeader template={template} hovered={hovered} />
       <CVBody template={template} />
       <div className="tsv3-card-footer">
@@ -335,7 +347,7 @@ function TemplateCard({ template, onStart }) {
           {template.badge}
         </span>
       </div>
-    </button>
+    </a>
   );
 }
 
