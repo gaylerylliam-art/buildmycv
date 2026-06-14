@@ -17,9 +17,9 @@ const safeFilename = (value = "BuildMyCVNow-CV.pdf") => {
 const injectPrintCss = (html = "") => {
   const printCss = `
     <style>
-      @page { size: A4; margin: 0; }
-      html { width: 210mm; min-height: 297mm; background: #ffffff !important; }
-      body { max-width: 210mm; min-height: 297mm; margin: 0 auto; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      @page { size: A4; margin: 1in; }
+      html { background: #ffffff !important; }
+      body { width: auto !important; max-width: none !important; min-height: auto !important; margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       .section { break-inside: auto; page-break-inside: auto; }
       .section h2 { break-after: avoid; page-break-after: avoid; }
       .experience-item, .references-block, .reference-card { break-inside: avoid; page-break-inside: avoid; }
