@@ -3031,7 +3031,7 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
   );
 }
 
-function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
+function AuthModal({ onClose, onUrgentMode, onRegisteredMode, onAuthenticated }) {
   const [mode, setMode] = useState("signin");
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [accountOtp, setAccountOtp] = useState({ name: "", email: "", phone: "", token: "", sent: false, channel: "email" });
@@ -3042,6 +3042,16 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
   const startUrgentMode = () => {
     trackEvent("urgent_mode_start", { method: "local" });
     onUrgentMode("local");
+    onClose();
+  };
+  const finishAuthenticated = async (nextSession = null) => {
+    let resolvedSession = nextSession;
+    if (!resolvedSession && supabase) {
+      const { data } = await supabase.auth.getSession();
+      resolvedSession = data?.session || null;
+    }
+    if (resolvedSession) onAuthenticated?.(resolvedSession);
+    onRegisteredMode();
     onClose();
   };
   const verifyHuman = async (action) => {
@@ -3092,21 +3102,19 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
         });
         const signupResult = await signupResponse.json().catch(() => ({}));
         if (!signupResponse.ok || !signupResult.ok) throw new Error(signupResult.message || "Could not create account.");
-        const { error: loginError } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password, captchaToken });
+        const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password, captchaToken });
         if (loginError) throw loginError;
         trackEvent("signup", { method: "email_otp" });
         setSignupOtp({ sent: false, token: "", challenge: null });
         setMessage("Account created and signed in successfully.");
-        onRegisteredMode();
-        onClose();
+        await finishAuthenticated(loginData?.session);
         return;
       }
-      const { error } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password, captchaToken });
+      const { data, error } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password, captchaToken });
       if (error) throw error;
       trackEvent("login", { method: "email" });
       setMessage("Signed in successfully.");
-      onRegisteredMode();
-      onClose();
+      await finishAuthenticated(data?.session);
     } catch (error) {
       setMessage(error.message || "Authentication failed.");
     } finally {
@@ -3216,15 +3224,14 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
     setLoading(true);
     setMessage("Verifying account OTP...");
     try {
-      const { error } = await supabase.auth.verifyOtp({
+      const { data, error } = await supabase.auth.verifyOtp({
         email: accountOtp.email,
         token: accountOtp.token,
         type: "email",
       });
       if (error) throw error;
-      onRegisteredMode();
       trackEvent("account_email_otp_verified");
-      onClose();
+      await finishAuthenticated(data?.session);
     } catch (error) {
       setMessage(error.message || "Invalid account OTP.");
     } finally {
@@ -3258,15 +3265,14 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
     setLoading(true);
     setMessage("Verifying mobile OTP...");
     try {
-      const { error } = await supabase.auth.verifyOtp({
+      const { data, error } = await supabase.auth.verifyOtp({
         phone: accountOtp.phone,
         token: accountOtp.token,
         type: "sms",
       });
       if (error) throw error;
-      onRegisteredMode();
       trackEvent("account_mobile_otp_verified");
-      onClose();
+      await finishAuthenticated(data?.session);
     } catch (error) {
       setMessage(error.message || "Invalid mobile OTP.");
     } finally {
@@ -3457,7 +3463,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
   );
 }
 
-function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDraft, onLoadDraft, draftStatus }) {
+function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDraft, onLoadDraft, draftStatus, refreshKey = 0 }) {
   const [items, setItems] = useState([]);
   const [message, setMessage] = useState(user ? "Load your saved CVs." : `Login to save and manage up to ${SAVED_CV_LIMIT} CVs.`);
   const formatDateTime = (value) => {
@@ -3488,7 +3494,7 @@ function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDra
   };
   useEffect(() => {
     refresh();
-  }, [user?.id]);
+  }, [user?.id, refreshKey]);
   const saveCurrent = async () => {
     if (!user) {
       setMessage("Please login first.");
@@ -4522,6 +4528,7 @@ function CVBuilderApp({ onHome }) {
   const [storageMessage, setStorageMessage] = useState("");
   const [completionMessage, setCompletionMessage] = useState("");
   const [completionModalOpen, setCompletionModalOpen] = useState(false);
+  const [savedCvRefreshKey, setSavedCvRefreshKey] = useState(0);
   const [accountDashboardRequested, setAccountDashboardRequested] = useState(() => window.location.hash === "#account-dashboard");
   const [localDraftNotice, setLocalDraftNotice] = useState(null);
   const [userMode, setUserMode] = useState(() => localStorage.getItem("cvforall:user-mode") || "guest");
@@ -4651,7 +4658,16 @@ function CVBuilderApp({ onHome }) {
     initAnalytics();
     if (!supabase) return;
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => setSession(nextSession));
+    const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      setSession(nextSession);
+      if (nextSession?.user && ["SIGNED_IN", "TOKEN_REFRESHED", "INITIAL_SESSION"].includes(event)) {
+        setUserMode("registered");
+        setAuthOpen(false);
+        if (window.location.hash === "#signin" || window.location.hash === "#account-dashboard") {
+          requestAccountDashboard();
+        }
+      }
+    });
     return () => data.subscription.unsubscribe();
   }, []);
   useEffect(() => {
@@ -4944,6 +4960,16 @@ function CVBuilderApp({ onHome }) {
       return result;
     }
     await downloadCvFile(cv, type, theme, layoutId);
+    if (cloudSavingEnabled && user?.id) {
+      try {
+        await saveCvForUser({ userId: user.id, cv, categoryId, themeId, layoutId });
+        setStorageMessage(`Downloaded and saved online. Saved CVs expire after ${SAVED_CV_RETENTION_DAYS} days.`);
+        setSavedCvRefreshKey((value) => value + 1);
+        requestAccountDashboard();
+      } catch (error) {
+        setStorageMessage(`Downloaded, but online saving did not finish: ${error.message}`);
+      }
+    }
     logEvent("cv_downloaded", { format: type, templateId: categoryId, completionPercent: completion.percent });
     setDownloaded(true);
     setDownloadTarget(null);
@@ -5063,6 +5089,7 @@ function CVBuilderApp({ onHome }) {
                         onSaveDraft={() => saveCloudDraft()}
                         onLoadDraft={restoreCloudDraft}
                         draftStatus={draftStatus}
+                        refreshKey={savedCvRefreshKey}
                       />
                     ) : (
                       <section className="rounded border border-amber-200 bg-amber-50 p-4">
@@ -5211,7 +5238,14 @@ function CVBuilderApp({ onHome }) {
         />
       )}
       {sectionReorderOpen && <SectionReorderPanel cv={cv} onChange={updateCvField} onClose={() => setSectionReorderOpen(false)} />}
-      {authOpen && <AuthModal onClose={() => setAuthOpen(false)} onUrgentMode={startUrgentMode} onRegisteredMode={startRegisteredMode} />}
+      {authOpen && (
+        <AuthModal
+          onClose={() => setAuthOpen(false)}
+          onUrgentMode={startUrgentMode}
+          onRegisteredMode={startRegisteredMode}
+          onAuthenticated={setSession}
+        />
+      )}
     </main>
   );
 }
