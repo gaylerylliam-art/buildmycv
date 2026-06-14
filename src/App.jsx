@@ -3034,7 +3034,7 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
 function AuthModal({ onClose, onUrgentMode, onRegisteredMode, onAuthenticated }) {
   const [mode, setMode] = useState("signin");
   const [form, setForm] = useState({ name: "", email: "", password: "" });
-  const [accountOtp, setAccountOtp] = useState({ name: "", email: "", phone: "", token: "", sent: false, channel: "email" });
+  const [accountOtp, setAccountOtp] = useState({ name: "", email: "", token: "", sent: false, channel: "email" });
   const [signupOtp, setSignupOtp] = useState({ sent: false, token: "", challenge: null });
   const [message, setMessage] = useState(isSupabaseConfigured ? "" : "Add VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY or REACT_APP_SUPABASE_URL/REACT_APP_SUPABASE_ANON_KEY to .env to enable login.");
   const [loading, setLoading] = useState(false);
@@ -3258,47 +3258,6 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode, onAuthenticated })
       setLoading(false);
     }
   };
-  const sendAccountMobileOtp = async (event) => {
-    event.preventDefault();
-    if (!supabase) return;
-    setLoading(true);
-    setMessage("Sending mobile OTP...");
-    try {
-      const captchaToken = await verifyHuman("account_mobile_otp");
-      const { error } = await supabase.auth.signInWithOtp({
-        phone: accountOtp.phone,
-        options: { shouldCreateUser: true, captchaToken },
-      });
-      if (error) throw error;
-      setAccountOtp((current) => ({ ...current, sent: true, token: "", channel: "mobile" }));
-      trackEvent("account_mobile_otp_sent");
-      setMessage("Mobile OTP sent. Enter the SMS code here.");
-    } catch (error) {
-      setMessage(error.message || "Could not send mobile OTP. Check that phone OTP is enabled in Supabase.");
-    } finally {
-      setLoading(false);
-    }
-  };
-  const verifyAccountMobileOtp = async (event) => {
-    event.preventDefault();
-    if (!supabase) return;
-    setLoading(true);
-    setMessage("Verifying mobile OTP...");
-    try {
-      const { data, error } = await supabase.auth.verifyOtp({
-        phone: accountOtp.phone,
-        token: accountOtp.token,
-        type: "sms",
-      });
-      if (error) throw error;
-      trackEvent("account_mobile_otp_verified");
-      await finishAuthenticated(data?.session);
-    } catch (error) {
-      setMessage(error.message || "Invalid mobile OTP.");
-    } finally {
-      setLoading(false);
-    }
-  };
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4">
       <div className="w-full max-w-md rounded bg-white p-6 shadow-soft">
@@ -3324,13 +3283,12 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode, onAuthenticated })
             ["signin", "Login"],
             ["signup", "Sign up"],
             ["accountOtp", "Email OTP"],
-            ["mobileOtp", "Mobile OTP"],
           ].map(([id, label]) => (
             <button
               key={id}
               onClick={() => {
                 setMode(id);
-                setAccountOtp((current) => ({ ...current, token: "", sent: false, channel: id === "mobileOtp" ? "mobile" : "email" }));
+                setAccountOtp((current) => ({ ...current, token: "", sent: false, channel: "email" }));
                 setSignupOtp({ sent: false, token: "", challenge: null });
               }}
               className={`rounded px-4 py-3 text-sm font-black ${mode === id ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-700"}`}
@@ -3372,26 +3330,6 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode, onAuthenticated })
             </button>
             <p className="rounded bg-blue-50 p-3 text-xs font-bold leading-5 text-blue-800">
               Free account mode lets you save up to 10 CVs online and generate/save up to 10 CVs per day. Saved CVs expire after 15 days.
-            </p>
-            {isRecaptchaConfigured && <p className="text-xs font-bold text-slate-500">Protected by Google reCAPTCHA.</p>}
-          </form>
-        ) : mode === "mobileOtp" ? (
-          <form onSubmit={accountOtp.sent && accountOtp.channel === "mobile" ? verifyAccountMobileOtp : sendAccountMobileOtp} className="mt-5 grid gap-3">
-            <label>
-              <span className="form-label">Registered mobile number</span>
-              <input className="form-field" type="tel" value={accountOtp.phone} onChange={(event) => setAccountOtp({ ...accountOtp, phone: event.target.value })} placeholder="+971501234567" required disabled={accountOtp.sent && accountOtp.channel === "mobile"} />
-            </label>
-            {accountOtp.sent && accountOtp.channel === "mobile" && (
-              <label>
-                <span className="form-label">Mobile OTP code</span>
-                <input className="form-field" inputMode="numeric" maxLength={6} value={accountOtp.token} onChange={(event) => setAccountOtp({ ...accountOtp, token: event.target.value })} required />
-              </label>
-            )}
-            <button disabled={!isSupabaseConfigured || loading} className="rounded bg-green-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
-              {loading ? "Please wait..." : accountOtp.sent && accountOtp.channel === "mobile" ? "Verify mobile OTP and open account" : "Send mobile OTP"}
-            </button>
-            <p className="rounded bg-blue-50 p-3 text-xs font-bold leading-5 text-blue-800">
-              Mobile OTP requires phone auth and an SMS provider to be enabled in Supabase.
             </p>
             {isRecaptchaConfigured && <p className="text-xs font-bold text-slate-500">Protected by Google reCAPTCHA.</p>}
           </form>
