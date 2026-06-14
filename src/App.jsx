@@ -2638,7 +2638,7 @@ function PageMarginSelector({ value, onChange }) {
       <div className="mt-3 grid grid-cols-2 gap-2">
         {[
           ["Default", { type: "default" }],
-          ["5 cm", { type: "preset", value: 5, unit: "cm" }],
+          ["1 cm", { type: "preset", value: 1, unit: "cm" }],
           ["1 inch", { type: "preset", value: 1, unit: "in" }],
           ["Custom", { type: "custom" }],
         ].map(([label, option]) => (
@@ -4218,23 +4218,7 @@ function BuilderSidebar({ currentStep, onStep, completedSteps, categoryId, onCat
   const sortedCategories = [...categories].sort((a, b) => prominent.indexOf(a.id) - prominent.indexOf(b.id));
   return (
     <aside className="builder-sidebar-v2">
-      <p className="sidebar-label-v2">Sections</p>
-      <nav className="builder-step-list">
-        {builderSteps.map((step, index) => {
-          const done = completedSteps[step.id];
-          const active = currentStep === step.id;
-          return (
-            <React.Fragment key={step.id}>
-              <button type="button" onClick={() => onStep(step.id)} className={`builder-step ${active ? "active" : ""} ${done ? "done" : ""}`}>
-                <span className="builder-step-dot">{done ? <Icon name="check" className="h-3 w-3" /> : index + 1}</span>
-                <span>{step.label}</span>
-              </button>
-              {index < builderSteps.length - 1 && <span className="builder-step-connector" />}
-            </React.Fragment>
-          );
-        })}
-      </nav>
-      <p className="sidebar-label-v2 mt-5">Template</p>
+      <p className="sidebar-label-v2">Template</p>
       <CategorySelector selected={categoryId} onSelect={onCategory} />
       <p className="sidebar-label-v2 mt-4">Accent colour</p>
       <div className="sidebar-swatch-row">
