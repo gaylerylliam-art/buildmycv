@@ -35,15 +35,11 @@ import {
   HOME_H1,
   HOME_META_DESCRIPTION,
   HOME_META_TITLE,
-  HOME_ATS_PREVIEW,
-  HOME_PORTFOLIO_FLOW,
   HOME_SUBHEAD,
-  HOME_TRANSFORMATION_EXAMPLES,
   HOME_TRUST_ITEMS,
-  HOME_TRUST_METRICS,
   HOME_VIDEO,
 } from "./content/homepage";
-import { downloadCoverLetterFile, downloadCvFile, normalizePageMargin, pageMarginToCss, pageMarginToInches } from "./utils/downloads";
+import { downloadCoverLetterFile, downloadCvFile } from "./utils/downloads";
 import { initAnalytics, trackEvent } from "./utils/analytics";
 import { getRecaptchaToken, isRecaptchaConfigured } from "./utils/recaptcha";
 import {
@@ -284,7 +280,6 @@ const initialCv = {
   industry: "general",
   tipsEnabled: true,
   qrCode: defaultQrCode,
-  pageMargin: { type: "default" },
   showCredit: true,
   references: defaultReferences,
   sectionOrder: defaultSectionOrder,
@@ -381,9 +376,8 @@ const coverLetterToText = (letter, cv) => {
 };
 
 const DRAFT_STORAGE_KEY = "cvforall:draft:v1";
-const DEFAULT_AUTH_REDIRECT_URL =
-  typeof window !== "undefined" ? `${window.location.origin}/builder/#builder` : "https://buildmycvnow.com/builder/#builder";
-const AUTH_REDIRECT_URL = import.meta.env.VITE_AUTH_REDIRECT_URL || DEFAULT_AUTH_REDIRECT_URL;
+const AUTH_REDIRECT_URL = import.meta.env.VITE_AUTH_REDIRECT_URL || "https://buildmycvnow.com/#builder";
+const GOOGLE_AUTH_ENABLED = import.meta.env.VITE_ENABLE_GOOGLE_AUTH === "true";
 const ADSENSE_CLIENT_ID = import.meta.env.VITE_ADSENSE_CLIENT_ID || "";
 const ADSENSE_ENABLED = /^ca-pub-\d+$/.test(ADSENSE_CLIENT_ID);
 const BUILDER_ADS_ENABLED = import.meta.env.VITE_ENABLE_BUILDER_ADS === "true";
@@ -436,6 +430,8 @@ function Icon({ name, className = "h-5 w-5" }) {
     file: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M9 15h6" /><path d="M9 11h2" /></>,
     arrow: <><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></>,
     check: <path d="m20 6-11 11-5-5" />,
+    alert: <><path d="M12 9v4" /><path d="M12 17h.01" /><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></>,
+    globe: <><circle cx="12" cy="12" r="10" /><path d="M2 12h20" /><path d="M12 2a15.3 15.3 0 0 1 0 20" /><path d="M12 2a15.3 15.3 0 0 0 0 20" /></>,
     lock: <><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></>,
     download: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5" /><path d="M12 15V3" /></>,
     briefcase: <><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" /></>,
@@ -448,9 +444,6 @@ function Icon({ name, className = "h-5 w-5" }) {
     sparkle: <><path d="M12 3l1.7 5.1L19 10l-5.3 1.9L12 17l-1.7-5.1L5 10l5.3-1.9L12 3z" /><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z" /></>,
     share: <><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.6 10.7l6.8-4.4" /><path d="M8.6 13.3l6.8 4.4" /></>,
     qr: <><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 14h2v2h-2z" /><path d="M19 14h2v2h-2z" /><path d="M14 19h2v2h-2z" /><path d="M19 19h2v2h-2z" /></>,
-    globe: <><circle cx="12" cy="12" r="10" /><path d="M2 12h20" /><path d="M12 2a15.3 15.3 0 0 1 0 20" /><path d="M12 2a15.3 15.3 0 0 0 0 20" /></>,
-    alert: <><circle cx="12" cy="12" r="10" /><path d="M12 8v4" /><path d="M12 16h.01" /></>,
-    info: <><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></>,
     chevron: <path d="m6 9 6 6 6-6" />,
     sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></>,
     moon: <path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5 7 7 0 1 0 20.5 14.5z" />,
@@ -495,13 +488,6 @@ function Seo({ title, description, image = "https://buildmycvnow.com/assets/og-i
     setMeta("meta[name='twitter:title']", "content", fullTitle);
     setMeta("meta[name='twitter:description']", "content", description);
     setMeta("meta[name='twitter:image']", "content", image);
-    let canonicalTag = document.querySelector("link[rel='canonical']");
-    if (!canonicalTag) {
-      canonicalTag = document.createElement("link");
-      canonicalTag.setAttribute("rel", "canonical");
-      document.head.appendChild(canonicalTag);
-    }
-    canonicalTag.setAttribute("href", canonical);
   }, [title, description, image, type]);
   return null;
 }
@@ -568,7 +554,7 @@ function CookieNotice() {
   );
 }
 
-function Header({ onStart, onSignIn }) {
+function Header({ onStart }) {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -591,293 +577,100 @@ function Header({ onStart, onSignIn }) {
           <Link to="/#how-it-works" className="nav-link">How it works</Link>
           <Link to="/blog" className="nav-link">Blog</Link>
         </nav>
-        {onSignIn && (
-          <button onClick={onSignIn} className="nav-signin">
-            Sign In / Sign Up
-          </button>
-        )}
         <button onClick={onStart} className="nav-cta">
-          Create and download CV for free
+          Build my CV - it's free
         </button>
       </div>
-      <button onClick={onStart} className="nav-mobile-cta" aria-label="Create and download CV for free">
+      <button onClick={onStart} className="nav-mobile-cta" aria-label="Build my CV">
         CV
       </button>
     </header>
   );
 }
 
-function TrustMetricsBar() {
-  return (
-    <section className="growth-trust-strip" aria-label="BuildMyCVNow trust metrics">
-      <div className="growth-trust-grid">
-        {HOME_TRUST_METRICS.map(([value, label]) => (
-          <div key={label} className="growth-trust-item">
-            <strong>{value}</strong>
-            <span>{label}</span>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function PortfolioWebsiteSection({ onStart }) {
-  return (
-    <section className="growth-section growth-portfolio" aria-labelledby="portfolio-heading">
-      <div className="growth-section-copy">
-        <div className="section-eyebrow">Product roadmap</div>
-        <h2 id="portfolio-heading" className="section-title">Start with your CV. Portfolio and website coming soon.</h2>
-        <p className="section-sub">
-          BuildMyCVNow is live today as a free CV builder. Portfolio and personal website tools are planned next, so job seekers can grow from a strong CV into a fuller online profile.
-        </p>
-      </div>
-      <div className="portfolio-flow" aria-label="CV to portfolio to personal website flow">
-        {HOME_PORTFOLIO_FLOW.map((step) => (
-          <article key={step.label} className={`portfolio-step-card ${step.status === "coming-soon" ? "coming-soon" : "live"}`}>
-            {step.status === "coming-soon" && <em>Coming soon</em>}
-            <span>{step.number}</span>
-            <h3>{step.label}</h3>
-            <p>{step.description}</p>
-            {step.status === "live" ? (
-              <button type="button" onClick={onStart}>Start building -&gt;</button>
-            ) : (
-              <button type="button" disabled>Notify me when live</button>
-            )}
-          </article>
-        ))}
-      </div>
-      <div className="portfolio-mockup" aria-label="Portfolio and personal website preview">
-        <div className="portfolio-browser-bar">
-          <span />
-          <span />
-          <span />
-          <strong>buildmycvnow.com/profile</strong>
-        </div>
-        <div className="portfolio-preview-grid">
-          <div>
-            <div className="portfolio-avatar">CV</div>
-            <h3>Professional Profile</h3>
-            <p>CV, projects, skills, links, and contact details in one shareable page.</p>
-          </div>
-          <div className="portfolio-preview-lines" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-            <span />
-          </div>
-        </div>
-      </div>
-      <button type="button" className="growth-primary-link" onClick={onStart}>Start with my CV</button>
-    </section>
-  );
-}
-
-function AtsPreviewSection({ onStart }) {
-  return (
-    <section className="growth-section growth-ats" aria-labelledby="ats-preview-heading">
-      <div className="ats-score-card">
-        <div className="ats-score-ring" aria-label={`Example ATS score ${HOME_ATS_PREVIEW.score} out of 100`}>
-          <strong>{HOME_ATS_PREVIEW.score}</strong>
-          <span>/100</span>
-        </div>
-        <div>
-          <h2 id="ats-preview-heading">{HOME_ATS_PREVIEW.title}</h2>
-          <p>{HOME_ATS_PREVIEW.description}</p>
-        </div>
-      </div>
-      <div className="ats-check-list">
-        {HOME_ATS_PREVIEW.checks.map((item) => (
-          <div key={item.label} className={item.status === "warn" ? "warn" : "pass"}>
-            <Icon name={item.icon} className="h-5 w-5" />
-            <span>
-              <strong>{item.label}</strong>
-              <small>{item.desc}</small>
-            </span>
-          </div>
-        ))}
-      </div>
-      <button type="button" className="growth-primary-link" onClick={onStart}>Check my CV score</button>
-    </section>
-  );
-}
-
-function BeforeAfterSection({ onStart }) {
-  return (
-    <section className="growth-section growth-transform" aria-labelledby="transform-heading">
-      <div className="growth-section-copy">
-        <div className="section-eyebrow">AI resume improvement</div>
-        <h2 id="transform-heading" className="section-title">Turn weak CV wording into professional resume writing</h2>
-        <p className="section-sub">
-          Show recruiters stronger summaries, clearer work experience, and better skills with CV content enhancement you can approve before it changes your document.
-        </p>
-      </div>
-      <div className="transform-grid">
-        {HOME_TRANSFORMATION_EXAMPLES.map((item) => (
-          <article key={item.label} className="transform-card">
-            <h3>{item.label}</h3>
-            <div className="transform-columns">
-              <div>
-                <span>Before</span>
-                <p>{item.before}</p>
-              </div>
-              <div>
-                <span>After</span>
-                <p>{item.after}</p>
-              </div>
-            </div>
-          </article>
-        ))}
-      </div>
-      <button type="button" className="growth-primary-link" onClick={onStart}>Improve My CV Now</button>
-    </section>
-  );
-}
-
-function LandingPage({ onStart, onUpload }) {
+function LandingPage({ onStart }) {
+  const videoRef = useRef(null);
+  const [playing, setPlaying] = useState(false);
+  const [activeChapter, setActiveChapter] = useState(0);
+  const chapters = [
+    { label: "1. Pick a template", short: "Choose template", time: 0, ts: "0:00" },
+    { label: "2. Fill details", short: "Fill details", time: 28, ts: "0:28" },
+    { label: "3. AI polishes", short: "AI improve", time: 70, ts: "1:10" },
+    { label: "4. Download", short: "Download", time: 105, ts: "1:45" },
+  ];
   const buildSteps = HOME_BUILD_STEPS;
   const features = HOME_FEATURES;
   const testimonials = [
-    ["Maria Santos", "Hotel Receptionist - Dubai, UAE", "MS", "#E6F1FB", "#0C447C", "I built my hotel CV on my phone in 15 minutes. Got a callback from a Dubai property within the week.", "PH"],
-    ["Raj Menon", "IT Support Specialist - Abu Dhabi, UAE", "RM", "#E1F5EE", "#085041", "The ATS tips helped me land interviews at two IT firms in Abu Dhabi. I had been applying for months with no results before.", "IN"],
-    ["Ana Cruz", "Admin Assistant - Riyadh, Saudi Arabia", "AC", "#EEEDFE", "#3C3489", "I uploaded my old CV and the AI rewrote my experience bullets. The difference was immediately obvious.", "PH"],
-    ["James Okafor", "Civil Engineer - Lagos, Nigeria", "JO", "#FEF3C7", "#92400E", "Free, fast, and no hidden paywall at the end. I have recommended it to everyone in my batch.", "NG"],
-    ["Fatima Al Nuaimi", "Accounts Assistant - Sharjah, UAE", "FA", "#DBEAFE", "#1E40AF", "The finance template helped me organize VAT, payroll, and supplier payment experience in a cleaner way.", "AE"],
-    ["Liza Fernandez", "Domestic Services - Doha, Qatar", "LF", "#DCFCE7", "#166534", "I needed a simple CV for overseas applications. The builder gave me a clear PDF without asking for payment.", "PH"],
+    ["Maria G.", "F&B Supervisor - Dubai", "MG", "#E6F1FB", "#0C447C", "Got a callback from a Dubai hotel within 3 days of sending my new CV. The hospitality template was exactly what I needed."],
+    ["Raj S.", "IT Support - Abu Dhabi", "RS", "#E1F5EE", "#085041", "Super easy. The AI fixed my job descriptions in one click. Downloaded my CV in under 10 minutes."],
+    ["Ana N.", "Admin Assistant - Sharjah", "AN", "#EEEDFE", "#3C3489", "Finally a free CV builder that does not ask for my credit card. The PDF looks clean and professional."],
   ];
-  const heroCards = [
-    {
-      initials: "RK",
-      name: "Rahul Kumar",
-      role: "Software Engineer",
-      location: "Bengaluru, India",
-      accentColor: "#1e40af",
-      accentLight: "#dbeafe",
-      accentMid: "#2563eb",
-      textLight: "#bfdbfe",
-      textMuted: "#93c5fd",
-      skillBg: "#eff6ff",
-      skillText: "#1d4ed8",
-      skills: ["React", "Node.js", "AWS"],
-      className: "global-cv-card-left",
-    },
-    {
-      initials: "AN",
-      name: "Amina Nwosu",
-      role: "Marketing Lead",
-      location: "Lagos, Nigeria",
-      accentColor: "#059669",
-      accentLight: "#d1fae5",
-      accentMid: "#10b981",
-      textLight: "#d1fae5",
-      textMuted: "#a7f3d0",
-      skillBg: "#ecfdf5",
-      skillText: "#065f46",
-      skills: ["SEO", "Copywriting", "Meta Ads"],
-      featured: true,
-      className: "global-cv-card-center",
-    },
-    {
-      initials: "SC",
-      name: "Sarah Chen",
-      role: "Finance Analyst",
-      location: "London, UK",
-      accentColor: "#7c3aed",
-      accentLight: "#ede9fe",
-      accentMid: "#8b5cf6",
-      textLight: "#ede9fe",
-      textMuted: "#ddd6fe",
-      skillBg: "#f5f3ff",
-      skillText: "#5b21b6",
-      skills: ["Excel", "SQL", "CFA"],
-      className: "global-cv-card-right",
-    },
-  ];
+  const videoUrl = HEYGEN_DEMO_VIDEO_URL;
+
+  const toggleVideo = async () => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (video.paused) {
+      video.muted = false;
+      await video.play();
+      setPlaying(true);
+    } else {
+      video.pause();
+      setPlaying(false);
+    }
+  };
+
+  const seekTo = async (time, index) => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.currentTime = time;
+    video.muted = false;
+    await video.play();
+    setActiveChapter(index);
+    setPlaying(true);
+  };
+
   return (
     <main id="top" className="landing-page-redesign">
       <Seo
         title={HOME_META_TITLE}
         description={HOME_META_DESCRIPTION}
       />
-      <section className="global-hero-section">
-        <div className="global-hero-arc" aria-hidden="true" />
-        <div className="global-hero-arc-inner" aria-hidden="true" />
-        <div className="global-hero-blob" aria-hidden="true" />
-        <div className="global-hero-inner">
-          <div className="global-hero-copy">
-            <span className="global-hero-eyebrow">{HOME_EYEBROW}</span>
-            <h1 className="global-hero-headline">
-              {HOME_H1.split(". ")[0]}.
-              <span>{HOME_H1.split(". ")[1]}</span>
-            </h1>
-            <p className="global-hero-subhead">
-              {HOME_SUBHEAD}
-            </p>
-            <div className="global-hero-cta-row">
-              <button type="button" onClick={onStart} className="global-hero-primary">
-                <Icon name="file" className="h-4 w-4" />
-                Create and download CV for free
-              </button>
-              <button type="button" onClick={onUpload || onStart} className="global-hero-secondary upload-hero-cta">
-                <Icon name="upload" className="h-4 w-4" />
-                Upload Existing CV
-              </button>
-            </div>
-            <p className="global-upload-note">Upload your existing CV and improve it with AI.</p>
-            <div className="global-hero-trust" role="list">
-              {HOME_TRUST_ITEMS.map((item) => (
-                <span key={item} role="listitem"><i aria-hidden="true" /> {item}</span>
-              ))}
-            </div>
+      <section className="homepage-clean-hero">
+        <div className="hero-clean-inner">
+          <span className="hero-clean-badge"><Icon name="globe" className="h-3.5 w-3.5" /> Works worldwide</span>
+          <h1>Build a CV that gets you <span>hired</span>.</h1>
+          <p>
+            ATS-friendly templates for job seekers worldwide. Upload your existing CV, polish it with AI, and download free with no sign-up required.
+          </p>
+          <div className="hero-clean-actions">
+            <button type="button" onClick={onStart} className="hero-clean-primary">
+              <Icon name="file" className="h-4 w-4" /> Create my CV - free
+            </button>
+            <a href="#how-it-works" className="hero-clean-secondary">
+              <Icon name="upload" className="h-4 w-4" /> See how upload works
+            </a>
           </div>
-          <div className="global-hero-cards" aria-hidden="true">
-            {heroCards.map((card) => (
-              <div key={card.name} className={`global-cv-card ${card.className} ${card.featured ? "featured" : ""}`}>
-                <div className="global-cv-card-header" style={{ background: card.accentColor }}>
-                  <div className="global-cv-avatar" style={{ background: card.accentMid }}>{card.initials}</div>
-                  <div>
-                    <div className="global-cv-name" style={{ color: card.textLight }}>{card.name}</div>
-                    <div className="global-cv-role" style={{ color: card.textMuted }}>{card.role} - {card.location}</div>
-                  </div>
-                </div>
-                <div className="global-cv-card-body">
-                  <div className="global-cv-lines">
-                    <span style={{ width: "82%", background: card.accentLight }} />
-                    <span style={{ width: "64%" }} />
-                    <span style={{ width: "72%" }} />
-                  </div>
-                  <div className="global-cv-label" style={{ color: card.accentColor }}>Experience</div>
-                  <div className="global-cv-divider" />
-                  <div className="global-cv-lines">
-                    <span style={{ width: "88%" }} />
-                    <span style={{ width: "72%" }} />
-                    <span style={{ width: "80%" }} />
-                  </div>
-                  <div className="global-cv-label" style={{ color: card.accentColor }}>Skills</div>
-                  <div className="global-cv-divider" />
-                  <div className="global-cv-skills">
-                    {card.skills.map((skill) => (
-                      <span key={skill} style={{ background: card.skillBg, color: card.skillText }}>{skill}</span>
-                    ))}
-                  </div>
-                  {card.featured && <div className="global-cv-ats" style={{ background: card.accentColor }}>ATS-ready</div>}
-                </div>
-              </div>
+          <div className="hero-clean-trust" role="list">
+            {["No sign-up to download", "ATS-optimised format", "Ready in 5 minutes", "PDF download free"].map((item) => (
+              <span key={item} role="listitem"><Icon name="check" className="h-4 w-4" /> {item}</span>
             ))}
-            <div className="global-location-pills">
-              {HOME_CITY_PILLS.map((city) => <span key={city}>{city}</span>)}
-            </div>
           </div>
         </div>
       </section>
-
-      <TrustMetricsBar />
-
-      <TemplatesSectionV3 onStart={onStart} />
-
-      <PortfolioWebsiteSection onStart={onStart} />
-
-      <AtsPreviewSection onStart={onStart} />
+      <section className="homepage-stats-strip" aria-label="BuildMyCVNow stats">
+        {[
+          ["15K+", "CVs created"],
+          ["60+", "Countries"],
+          ["25+", "Templates"],
+          ["4.8/5", "User rating"],
+        ].map(([num, label]) => (
+          <article key={label}>
+            <strong>{num}</strong>
+            <span>{label}</span>
+          </article>
+        ))}
+      </section>
 
       <section className="video-section" id="how-it-works">
         <div className="section-eyebrow">See it in action</div>
@@ -891,15 +684,39 @@ function LandingPage({ onStart, onUpload }) {
             </div>
             <div className="video-screen">
               <video
+                ref={videoRef}
                 className="demo-video"
-                src={HOME_VIDEO.file}
-                poster="/assets/cv-video-thumb.jpg"
+                src={videoUrl}
+                poster={HEYGEN_DEMO_POSTER_URL}
                 preload="metadata"
                 playsInline
+                loop
+                onPlay={() => setPlaying(true)}
+                onPause={() => setPlaying(false)}
                 controls
-                aria-label="BuildMyCVNow CV builder demo"
               />
+              {!playing && (
+                <button type="button" className="play-overlay" onClick={toggleVideo} aria-label="Play CV builder demo">
+                  <span className="play-btn"><svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3" /></svg></span>
+                  <span className="video-badge">2 min demo - no audio needed</span>
+                </button>
+              )}
             </div>
+          </div>
+          <div className="chapter-pills" aria-label="Demo steps">
+            {chapters.map((chapter, index) => (
+              <button key={chapter.label} type="button" className={`chapter-pill ${activeChapter === index ? "active" : ""}`} onClick={() => seekTo(chapter.time, index)}>
+                {chapter.label}
+              </button>
+            ))}
+          </div>
+          <div className="chapter-timestamps">
+            {chapters.map((chapter, index) => (
+              <button key={chapter.ts} type="button" className="ts-link" onClick={() => seekTo(chapter.time, index)}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                {chapter.ts} - {chapter.short}
+              </button>
+            ))}
           </div>
         </div>
         <div className="build-steps-panel">
@@ -925,6 +742,28 @@ function LandingPage({ onStart, onUpload }) {
         </div>
       </section>
 
+      <TemplatesSectionV3 onStart={onStart} />
+
+      <section className="homepage-ats-feature">
+        <div>
+          <span className="section-eyebrow">ATS score</span>
+          <h2 className="section-title">Know if your CV is ready before you download.</h2>
+          <p className="section-sub">The builder checks important fields, formatting signals, and missing details while you write.</p>
+        </div>
+        <article className="homepage-ats-card">
+          <div className="homepage-score-ring" aria-label="Example ATS score 86 percent">
+            <strong>86%</strong>
+            <span>ATS</span>
+          </div>
+          <div className="homepage-ats-list">
+            <p><Icon name="check" className="h-4 w-4" /> Clear professional summary</p>
+            <p><Icon name="check" className="h-4 w-4" /> Job-specific skills included</p>
+            <p className="warn"><Icon name="alert" className="h-4 w-4" /> Add stronger work results</p>
+            <p className="warn"><Icon name="alert" className="h-4 w-4" /> Add certifications if available</p>
+          </div>
+        </article>
+      </section>
+
       <section className="features-section">
         <div className="section-inner">
           <div className="section-eyebrow">Why BuildMyCVNow</div>
@@ -933,30 +772,26 @@ function LandingPage({ onStart, onUpload }) {
             {features.map(([icon, title, desc], index) => (
               <div key={title} className="feature-card">
                 <div className={`feature-icon feature-icon-${index}`}><Icon name={icon} className="h-5 w-5" /></div>
-                <div>
-                  <div className="feature-title">{title}</div>
-                  <p className="feature-desc">{desc}</p>
-                </div>
+                <div className="feature-title">{title}</div>
+                <p className="feature-desc">{desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <BeforeAfterSection onStart={onStart} />
-
       <section className="testimonials-section">
         <div className="section-inner">
           <div className="section-eyebrow">Real stories</div>
-          <h2 className="section-title">Job seekers across 60+ countries</h2>
+          <h2 className="section-title">Job seekers who got hired</h2>
           <div className="testi-grid">
-            {testimonials.map(([name, role, initialsText, bg, color, quote, country]) => (
+            {testimonials.map(([name, role, initialsText, bg, color, quote]) => (
               <div key={name} className="testi-card">
                 <div className="testi-stars" aria-label="5 star rating">*****</div>
                 <p className="testi-quote">"{quote}"</p>
                 <div className="testi-person">
                   <div className="testi-avatar" style={{ background: bg, color }}>{initialsText}</div>
-                  <div><div className="testi-name">{name} <span>{country}</span></div><div className="testi-role">{role}</div></div>
+                  <div><div className="testi-name">{name}</div><div className="testi-role">{role}</div></div>
                 </div>
               </div>
             ))}
@@ -1064,12 +899,12 @@ function PolicySections() {
       <PolicyCard id="privacy" title="Privacy Policy">
         <p>BuildMyCVNow has two modes. In download-only mode, users can create a free CV without an account and verify by email OTP before downloading. In account mode, users can sign in and save CV versions online for a limited time.</p>
         <p>Download-only CV content stays in the browser and is not intentionally saved to Supabase. The email address entered for OTP may be processed by EmailJS only to send or verify the download code.</p>
-        <p>Registered users can save up to 10 CVs online and generate/save up to 10 CVs per day. Saved CVs are stored with Supabase under the user account for up to 15 days, then are designed to expire so users are encouraged to download their own records.</p>
+        <p>Registered users can save up to 10 CVs online. Saved CVs are stored with Supabase under the user account for up to 15 days, then are designed to expire so users are encouraged to download their own records.</p>
         <p>Google Analytics, reCAPTCHA, and AdSense may use cookies or similar technologies when enabled. Ads are intended to support the free service without interfering with CV creation.</p>
       </PolicyCard>
       <PolicyCard id="terms" title="Terms & Conditions">
         <p>BuildMyCVNow provides free CV-building tools, templates, OTP-protected downloads, saved-CV account features, and career tips for general guidance.</p>
-        <p>Users own the CV information they enter and must keep it honest, accurate, and lawful. Users are responsible for downloading their own CV copies, especially in download-only mode and before the 14-day account storage period ends.</p>
+        <p>Users own the CV information they enter and must keep it honest, accurate, and lawful. Users are responsible for downloading their own CV copies, especially in download-only mode and before the 15-day account storage period ends.</p>
         <p>The service does not guarantee job interviews, job offers, visa approval, agency acceptance, or employer selection. Templates, AI suggestions, and tips must be reviewed and adapted to the user&apos;s real experience.</p>
       </PolicyCard>
     </section>
@@ -1193,7 +1028,7 @@ function TermsPage({ onStart }) {
         <PolicyCard title="Terms of Use">
           <p><strong>Last updated:</strong> June 13, 2026.</p>
           <p><strong>Free download-only use:</strong> Users may create and download a CV for free without creating an account. Before downloading, users must complete email OTP verification when requested. Download-only mode does not save CVs online, so users must download their file before closing the browser.</p>
-          <p><strong>Registered account use:</strong> Users may create a free account to save and manage CVs online. Each account may save up to 10 CVs and generate/save up to 10 CVs per day. Saved CVs are kept for up to 15 days and may be automatically deleted after that period. Users are responsible for downloading their own files before expiry.</p>
+          <p><strong>Registered account use:</strong> Users may create a free account to save and manage CVs online. Each account may save up to 10 CVs. Saved CVs are kept for up to 15 days and may be automatically deleted after that period. Users are responsible for downloading their own files before expiry.</p>
           <p><strong>User responsibility:</strong> Users are responsible for the accuracy, honesty, and completeness of the information they enter into BuildMyCVNow. Do not include false work history, certificates, education, licenses, salaries, visa status, references, or employer details.</p>
           <p><strong>CV ownership:</strong> Users own the CV content they create. BuildMyCVNow provides templates, formatting tools, download tools, AI assistance, and general guidance, but the user's personal information and work history remain their responsibility.</p>
           <p><strong>AI and imported CVs:</strong> AI-assisted parsing, grammar checks, rephrasing, and suggested wording may contain mistakes. Users must review, approve, edit, or reject suggestions before using them in a CV or cover letter.</p>
@@ -1302,6 +1137,9 @@ function SiteFooter({ onStart }) {
   );
 }
 
+const HEYGEN_DEMO_VIDEO_URL = "https://resource2.heygen.ai/video/transcode/37034e74791e4040830908c8fe32f8a0/v45300492faf240b39a88f9905a3267a9/1920x1080_caption.mp4";
+const HEYGEN_DEMO_POSTER_URL = "https://dynamic.heygen.ai/aws_pacific/avatar_tmp/021c62749e9c473098175a3fcc2354c1/v45300492faf240b39a88f9905a3267a9/37034e74791e4040830908c8fe32f8a0.jpeg";
+
 function IPhonePortraitDisplay({ onStart }) {
   return (
     <section id="mobile-preview" className="border-y border-slate-200 bg-white px-5 py-16">
@@ -1319,9 +1157,9 @@ function IPhonePortraitDisplay({ onStart }) {
             </span>
           </div>
           <div className="landing-video-frame">
-            <video controls playsInline preload="metadata" poster="/assets/cv-video-thumb.jpg" aria-label="How to create and download your CV for free">
-              <source src={HOME_VIDEO.file} type="video/mp4" />
-              Your browser cannot play this video.
+            <video controls playsInline preload="metadata" poster={HEYGEN_DEMO_POSTER_URL} aria-label="How to create and download your CV for free">
+              <source src={HEYGEN_DEMO_VIDEO_URL} type="video/mp4" />
+              Your browser cannot play this video. Please open the video in a new tab.
             </video>
           </div>
           <p className="mt-3 text-xs font-bold leading-5 text-slate-500">
@@ -1346,7 +1184,7 @@ function IPhonePortraitDisplay({ onStart }) {
               Try the CV builder
             </button>
             <a href="#how-it-works" className="inline-flex items-center justify-center rounded border border-blue-600 px-6 py-4 font-bold text-blue-700 hover:bg-blue-50">
-              See how it works
+              Watch demo on this page
             </a>
           </div>
         </div>
@@ -1366,28 +1204,19 @@ function CVLine({ title, text }) {
 
 function CategorySelector({ selected, onSelect }) {
   return (
-    <div>
-      <p className="template-safe-note">Change template anytime. Your CV details stay saved.</p>
-      <div className="template-card-grid">
-        {categories.map((category, index) => (
-          <button
-            type="button"
-            value={category.id}
-            key={category.id}
-            onClick={() => onSelect(category.id)}
-            className={`template-card-button ${selected === category.id ? "selected" : ""}`}
-          >
-            {index === 0 && <span className="template-popular-badge">Popular</span>}
-            <span className="template-mini-preview" aria-hidden="true">
-              <span />
-              <span />
-              <span />
-            </span>
-            <span className="template-card-name">{category.name}</span>
-            <span className="template-card-sub">{category.title}</span>
-          </button>
-        ))}
-      </div>
+    <div className="template-card-grid">
+      {categories.map((category) => (
+        <button
+          type="button"
+          value={category.id}
+          key={category.id}
+          onClick={() => onSelect(category.id)}
+          className={`template-card-button ${selected === category.id ? "selected" : ""}`}
+        >
+          <span className="template-card-name">{category.name}</span>
+          <span className="template-card-sub">{category.title}</span>
+        </button>
+      ))}
     </div>
   );
 }
@@ -1478,21 +1307,15 @@ function ExistingCVImporter({ onImport }) {
 
 function ProfilePhotoUploader({ cv, onChange }) {
   return (
-    <section className="optional-guidance-card">
-      <div className="optional-guidance-head">
-        <strong>Profile photo <em>(optional)</em></strong>
-        <FieldHelp content="Required in UAE, GCC, and most Asian job markets. Omit for EU, US, and Canada applications." />
-      </div>
-      <PhotoUploadCrop
-        value={cv.profilePhoto}
-        shape={cv.photoShape === "round" ? "circle" : cv.photoShape}
-        onPhotoSaved={(dataUrl, shape) => {
-          onChange("photoShape", shape);
-          onChange("profilePhoto", dataUrl);
-        }}
-        onPhotoRemoved={() => onChange("profilePhoto", "")}
-      />
-    </section>
+    <PhotoUploadCrop
+      value={cv.profilePhoto}
+      shape={cv.photoShape === "round" ? "circle" : cv.photoShape}
+      onPhotoSaved={(dataUrl, shape) => {
+        onChange("photoShape", shape);
+        onChange("profilePhoto", dataUrl);
+      }}
+      onPhotoRemoved={() => onChange("profilePhoto", "")}
+    />
   );
 }
 
@@ -1778,33 +1601,10 @@ function CollapsibleFormSection({ id, title, icon = "file", defaultOpen = false,
   );
 }
 
-function FieldHelp({ content }) {
-  const [open, setOpen] = useState(false);
-  if (!content) return null;
-  return (
-    <span
-      className="field-help"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-      onFocus={() => setOpen(true)}
-      onBlur={() => setOpen(false)}
-      tabIndex={0}
-      aria-label={content}
-    >
-      <Icon name="info" className="h-3.5 w-3.5" />
-      {open && <span role="tooltip">{content}</span>}
-    </span>
-  );
-}
-
-function FormField({ label, value, onChange, type = "text", rows = 3, placeholder = "", optional = false, help = "" }) {
+function FormField({ label, value, onChange, type = "text", rows = 3, placeholder = "" }) {
   return (
     <label className="block">
-      <span className="form-label">
-        {label}
-        {optional && <em>(optional)</em>}
-        <FieldHelp content={help} />
-      </span>
+      <span className="form-label">{label}</span>
       {type === "textarea" ? (
         <textarea value={value || ""} onChange={(event) => onChange(event.target.value)} rows={rows} className="form-field resize-y" placeholder={placeholder} />
       ) : (
@@ -1956,11 +1756,6 @@ function ReferencesSection({ cv, onChange }) {
   };
   return (
     <CollapsibleFormSection id="references" title="References" icon="file" badge={referencesHasContent(references) ? "Done" : ""}>
-      <div className="optional-section-note">
-        <strong>References <em>(optional)</em></strong>
-        <FieldHelp content="Usually omitted until requested. Include only if the job post asks or your reference has approved sharing their details." />
-        <span>Recommended default: References available upon request.</span>
-      </div>
       <div className="reference-mode-grid">
         {[
           ["none", "Do not include", "Hide references from this CV"],
@@ -2076,15 +1871,15 @@ function CVBuilderForm({ cv, onChange }) {
         </div>
         <div className="field-pair">
           <FormField label="Country" value={cv.country} onChange={(value) => onChange("country", value)} placeholder="United Arab Emirates" />
-          <FormField label="Nationality" optional help="Include for UAE/GCC applications. It may be omitted for western markets." value={cv.nationality} onChange={(value) => onChange("nationality", value)} placeholder="Filipino" />
+          <FormField label="Nationality" value={cv.nationality} onChange={(value) => onChange("nationality", value)} placeholder="Filipino" />
         </div>
         <div className="field-pair">
-          <FormField label="Visa status" optional help="Include if you are applying in a country where work authorization matters." value={cv.visaStatus} onChange={(value) => onChange("visaStatus", value)} placeholder="Visit visa / Own visa / Employment visa" />
-          <FormField label="Driving license" optional help="Include if the job requires driving, delivery, site visits, or vehicle ownership." value={cv.drivingLicense} onChange={(value) => onChange("drivingLicense", value)} placeholder="UAE driving license / No UAE license" />
+          <FormField label="Visa status" value={cv.visaStatus} onChange={(value) => onChange("visaStatus", value)} placeholder="Visit visa / Own visa / Employment visa" />
+          <FormField label="Driving license" value={cv.drivingLicense} onChange={(value) => onChange("drivingLicense", value)} placeholder="UAE driving license / No UAE license" />
         </div>
         <div className="field-pair">
-          <FormField label="LinkedIn URL" optional help="Highly recommended. Recruiters check LinkedIn for many professional roles." type="url" value={cv.linkedIn} onChange={(value) => onChange("linkedIn", value)} placeholder="https://linkedin.com/in/yourname" />
-          <FormField label="Portfolio URL" optional help="Use this for GitHub, Behance, a work sample, or a personal website if relevant." type="url" value={cv.portfolioUrl} onChange={(value) => onChange("portfolioUrl", value)} placeholder="Portfolio, GitHub, or work sample link" />
+          <FormField label="LinkedIn URL" type="url" value={cv.linkedIn} onChange={(value) => onChange("linkedIn", value)} placeholder="https://linkedin.com/in/yourname" />
+          <FormField label="Portfolio URL" type="url" value={cv.portfolioUrl} onChange={(value) => onChange("portfolioUrl", value)} placeholder="Portfolio, GitHub, or work sample link" />
         </div>
         <label className="flex items-start gap-3">
           <input
@@ -2113,8 +1908,8 @@ function CVBuilderForm({ cv, onChange }) {
 
       <CollapsibleFormSection id="education" title="Education and certifications" icon="file" badge={cv.education ? "Done" : ""}>
         <FormField label="Education" type="textarea" rows={4} value={cv.education} onChange={(value) => onChange("education", value)} placeholder="Example: High School Diploma, Manila High School, 2018" />
-        <FormField label="Projects" optional type="textarea" rows={4} value={cv.projects} onChange={(value) => onChange("projects", value)} placeholder="Example: Website redesign, inventory tracking project, school capstone, or work improvement project" />
-        <FormField label="Certifications & licenses" optional type="textarea" rows={3} value={cv.certifications} onChange={(value) => onChange("certifications", value)} placeholder="Example: Basic Food Safety Certificate, TESDA NC II, UAE driving license" />
+        <FormField label="Projects (optional)" type="textarea" rows={4} value={cv.projects} onChange={(value) => onChange("projects", value)} placeholder="Example: Website redesign, inventory tracking project, school capstone, or work improvement project" />
+        <FormField label="Certifications & licenses" type="textarea" rows={3} value={cv.certifications} onChange={(value) => onChange("certifications", value)} placeholder="Example: Basic Food Safety Certificate, TESDA NC II, UAE driving license" />
       </CollapsibleFormSection>
 
       <ReferencesSection cv={cv} onChange={onChange} />
@@ -2592,146 +2387,21 @@ function LayoutSelector({ selected, onSelect }) {
   );
 }
 
-function PageMarginSelector({ value, onChange }) {
-  const margin = normalizePageMargin(value);
-  const [customValue, setCustomValue] = useState(margin.type === "custom" ? String(margin.value) : "1");
-  const [customUnit, setCustomUnit] = useState(margin.type === "custom" ? margin.unit : "in");
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    const next = normalizePageMargin(value);
-    if (next.type === "custom") {
-      setCustomValue(String(next.value));
-      setCustomUnit(next.unit);
-    }
-  }, [value]);
-
-  const applyCustom = (nextValue = customValue, nextUnit = customUnit) => {
-    const numeric = Number(nextValue);
-    if (!String(nextValue).trim() || !Number.isFinite(numeric) || numeric <= 0) {
-      setError("Enter a positive margin value.");
-      return;
-    }
-    setError("");
-    onChange({ type: "custom", value: numeric, unit: nextUnit });
-  };
-
-  const choose = (next) => {
-    setError("");
-    if (next.type === "custom") {
-      applyCustom(customValue, customUnit);
-      return;
-    }
-    onChange(next);
-  };
-
-  const active = (type, unit, presetValue) => {
-    if (type === "default") return margin.type === "default";
-    if (type === "custom") return margin.type === "custom";
-    return margin.type === "preset" && margin.unit === unit && Number(margin.value) === Number(presetValue);
-  };
-
-  return (
-    <section className="rounded border border-slate-200 bg-white p-4">
-      <h3 className="panel-title">Page Margins</h3>
-      <p className="mt-1 text-xs font-bold leading-5 text-slate-500">Controls spacing around every CV page before download.</p>
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        {[
-          ["Default", { type: "default" }],
-          ["1 cm", { type: "preset", value: 1, unit: "cm" }],
-          ["1 inch", { type: "preset", value: 1, unit: "in" }],
-          ["Custom", { type: "custom" }],
-        ].map(([label, option]) => (
-          <button
-            key={label}
-            type="button"
-            onClick={() => choose(option)}
-            className={`rounded border px-3 py-2 text-sm font-black ${active(option.type, option.unit, option.value) ? "border-blue-600 bg-blue-50 text-blue-800" : "border-slate-200 text-slate-700 hover:bg-slate-50"}`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      {margin.type === "custom" && (
-        <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
-          <input
-            type="number"
-            min="0.01"
-            step="0.01"
-            value={customValue}
-            onChange={(event) => {
-              setCustomValue(event.target.value);
-              applyCustom(event.target.value, customUnit);
-            }}
-            onBlur={() => applyCustom()}
-            className="form-field"
-            aria-label="Custom page margin value"
-          />
-          <select
-            value={customUnit}
-            onChange={(event) => {
-              setCustomUnit(event.target.value);
-              applyCustom(customValue, event.target.value);
-            }}
-            className="form-field"
-            aria-label="Custom page margin unit"
-          >
-            <option value="cm">cm</option>
-            <option value="in">inch</option>
-          </select>
-        </div>
-      )}
-      {error && <p className="mt-2 rounded border border-red-200 bg-red-50 p-2 text-xs font-bold text-red-700">{error}</p>}
-    </section>
-  );
-}
-
-const contactIconPaths = {
-  location: "M12 21s7-4.7 7-11a7 7 0 1 0-14 0c0 6.3 7 11 7 11Zm0-8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z",
-  email: "M3 6.5h18v11H3v-11Zm1.8 1.6 7.2 5.1 7.2-5.1M4.8 16l5.3-4M19.2 16l-5.3-4",
-  phone: "M7 4h4l1 5-2.5 1.5A13 13 0 0 0 14 15l1.5-2.5 5 1v4c0 1.1-.9 2-2 2A14.5 14.5 0 0 1 4 5.9C4 4.8 4.9 4 6 4h1Z",
-  linkedin: "M5 8.5h3v10H5v-10ZM6.5 5a1.7 1.7 0 1 1 0 3.4A1.7 1.7 0 0 1 6.5 5Zm4 3.5h2.9v1.4h.1c.4-.8 1.4-1.6 2.9-1.6 3 0 3.6 2 3.6 4.6v5.6h-3v-5c0-1.2 0-2.7-1.7-2.7s-1.9 1.3-1.9 2.6v5.1h-3v-10Z",
-  link: "M10 13a5 5 0 0 0 7.1 0l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1M14 11a5 5 0 0 0-7.1 0l-2 2a5 5 0 0 0 7.1 7.1l1.1-1.1",
-};
-
-function ContactIcon({ type }) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-3.5 w-3.5 flex-none fill-current stroke-current stroke-[0.35]">
-      <path d={contactIconPaths[type] || contactIconPaths.link} />
-    </svg>
-  );
-}
-
-const cvContactItems = (cv) =>
-  [
-    cv.country && { type: "location", text: cv.country },
-    cv.email && { type: "email", text: cv.email },
-    cv.phone && { type: "phone", text: cv.phone },
-    cv.linkedIn && { type: "linkedin", text: cv.linkedIn.replace(/^https?:\/\/(www\.)?/i, "") },
-    cv.portfolioUrl && { type: "link", text: cv.portfolioUrl.replace(/^https?:\/\/(www\.)?/i, "") },
-  ].filter(Boolean);
-
-function ContactItem({ item, compact = false }) {
-  return (
-    <span className={`inline-flex min-w-0 items-center gap-1.5 ${compact ? "" : "mr-3"}`}>
-      <ContactIcon type={item.type} />
-      <span className="break-words">{item.text}</span>
-    </span>
-  );
-}
-
 function LiveCVPreview({ cv, theme, layout }) {
   const isRtl = cv.languageDirection === "rtl" || isArabicLanguage(cv.outputLanguage);
-  const pageMarginCss = pageMarginToCss(cv.pageMargin);
-  const previewMarginPx = Math.min(260, Math.max(0, pageMarginToInches(cv.pageMargin) * 96));
-  const pageMarginStyle = { padding: `${previewMarginPx}px`, "--cv-page-margin": pageMarginCss };
   const lines = (value) => String(value || "").split("\n").filter(Boolean);
   const chunks = (items, size) => {
     const result = [];
     for (let index = 0; index < items.length; index += size) result.push(items.slice(index, index + size));
     return result.length ? result : [[]];
   };
-  const contactItems = cvContactItems(cv);
+  const contactLines = [
+    cv.email,
+    cv.phone,
+    cv.country,
+    cv.linkedIn && `LinkedIn: ${cv.linkedIn}`,
+    cv.portfolioUrl && `Portfolio: ${cv.portfolioUrl}`,
+  ].filter(Boolean);
   const personalDetails = [
     cv.nationality && `Nationality: ${cv.nationality}`,
     cv.visaStatus && `Visa Status: ${cv.visaStatus}`,
@@ -2856,12 +2526,7 @@ function LiveCVPreview({ cv, theme, layout }) {
         </div>
       </div>
       <div className="sidebar-contact mt-7 space-y-3 text-[11px] leading-5 text-white/85">
-        {contactItems.map((item) => (
-          <p key={`${item.type}-${item.text}`} className="flex min-w-0 items-start gap-2">
-            <ContactIcon type={item.type} />
-            <span className="break-words">{item.text}</span>
-          </p>
-        ))}
+        {contactLines.map((line) => <p key={line}>{line}</p>)}
       </div>
       {cv.qrCode?.position === "sidebar" && pageIndex === 0 && (
         <div className="mt-7 flex justify-center">
@@ -2876,9 +2541,7 @@ function LiveCVPreview({ cv, theme, layout }) {
       <div>
         <h2 className="text-2xl font-black leading-tight">{cv.fullName}</h2>
         <p className={`mt-1 text-sm font-bold ${layout === "header" ? "text-white/90" : "text-blue-700"}`} style={layout === "header" ? {} : { color: theme.color }}>{cv.jobTitle}</p>
-        <p className={`mt-3 flex flex-wrap gap-y-1 text-[11px] ${layout === "header" ? "text-white/80" : "text-slate-500"}`}>
-          {contactItems.map((item) => <ContactItem key={`${item.type}-${item.text}`} item={item} />)}
-        </p>
+        <p className={`mt-3 text-[11px] ${layout === "header" ? "text-white/80" : "text-slate-500"}`}>{contactLines.join(" | ")}</p>
       </div>
       {cv.qrCode?.position === "header" && <div className="absolute right-4 top-4"><QrBlock qrCode={cv.qrCode} color={layout === "header" ? "#ffffff" : "#1E293B"} /></div>}
     </header>
@@ -2889,22 +2552,20 @@ function LiveCVPreview({ cv, theme, layout }) {
         <h2>{cv.fullName || "Candidate Name"}</h2>
         <p>{cv.jobTitle || "Job title"}</p>
       </div>
-      <p className="flex flex-wrap gap-y-1">
-        {contactItems.filter((item) => ["location", "email", "phone"].includes(item.type)).map((item) => <ContactItem key={`${item.type}-${item.text}`} item={item} compact />)}
-      </p>
+      <p>{[cv.email, cv.phone, cv.country].filter(Boolean).join(" | ")}</p>
     </header>
   );
   return (
     <div className={`cv-page-stack ${isRtl ? "cv-rtl" : ""}`} dir={isRtl ? "rtl" : "ltr"} aria-label={`${pages.length} page CV preview`}>
       {pages.map((pageBlocks, pageIndex) => pageIndex > 0 ? (
-        <article key={pageIndex} className={`cv-paper cv-paper-page ${isRtl ? "cv-rtl" : ""} ${layout === "compact" ? "p-6" : "p-8"}`} style={pageMarginStyle}>
+        <article key={pageIndex} className={`cv-paper cv-paper-page ${isRtl ? "cv-rtl" : ""} ${layout === "compact" ? "p-6" : "p-8"}`}>
           {renderContinuationHeader()}
           <div className="mt-6">{renderPageContent(pageBlocks)}</div>
           {cv.qrCode?.position === "footer" && pageIndex === pages.length - 1 && <div className="mt-6 flex justify-center"><QrBlock qrCode={cv.qrCode} color="#1E293B" /></div>}
           <p className="cv-page-number">Page {pageIndex + 1} of {pages.length}</p>
         </article>
       ) : layout === "sidebar" ? (
-        <article key={pageIndex} className={`cv-paper cv-paper-page grid grid-cols-[0.38fr_0.62fr] overflow-hidden p-0 ${isRtl ? "cv-rtl" : ""}`} style={pageMarginStyle}>
+        <article key={pageIndex} className={`cv-paper cv-paper-page grid grid-cols-[0.38fr_0.62fr] overflow-hidden p-0 ${isRtl ? "cv-rtl" : ""}`}>
           {renderSidebar(pageIndex)}
           <div className="p-7">
             {renderPageContent(pageBlocks)}
@@ -2912,7 +2573,7 @@ function LiveCVPreview({ cv, theme, layout }) {
           </div>
         </article>
       ) : (
-        <article key={pageIndex} className={`cv-paper cv-paper-page ${isRtl ? "cv-rtl" : ""} ${layout === "compact" ? "p-6" : "p-8"}`} style={pageMarginStyle}>
+        <article key={pageIndex} className={`cv-paper cv-paper-page ${isRtl ? "cv-rtl" : ""} ${layout === "compact" ? "p-6" : "p-8"}`}>
           {renderHeader()}
           <div className="mt-6">{renderPageContent(pageBlocks)}</div>
           {cv.qrCode?.position === "footer" && pageIndex === pages.length - 1 && <div className="mt-6 flex justify-center"><QrBlock qrCode={cv.qrCode} color="#1E293B" /></div>}
@@ -2927,6 +2588,7 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
   const [details, setDetails] = useState({ name: cv.fullName, email: cv.email, country: cv.country, phone: cv.phone });
   const [otp, setOtp] = useState("");
   const [otpChallenge, setOtpChallenge] = useState(null);
+  const [mockOtp, setMockOtp] = useState("");
   const [verified, setVerified] = useState(false);
   const [actionStatus, setActionStatus] = useState("");
   const runDownloadAction = async (type) => {
@@ -2943,16 +2605,18 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
     setActionStatus("Sending OTP to your email...");
     setVerified(false);
     setOtp("");
+    setMockOtp("");
     setOtpChallenge(null);
     try {
       const response = await fetch("/.netlify/functions/emailOtp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "send", email: details.email, name: details.name, purpose: "download" }),
+        body: JSON.stringify({ action: "send", email: details.email, name: details.name }),
       });
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.message || "Could not send OTP.");
       setOtpChallenge(result.challenge);
+      setMockOtp(result.mockOtp || "");
       setActionStatus(result.message || "OTP sent. Enter the code to unlock downloads.");
     } catch (error) {
       setActionStatus(error.message || "Could not send OTP. Please try again.");
@@ -2963,7 +2627,7 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
       const response = await fetch("/.netlify/functions/emailOtp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "verify", email: details.email, otp, challenge: otpChallenge, purpose: "download" }),
+        body: JSON.stringify({ action: "verify", email: details.email, otp, challenge: otpChallenge }),
       });
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.message || "Invalid OTP.");
@@ -3005,6 +2669,7 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
         {otpChallenge && (
           <div className="mt-5 rounded border border-green-200 bg-green-50 p-4">
             <p className="text-sm font-bold text-green-900">Enter the 6-digit OTP sent to your email.</p>
+            {mockOtp && <p className="mt-1 text-xs font-bold text-amber-800">Test mode OTP: {mockOtp}</p>}
             <div className="mt-3 flex gap-2">
               <input value={otp} onChange={(event) => setOtp(event.target.value)} inputMode="numeric" maxLength={6} className="form-field" placeholder="Enter 6-digit OTP" />
               <button onClick={verify} className="rounded bg-green-600 px-5 py-3 font-bold text-white">Verify</button>
@@ -3021,7 +2686,7 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
             </button>
           ) : (
             <p className="rounded bg-blue-50 p-3 text-xs font-bold leading-5 text-blue-900 sm:col-span-2">
-              Sign in or create an account if you want BuildMyCVNow to save CVs online and email generated CV copies.
+              Sign in with email if you want BuildMyCVNow to send a CV copy to your inbox.
             </p>
           )}
         </div>
@@ -3031,11 +2696,10 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
   );
 }
 
-function AuthModal({ onClose, onUrgentMode, onRegisteredMode, onAuthenticated }) {
+function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
   const [mode, setMode] = useState("signin");
   const [form, setForm] = useState({ name: "", email: "", password: "" });
-  const [accountOtp, setAccountOtp] = useState({ name: "", email: "", token: "", sent: false, channel: "email" });
-  const [signupOtp, setSignupOtp] = useState({ sent: false, token: "", challenge: null });
+  const [accountOtp, setAccountOtp] = useState({ name: "", email: "", token: "", sent: false });
   const [message, setMessage] = useState(isSupabaseConfigured ? "" : "Add VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY or REACT_APP_SUPABASE_URL/REACT_APP_SUPABASE_ANON_KEY to .env to enable login.");
   const [loading, setLoading] = useState(false);
   const [lastSignupEmail, setLastSignupEmail] = useState("");
@@ -3044,99 +2708,45 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode, onAuthenticated })
     onUrgentMode("local");
     onClose();
   };
-  const finishAuthenticated = async (nextSession = null) => {
-    let resolvedSession = nextSession;
-    if (!resolvedSession && supabase) {
-      const { data } = await supabase.auth.getSession();
-      resolvedSession = data?.session || null;
-    }
-    if (resolvedSession) onAuthenticated?.(resolvedSession);
-    onRegisteredMode();
-    onClose();
-  };
-  const verifyHuman = async (action) => {
-    if (!isRecaptchaConfigured) return "";
-    const captchaToken = await getRecaptchaToken(action);
-    const captchaResponse = await fetch("/.netlify/functions/verifyRecaptcha", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: captchaToken, action }),
-    });
-    const captchaResult = await captchaResponse.json().catch(() => ({}));
-    if (!captchaResponse.ok || captchaResult.success === false) {
-      throw new Error(captchaResult.error || captchaResult.message || "reCAPTCHA verification failed. Please try again.");
-    }
-    return captchaToken;
-  };
   const submit = async (event) => {
     event.preventDefault();
     if (!supabase) return;
     setLoading(true);
     setMessage("");
     try {
-      const captchaToken = await verifyHuman(mode === "signup" ? "signup" : "signin");
-      if (mode === "signup") {
-        if (!signupOtp.sent) {
-          const response = await fetch("/.netlify/functions/emailOtp", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "send", email: form.email, name: form.name, purpose: "signup" }),
-          });
-          const result = await response.json().catch(() => ({}));
-          if (!response.ok || !result.ok) throw new Error(result.message || "Could not send signup OTP.");
-          setSignupOtp({ sent: true, token: "", challenge: result.challenge });
-          setLastSignupEmail(form.email);
-          setMessage("Verification code sent. Please check your inbox and spam folder, then enter the 6-digit code here.");
-          return;
-        }
-        const signupResponse = await fetch("/.netlify/functions/verifiedSignup", {
+      const captchaToken = await getRecaptchaToken(mode === "signup" ? "signup" : "signin");
+      if (isRecaptchaConfigured) {
+        const captchaResponse = await fetch("/.netlify/functions/verifyRecaptcha", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: form.email,
-            password: form.password,
-            name: form.name,
-            otp: signupOtp.token,
-            challenge: signupOtp.challenge,
-            purpose: "signup",
-          }),
+          body: JSON.stringify({ token: captchaToken, action: mode === "signup" ? "signup" : "signin" }),
         });
-        const signupResult = await signupResponse.json().catch(() => ({}));
-        if (!signupResponse.ok || !signupResult.ok) {
-          const alreadyHasAccount = signupResponse.status === 409 || /already has an account|already|registered|exists/i.test(signupResult.message || "");
-          if (alreadyHasAccount) {
-            const { data: existingLoginData, error: existingLoginError } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password, captchaToken });
-            if (existingLoginError) {
-              throw new Error("This email already has an account. Please use the Login tab with the same email and password.");
-            }
-            trackEvent("login", { method: "existing_signup_email" });
-            setSignupOtp({ sent: false, token: "", challenge: null });
-            setMessage("Account already exists. Signed in and opening your dashboard.");
-            await finishAuthenticated(existingLoginData?.session);
-            return;
-          }
-          throw new Error(signupResult.message || "Could not create account.");
+        if (captchaResponse.ok && captchaResponse.headers.get("content-type")?.includes("application/json")) {
+          const captchaResult = await captchaResponse.json();
+          if (captchaResult.success === false) throw new Error("reCAPTCHA verification failed.");
         }
-        const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password, captchaToken });
-        if (loginError) throw loginError;
-        trackEvent("signup", { method: "email_otp" });
-        setSignupOtp({ sent: false, token: "", challenge: null });
-        setMessage("Account created and signed in successfully.");
-        await finishAuthenticated(loginData?.session);
-        return;
       }
-      const { data, error } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password, captchaToken });
+      const options = {
+        emailRedirectTo: AUTH_REDIRECT_URL,
+        data: { full_name: form.name },
+        captchaToken,
+      };
+      const { error } =
+        mode === "signup"
+          ? await supabase.auth.signUp({ email: form.email, password: form.password, options })
+          : await supabase.auth.signInWithPassword({ email: form.email, password: form.password, captchaToken });
       if (error) throw error;
-      trackEvent("login", { method: "email" });
-      setMessage("Signed in successfully.");
-      await finishAuthenticated(data?.session);
+      trackEvent(mode === "signup" ? "signup" : "login", { method: "email" });
+      if (mode === "signup") {
+        setLastSignupEmail(form.email);
+        setMessage("Signup request sent. Please check your inbox and spam folder for the confirmation email. If it does not arrive, use Resend confirmation email below.");
+      } else {
+        setMessage("Signed in successfully.");
+        onRegisteredMode();
+      }
+      if (mode === "signin") onClose();
     } catch (error) {
-      const errorMessage = error.message || "Authentication failed.";
-      setMessage(
-        /invalid login credentials/i.test(errorMessage)
-          ? "Password not recognized. Use the Sign up tab to verify your email OTP and set a new password, or use Continue with Google."
-          : errorMessage
-      );
+      setMessage(error.message || "Authentication failed.");
     } finally {
       setLoading(false);
     }
@@ -3146,11 +2756,10 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode, onAuthenticated })
     setLoading(true);
     setMessage("Sending confirmation email again...");
     try {
-      const captchaToken = await verifyHuman("resend_confirmation");
       const { error } = await supabase.auth.resend({
         type: "signup",
         email: lastSignupEmail,
-        options: { emailRedirectTo: AUTH_REDIRECT_URL, captchaToken },
+        options: { emailRedirectTo: AUTH_REDIRECT_URL },
       });
       if (error) {
         const fallback = await fetch("/.netlify/functions/resendSignupConfirmation", {
@@ -3170,47 +2779,12 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode, onAuthenticated })
   };
   const signInWithGoogle = async () => {
     if (!supabase) return;
-    setLoading(true);
-    setMessage("Opening Google sign in...");
-    try {
-      await verifyHuman("google_signin");
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: AUTH_REDIRECT_URL },
-      });
-      if (error) throw error;
-      onRegisteredMode();
-    } catch (error) {
-      setMessage(error.message || "Google sign in could not start. Please check the Google provider settings in Supabase.");
-    } finally {
-      setLoading(false);
-    }
-  };
-  const sendEmailSignInLink = async () => {
-    if (!supabase || !form.email) {
-      setMessage("Enter your email address first, then request the sign-in link.");
-      return;
-    }
-    setLoading(true);
-    setMessage("Sending sign-in link to your email...");
-    try {
-      const captchaToken = await verifyHuman("signin_link");
-      const { error } = await supabase.auth.signInWithOtp({
-        email: form.email,
-        options: {
-          shouldCreateUser: true,
-          emailRedirectTo: AUTH_REDIRECT_URL,
-          captchaToken,
-        },
-      });
-      if (error) throw error;
-      trackEvent("login_link_sent", { method: "email" });
-      setMessage("Sign-in link sent. Please check your inbox and spam folder, then open the link from the same device.");
-    } catch (error) {
-      setMessage(error.message || "Could not send the sign-in link. Check Supabase email settings or try Google sign in.");
-    } finally {
-      setLoading(false);
-    }
+    onRegisteredMode();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: AUTH_REDIRECT_URL },
+    });
+    if (error) setMessage(error.message);
   };
   const sendAccountEmailOtp = async (event) => {
     event.preventDefault();
@@ -3218,20 +2792,18 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode, onAuthenticated })
     setLoading(true);
     setMessage("Sending account verification code...");
     try {
-      const captchaToken = await verifyHuman("account_email_otp");
       const { error } = await supabase.auth.signInWithOtp({
         email: accountOtp.email,
         options: {
           shouldCreateUser: true,
           emailRedirectTo: AUTH_REDIRECT_URL,
           data: { full_name: accountOtp.name },
-          captchaToken,
         },
       });
       if (error) throw error;
-      setAccountOtp((current) => ({ ...current, sent: true, token: "", channel: "email" }));
+      setAccountOtp((current) => ({ ...current, sent: true, token: "" }));
       trackEvent("account_email_otp_sent");
-      setMessage("Account email sent. Enter the full code from your email. If Supabase sends a sign-in link, click that link to open your account.");
+      setMessage("Account OTP sent. Check your email inbox and spam folder, then enter the code here.");
     } catch (error) {
       setMessage(error.message || "Could not send account OTP.");
     } finally {
@@ -3244,14 +2816,15 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode, onAuthenticated })
     setLoading(true);
     setMessage("Verifying account OTP...");
     try {
-      const { data, error } = await supabase.auth.verifyOtp({
+      const { error } = await supabase.auth.verifyOtp({
         email: accountOtp.email,
-        token: accountOtp.token.trim(),
+        token: accountOtp.token,
         type: "email",
       });
       if (error) throw error;
+      onRegisteredMode();
       trackEvent("account_email_otp_verified");
-      await finishAuthenticated(data?.session);
+      onClose();
     } catch (error) {
       setMessage(error.message || "Invalid account OTP.");
     } finally {
@@ -3278,21 +2851,13 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode, onAuthenticated })
         </div>
         <div className="mt-4">
           <p className="mb-2 text-xs font-black uppercase text-slate-500">Sign in / Create account to save online</p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="grid grid-cols-3 gap-2">
           {[
             ["signin", "Login"],
             ["signup", "Sign up"],
             ["accountOtp", "Email OTP"],
           ].map(([id, label]) => (
-            <button
-              key={id}
-              onClick={() => {
-                setMode(id);
-                setAccountOtp((current) => ({ ...current, token: "", sent: false, channel: "email" }));
-                setSignupOtp({ sent: false, token: "", challenge: null });
-              }}
-              className={`rounded px-4 py-3 text-sm font-black ${mode === id ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-700"}`}
-            >
+            <button key={id} onClick={() => setMode(id)} className={`rounded px-4 py-3 text-sm font-black ${mode === id ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-700"}`}>
               {label}
             </button>
           ))}
@@ -3313,25 +2878,15 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode, onAuthenticated })
             {accountOtp.sent && (
               <label>
                 <span className="form-label">Email OTP code</span>
-                <input
-                  className="form-field"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  maxLength={8}
-                  value={accountOtp.token}
-                  onChange={(event) => setAccountOtp({ ...accountOtp, token: event.target.value.replace(/\D/g, "").slice(0, 8) })}
-                  placeholder="Enter the full email code"
-                  required
-                />
+                <input className="form-field" inputMode="numeric" maxLength={6} value={accountOtp.token} onChange={(event) => setAccountOtp({ ...accountOtp, token: event.target.value })} required />
               </label>
             )}
             <button disabled={!isSupabaseConfigured || loading} className="rounded bg-green-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
               {loading ? "Please wait..." : accountOtp.sent ? "Verify OTP and open account" : "Send email OTP"}
             </button>
             <p className="rounded bg-blue-50 p-3 text-xs font-bold leading-5 text-blue-800">
-              Free account mode lets you save up to 10 CVs online and generate/save up to 10 CVs per day. Saved CVs expire after 15 days.
+              Free account mode lets you save up to 10 CVs online. Saved CVs expire after 15 days, so download copies for your records.
             </p>
-            {isRecaptchaConfigured && <p className="text-xs font-bold text-slate-500">Protected by Google reCAPTCHA.</p>}
           </form>
         ) : (
         <form onSubmit={submit} className="mt-5 grid gap-3">
@@ -3343,82 +2898,27 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode, onAuthenticated })
           )}
           <label>
             <span className="form-label">Email address</span>
-            <input
-              className="form-field"
-              type="email"
-              value={form.email}
-              onChange={(event) => {
-                setForm({ ...form, email: event.target.value });
-                setSignupOtp({ sent: false, token: "", challenge: null });
-              }}
-              required
-              disabled={mode === "signup" && signupOtp.sent}
-            />
+            <input className="form-field" type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} required />
           </label>
           <label>
             <span className="form-label">Password</span>
-            <input
-              className="form-field"
-              type="password"
-              minLength={6}
-              value={form.password}
-              onChange={(event) => {
-                setForm({ ...form, password: event.target.value });
-                setSignupOtp({ sent: false, token: "", challenge: null });
-              }}
-              required
-              disabled={mode === "signup" && signupOtp.sent}
-            />
+            <input className="form-field" type="password" minLength={6} value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} required />
           </label>
-          {mode === "signup" && signupOtp.sent && (
-            <label>
-              <span className="form-label">Email verification code</span>
-              <input
-                className="form-field"
-                inputMode="numeric"
-                maxLength={6}
-                value={signupOtp.token}
-                onChange={(event) => setSignupOtp({ ...signupOtp, token: event.target.value })}
-                placeholder="6-digit code"
-                required
-              />
-              <span className="mt-2 block text-xs font-bold leading-5 text-slate-500">
-                Enter the code from your email, then click the green proceed button to create your account and open the dashboard.
-              </span>
-            </label>
-          )}
           {isRecaptchaConfigured && <p className="text-xs font-bold text-slate-500">Protected by Google reCAPTCHA.</p>}
           <button disabled={!isSupabaseConfigured || loading} className="rounded bg-green-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
-            {loading ? "Please wait..." : mode === "signin" ? "Login" : signupOtp.sent ? "Proceed: create account and open dashboard" : "Send signup OTP"}
+            {loading ? "Please wait..." : mode === "signin" ? "Login" : "Create account"}
           </button>
-          {mode === "signup" && signupOtp.sent && (
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() => setSignupOtp({ sent: false, token: "", challenge: null })}
-              className="rounded border border-slate-300 px-5 py-3 font-bold text-slate-700 disabled:cursor-not-allowed disabled:text-slate-400"
-            >
-              Change email or resend code
-            </button>
-          )}
-          {mode === "signin" && (
-            <button
-              type="button"
-              disabled={!isSupabaseConfigured || loading}
-              onClick={sendEmailSignInLink}
-              className="rounded border border-blue-600 px-5 py-3 font-bold text-blue-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400"
-            >
-              Send email sign-in link
-            </button>
-          )}
         </form>
         )}
-        <button disabled={!isSupabaseConfigured || loading} onClick={signInWithGoogle} className="mt-3 w-full rounded border border-blue-600 px-5 py-3 font-bold text-blue-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400">
-          Continue with Google
-        </button>
-        <p className="mt-2 rounded bg-blue-50 p-3 text-xs font-bold leading-5 text-blue-800">
-          Use Google sign in to save CVs online without waiting for an email link.
-        </p>
+        {GOOGLE_AUTH_ENABLED ? (
+          <button disabled={!isSupabaseConfigured} onClick={signInWithGoogle} className="mt-3 w-full rounded border border-blue-600 px-5 py-3 font-bold text-blue-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400">
+            Continue with Google
+          </button>
+        ) : (
+          <p className="mt-3 rounded bg-blue-50 p-3 text-xs font-bold leading-5 text-blue-800">
+            Google login is hidden until the Google provider is enabled in Supabase.
+          </p>
+        )}
         {lastSignupEmail && (
           <button disabled={loading} onClick={resendConfirmation} className="mt-3 w-full rounded border border-green-600 px-5 py-3 font-bold text-green-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400">
             Resend confirmation email
@@ -3430,26 +2930,9 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode, onAuthenticated })
   );
 }
 
-function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDraft, onLoadDraft, draftStatus, refreshKey = 0, dashboardOnly = false }) {
+function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDraft, onLoadDraft, draftStatus }) {
   const [items, setItems] = useState([]);
-  const [message, setMessage] = useState(user ? "Loading your saved CVs." : `Login to save and manage up to ${SAVED_CV_LIMIT} CVs.`);
-  const formatDateTime = (value) => {
-    if (!value) return "Not available";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "Not available";
-    return date.toLocaleString(undefined, { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-  };
-  const formatDate = (value) => {
-    if (!value) return "Not available";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "Not available";
-    return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-  };
-  const expiryDateFor = (item) => {
-    if (item.expires_at) return item.expires_at;
-    if (!item.created_at) return "";
-    return new Date(new Date(item.created_at).getTime() + SAVED_CV_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString();
-  };
+  const [message, setMessage] = useState(user ? "Load your saved CVs." : `Login to save and manage up to ${SAVED_CV_LIMIT} CVs.`);
   const refresh = async () => {
     if (!user) return;
     try {
@@ -3461,7 +2944,7 @@ function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDra
   };
   useEffect(() => {
     refresh();
-  }, [user?.id, refreshKey]);
+  }, [user?.id]);
   const saveCurrent = async () => {
     if (!user) {
       setMessage("Please login first.");
@@ -3492,55 +2975,41 @@ function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDra
     }
   };
   return (
-    <section id="account-dashboard" className={dashboardOnly ? "account-dashboard-panel" : "scroll-mt-28 rounded border border-slate-200 bg-white p-4"}>
-      <div className={dashboardOnly ? "account-dashboard-panel-head" : "flex items-center justify-between gap-3"}>
+    <section className="rounded border border-slate-200 bg-white p-4">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <p className={dashboardOnly ? "account-dashboard-kicker" : "hidden"}>User account</p>
-          <h3 className={dashboardOnly ? "account-dashboard-title" : "panel-title"}>{dashboardOnly ? "Saved CVs" : "Account dashboard"}</h3>
-          <p className={dashboardOnly ? "account-dashboard-subtitle" : "mt-1 text-[11px] font-bold text-slate-500"}>
-            {items.length} saved CV{items.length === 1 ? "" : "s"} of {SAVED_CV_LIMIT}. Saved CVs expire after {SAVED_CV_RETENTION_DAYS} days.
-          </p>
+          <h3 className="panel-title">My CVs dashboard</h3>
+          <p className="mt-1 text-[11px] font-bold text-slate-500">{items.length} saved version{items.length === 1 ? "" : "s"} of {SAVED_CV_LIMIT}</p>
         </div>
-        {!dashboardOnly && <button onClick={saveCurrent} className="rounded bg-green-600 px-3 py-2 text-xs font-black text-white">Save</button>}
+        <button onClick={saveCurrent} className="rounded bg-green-600 px-3 py-2 text-xs font-black text-white">Save</button>
       </div>
-      {!dashboardOnly && (
-        <div className="mt-3 rounded border border-blue-100 bg-blue-50 p-3">
-          <p className="text-xs font-black text-blue-950">Save progress and come back later</p>
-          <p className="mt-1 text-xs font-bold leading-5 text-blue-800">{draftStatus || "Cloud draft sync is ready."}</p>
-          <p className="mt-1 text-xs font-bold leading-5 text-blue-900">Saved CVs are stored for {SAVED_CV_RETENTION_DAYS} days from their creation date, then removed automatically. Download your files regularly.</p>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <button onClick={onSaveDraft} className="rounded bg-blue-600 px-3 py-2 text-xs font-black text-white">Save draft</button>
-            <button onClick={onLoadDraft} className="rounded bg-white px-3 py-2 text-xs font-black text-blue-700 ring-1 ring-blue-200">Restore draft</button>
-          </div>
+      <div className="mt-3 rounded border border-blue-100 bg-blue-50 p-3">
+        <p className="text-xs font-black text-blue-950">Save progress and come back later</p>
+        <p className="mt-1 text-xs font-bold leading-5 text-blue-800">{draftStatus || "Cloud draft sync is ready."}</p>
+        <p className="mt-1 text-xs font-bold leading-5 text-blue-900">Online CVs are stored for {SAVED_CV_RETENTION_DAYS} days, then removed automatically. Download your files regularly.</p>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button onClick={onSaveDraft} className="rounded bg-blue-600 px-3 py-2 text-xs font-black text-white">Save draft</button>
+          <button onClick={onLoadDraft} className="rounded bg-white px-3 py-2 text-xs font-black text-blue-700 ring-1 ring-blue-200">Restore draft</button>
         </div>
-      )}
-      {message && <p className={dashboardOnly ? "account-dashboard-message" : "mt-2 text-xs font-bold leading-5 text-slate-500"}>{message}</p>}
-      <div className={dashboardOnly ? "account-dashboard-grid" : "mt-3 space-y-2"}>
+      </div>
+      <p className="mt-2 text-xs font-bold leading-5 text-slate-500">{message}</p>
+      <div className="mt-3 space-y-2">
         {items.length === 0 && (
-          <div className={dashboardOnly ? "account-dashboard-empty" : "rounded border border-dashed border-slate-300 bg-slate-50 p-3 text-xs font-bold leading-5 text-slate-500"}>
-            No saved CVs yet. Go back to the builder, finish a CV, then use Download PDF or Save to store an online copy.
+          <div className="rounded border border-dashed border-slate-300 bg-slate-50 p-3 text-xs font-bold leading-5 text-slate-500">
+            No saved CV versions yet. Use Save to store this CV online, then duplicate versions for different job applications.
           </div>
         )}
         {items.map((item) => (
-          <div key={item.id} className={dashboardOnly ? "account-dashboard-card" : "rounded border border-slate-200 p-3"}>
-            <p className={dashboardOnly ? "account-dashboard-card-title" : "text-sm font-black text-slate-900"}>{item.title}</p>
-            <p className={dashboardOnly ? "account-dashboard-card-meta" : "text-xs font-bold text-slate-500"}>{item.category_id || "CV version"}</p>
-            <dl className="mt-2 grid gap-1 rounded bg-slate-50 p-2 text-xs leading-5 text-slate-600 sm:grid-cols-2">
-              <div>
-                <dt className="font-black text-slate-800">Date created</dt>
-                <dd>{formatDateTime(item.created_at)}</dd>
-              </div>
-              <div>
-                <dt className="font-black text-slate-800">Expiration date</dt>
-                <dd className="font-bold text-amber-700">{formatDate(expiryDateFor(item))}</dd>
-              </div>
-              <div className="sm:col-span-2">
-                <dt className="font-black text-slate-800">Last updated</dt>
-                <dd>{formatDateTime(item.updated_at || item.created_at)}</dd>
-              </div>
-            </dl>
+          <div key={item.id} className="rounded border border-slate-200 p-3">
+            <p className="text-sm font-black text-slate-900">{item.title}</p>
+            <p className="text-xs text-slate-500">
+              {item.category_id || "CV version"} - Last updated {new Date(item.updated_at || item.created_at).toLocaleString()}
+            </p>
+            <p className="mt-1 text-xs font-bold text-amber-700">
+              Expires {item.expires_at ? new Date(item.expires_at).toLocaleDateString() : `${SAVED_CV_RETENTION_DAYS} days after saving once database expiry is enabled`}
+            </p>
             <div className="mt-2 flex flex-wrap gap-2">
-              <button onClick={() => onLoad(item)} className={dashboardOnly ? "account-dashboard-edit" : "rounded bg-blue-50 px-3 py-2 text-xs font-black text-blue-700"}>Edit in builder</button>
+              <button onClick={() => onLoad(item)} className="rounded bg-blue-50 px-3 py-2 text-xs font-black text-blue-700">Edit</button>
               <button onClick={() => duplicate(item)} className="rounded bg-slate-100 px-3 py-2 text-xs font-black text-slate-700">Duplicate</button>
               <button onClick={() => remove(item.id)} className="rounded bg-red-50 px-3 py-2 text-xs font-black text-red-700">Delete</button>
             </div>
@@ -3855,11 +3324,11 @@ function CoverLetterPreview({ cv, letter, theme, fontId, layoutId }) {
           <p>{letter.companyAddress}</p>
         </div>
         <p>Dear {letter.hiringManager || "Hiring Manager"},</p>
-        <p className="whitespace-pre-line text-justify">{cleanLetter.opening}</p>
-        <p className="whitespace-pre-line text-justify">{cleanLetter.body}</p>
-        {cleanLetter.qualifications && <p className="whitespace-pre-line text-justify">{cleanLetter.qualifications}</p>}
-        {cleanLetter.value && <p className="whitespace-pre-line text-justify">{cleanLetter.value}</p>}
-        <p className="whitespace-pre-line text-justify">{cleanLetter.closing}</p>
+        <p className="whitespace-pre-line">{cleanLetter.opening}</p>
+        <p className="whitespace-pre-line">{cleanLetter.body}</p>
+        {cleanLetter.qualifications && <p className="whitespace-pre-line">{cleanLetter.qualifications}</p>}
+        {cleanLetter.value && <p className="whitespace-pre-line">{cleanLetter.value}</p>}
+        <p className="whitespace-pre-line">{cleanLetter.closing}</p>
         <div>
           <p>Sincerely,</p>
           <p className="mt-2 font-black text-slate-950" style={{ color: theme.dark }}>{cv.fullName}</p>
@@ -3876,7 +3345,7 @@ function CoverLetterDownloadModal({ cv, onClose, onVerifiedDownload }) {
       onClose={onClose}
       onVerifiedDownload={onVerifiedDownload}
       title="Verify to download cover letter"
-      description="Enter your contact details to receive an email OTP before unlocking your free cover letter download."
+      description="Enter your contact details to unlock your free cover letter download. This uses the same mock OTP flow as the CV."
       label="Cover letter downloads"
     />
   );
@@ -3981,12 +3450,6 @@ const builderSteps = [
   { id: "summary", label: "Summary" },
 ];
 
-const builderProgressSteps = [
-  { id: "template", label: "Template" },
-  ...builderSteps,
-  { id: "download", label: "Preview & download" },
-];
-
 const cvBuildGuideSteps = [
   { step: "Step 1", title: "Choose a template" },
   { step: "Step 2", title: "Upload your existing CV", note: "Optional" },
@@ -3998,48 +3461,12 @@ const cvBuildGuideSteps = [
 
 function getBuilderStepState(cv) {
   return {
-    template: true,
     personal: Boolean(cv.fullName && cv.email && cv.phone && cv.country),
     experience: normalizeWorkExperiences(cv).some((entry) => entry.employer && entry.responsibilities),
     education: Boolean(cv.education),
     skills: Boolean(cv.skills && cv.languages),
     summary: Boolean(cv.summary && cv.summary.length > 40),
-    download: getCompleteness(cv).score >= 80,
   };
-}
-
-function BuilderProgressBar({ currentStep, completedSteps, onStep }) {
-  const currentIndex = Math.max(0, builderProgressSteps.findIndex((step) => step.id === currentStep));
-  const progress = Math.round((currentIndex / Math.max(1, builderProgressSteps.length - 1)) * 100);
-  return (
-    <section className="builder-progress-bar" aria-label="Builder progress">
-      <div className="builder-progress-mobile">
-        <button type="button" onClick={() => onStep(builderProgressSteps[Math.max(0, currentIndex - 1)].id)} aria-label="Previous step">
-          <Icon name="chevron" className="h-4 w-4 rotate-90" />
-        </button>
-        <div>
-          <p>Step {currentIndex + 1} of {builderProgressSteps.length}</p>
-          <strong>{builderProgressSteps[currentIndex]?.label || "Builder"}</strong>
-        </div>
-        <span>{progress}% done</span>
-      </div>
-      <div className="builder-progress-track" aria-hidden="true">
-        <span style={{ width: `${progress}%` }} />
-      </div>
-      <nav className="builder-progress-steps">
-        {builderProgressSteps.map((step, index) => {
-          const done = completedSteps[step.id] || index < currentIndex;
-          const active = step.id === currentStep;
-          return (
-            <button key={step.id} type="button" onClick={() => (step.id === "download" ? onStep("download") : onStep(step.id))} className={`${active ? "active" : ""} ${done ? "done" : ""}`}>
-              <span>{done ? <Icon name="check" className="h-3 w-3" /> : index + 1}</span>
-              {step.label}
-            </button>
-          );
-        })}
-      </nav>
-    </section>
-  );
 }
 
 function BuilderTopBar({ onHome, onDownload, saveStatus }) {
@@ -4104,6 +3531,36 @@ function BuilderHeaderGuide({ cloudSavingEnabled, noCloudMode }) {
   );
 }
 
+function BuilderStageTabs({ currentStep, completedSteps, onStep }) {
+  const tabs = [
+    { id: "personal", label: "Personal" },
+    { id: "experience", label: "Experience" },
+    { id: "education", label: "Education" },
+    { id: "skills", label: "Skills" },
+    { id: "summary", label: "Extras" },
+  ];
+
+  return (
+    <nav className="builder-stage-tabs" aria-label="CV builder stages">
+      {tabs.map((tab) => {
+        const active = currentStep === tab.id;
+        const done = completedSteps[tab.id];
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => onStep(tab.id)}
+            className={`builder-stage-tab ${active ? "active" : ""} ${done ? "done" : ""}`}
+          >
+            <span>{done ? <Icon name="check" className="h-3.5 w-3.5" /> : null}</span>
+            {tab.label}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
 function CompletionBar({ completion, onNextStep }) {
   const color = completion.percent >= 80 ? "#16a34a" : completion.percent >= 40 ? "var(--accent)" : "#d97706";
   return (
@@ -4116,27 +3573,6 @@ function CompletionBar({ completion, onNextStep }) {
       </div>
       <div className="completion-track">
         <div className="completion-fill" style={{ width: `${completion.percent}%`, background: color }} />
-      </div>
-    </section>
-  );
-}
-
-function DraftRecoveryBanner({ draft, onContinue, onStartFresh }) {
-  if (!draft) return null;
-  const savedValue = draft.updatedAt || draft.savedAt || draft.createdAt;
-  const savedDate = savedValue ? new Date(savedValue) : null;
-  const ageMinutes = savedDate && !Number.isNaN(savedDate.getTime())
-    ? Math.max(0, Math.round((Date.now() - savedDate.getTime()) / 60000))
-    : null;
-  return (
-    <section className="draft-recovery-banner" aria-label="Saved browser draft">
-      <div>
-        <strong>You have a saved draft{ageMinutes !== null ? ` from ${ageMinutes} min ago` : ""}</strong>
-        <p>Continue where you left off, or clear it and start a fresh CV.</p>
-      </div>
-      <div>
-        <button type="button" onClick={onContinue}>Continue draft</button>
-        <button type="button" onClick={onStartFresh}>Start fresh</button>
       </div>
     </section>
   );
@@ -4218,7 +3654,23 @@ function BuilderSidebar({ currentStep, onStep, completedSteps, categoryId, onCat
   const sortedCategories = [...categories].sort((a, b) => prominent.indexOf(a.id) - prominent.indexOf(b.id));
   return (
     <aside className="builder-sidebar-v2">
-      <p className="sidebar-label-v2">Template</p>
+      <p className="sidebar-label-v2">Sections</p>
+      <nav className="builder-step-list">
+        {builderSteps.map((step, index) => {
+          const done = completedSteps[step.id];
+          const active = currentStep === step.id;
+          return (
+            <React.Fragment key={step.id}>
+              <button type="button" onClick={() => onStep(step.id)} className={`builder-step ${active ? "active" : ""} ${done ? "done" : ""}`}>
+                <span className="builder-step-dot">{done ? <Icon name="check" className="h-3 w-3" /> : index + 1}</span>
+                <span>{step.label}</span>
+              </button>
+              {index < builderSteps.length - 1 && <span className="builder-step-connector" />}
+            </React.Fragment>
+          );
+        })}
+      </nav>
+      <p className="sidebar-label-v2 mt-5">Template</p>
       <CategorySelector selected={categoryId} onSelect={onCategory} />
       <p className="sidebar-label-v2 mt-4">Accent colour</p>
       <div className="sidebar-swatch-row">
@@ -4239,9 +3691,40 @@ function BuilderSidebar({ currentStep, onStep, completedSteps, categoryId, onCat
   );
 }
 
-function BuilderPreviewPanel({ cv, theme, layout, onDownload, onCoverLetter }) {
+function BuilderTemplateDock({ categoryId, onCategory, themeId, onTheme }) {
+  return (
+    <section className="builder-template-dock" aria-label="Template and colour">
+      <div className="builder-template-head">
+        <div>
+          <p>Choose a template</p>
+          <h2>Pick the design that matches your job.</h2>
+        </div>
+        <span>Design only. Your data stays safe.</span>
+      </div>
+      <CategorySelector selected={categoryId} onSelect={onCategory} />
+      <div className="builder-color-strip" aria-label="Accent colour">
+        <span>Accent colour</span>
+        <div>
+          {themes.slice(0, 8).map((theme) => (
+            <button
+              key={theme.id}
+              type="button"
+              title={theme.name}
+              aria-label={`Set accent to ${theme.name}`}
+              onClick={() => onTheme(theme.id)}
+              className={themeId === theme.id ? "selected" : ""}
+              style={{ background: theme.color }}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function BuilderPreviewPanel({ cv, theme, layout, onDownload }) {
   const [message, setMessage] = useState("");
-  const [previewZoom, setPreviewZoom] = useState(56);
+  const [previewZoom, setPreviewZoom] = useState(60);
   const completeness = getCompleteness(cv);
   const shareUrl = "https://buildmycvnow.com/builder";
   const changeZoom = (delta) => setPreviewZoom((value) => Math.min(100, Math.max(42, value + delta)));
@@ -4285,57 +3768,6 @@ function BuilderPreviewPanel({ cv, theme, layout, onDownload, onCoverLetter }) {
         <button type="button" onClick={onDownload} className="mt-4 flex w-full items-center justify-center gap-2 rounded bg-green-600 px-4 py-3 text-sm font-black text-white hover:bg-green-700">
           <Icon name="download" className="h-4 w-4" /> Download CV
         </button>
-        <div className="cover-letter-cta">
-          <div>
-            <strong>Also need a cover letter?</strong>
-            <p>Auto-filled from your CV. Edit and download as PDF.</p>
-          </div>
-          <button type="button" onClick={onCoverLetter}>Build cover letter</button>
-        </div>
-      </div>
-    </aside>
-  );
-}
-
-function DownloadSuccessScreen({ isSignedIn, onSaveAccount, onCoverLetter, onDownloadAgain, onEdit }) {
-  const [copyStatus, setCopyStatus] = useState("Share via link");
-  const copyShareLink = async () => {
-    const url = "https://buildmycvnow.com/builder?utm_source=download_success&utm_medium=share";
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopyStatus("Link copied");
-    } catch {
-      setCopyStatus("buildmycvnow.com/builder");
-    }
-    trackEvent("post_download_share_link");
-  };
-  return (
-    <aside className="download-success-panel">
-      <div className="download-success-icon"><Icon name="check" className="h-8 w-8" /></div>
-      <h2>Your CV is downloaded!</h2>
-      <p>Check your Downloads folder for your BuildMyCVNow CV file.</p>
-      <div className="download-next-grid">
-        {!isSignedIn && (
-          <button type="button" onClick={onSaveAccount} className="download-next-card highlighted">
-            <Icon name="lock" className="h-5 w-5" />
-            <strong>Save to account</strong>
-            <span>Access this CV from any device for up to 15 days.</span>
-          </button>
-        )}
-        <button type="button" onClick={onCoverLetter} className="download-next-card">
-          <Icon name="file" className="h-5 w-5" />
-          <strong>Build a cover letter</strong>
-          <span>Use your CV details to create a matching letter.</span>
-        </button>
-        <button type="button" onClick={copyShareLink} className="download-next-card">
-          <Icon name="share" className="h-5 w-5" />
-          <strong>{copyStatus}</strong>
-          <span>Send BuildMyCVNow to someone job hunting.</span>
-        </button>
-      </div>
-      <div className="download-success-actions">
-        <button type="button" onClick={onDownloadAgain}>Download again</button>
-        <button type="button" onClick={onEdit}>Edit CV</button>
       </div>
     </aside>
   );
@@ -4484,9 +3916,7 @@ function CVBuilderApp({ onHome }) {
   const [storageMessage, setStorageMessage] = useState("");
   const [completionMessage, setCompletionMessage] = useState("");
   const [completionModalOpen, setCompletionModalOpen] = useState(false);
-  const [savedCvRefreshKey, setSavedCvRefreshKey] = useState(0);
-  const [accountDashboardRequested, setAccountDashboardRequested] = useState(() => window.location.hash === "#account-dashboard");
-  const [localDraftNotice, setLocalDraftNotice] = useState(null);
+  const [showSharePrompt, setShowSharePrompt] = useState(() => sessionStorage.getItem("bmcv_share_prompt_seen") !== "1");
   const [userMode, setUserMode] = useState(() => localStorage.getItem("cvforall:user-mode") || "guest");
   const theme = useMemo(() => themes.find((item) => item.id === themeId), [themeId]);
   const coverTheme = useMemo(() => themes.find((item) => item.id === coverThemeId), [coverThemeId]);
@@ -4497,17 +3927,6 @@ function CVBuilderApp({ onHome }) {
   const noCloudMode = userMode === "urgent-local";
   const completedSteps = useMemo(() => getBuilderStepState(cv), [cv]);
   const jumpToStep = (id) => {
-    if (id === "download") {
-      setCurrentStep("download");
-      requestCvDownload();
-      return;
-    }
-    if (id === "template") {
-      setCurrentStep("template");
-      const target = document.querySelector(".builder-sidebar-v2");
-      if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
-      return;
-    }
     setCurrentStep(id);
     const target = document.getElementById(`builder-section-${id}`);
     if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -4517,59 +3936,11 @@ function CVBuilderApp({ onHome }) {
       logEvent("export_below_threshold", { percent: completion.percent });
       if (!window.confirm(`Your CV is only ${completion.percent}% complete. Recruiters may reject incomplete CVs. Export anyway?`)) return;
     }
-    setCurrentStep("download");
-    if (cloudSavingEnabled) {
-      handleDownload("pdf").catch((error) => {
-        alert(error.message || "Could not download your CV. Please try again.");
-      });
-      return;
-    }
     setDownloadTarget("cv");
   };
-  const requestAccountDashboard = () => {
-    setAccountDashboardRequested(true);
-    setActiveBuilder("cv");
-    if (window.location.hash !== "#account-dashboard") {
-      window.location.hash = "account-dashboard";
-    }
-  };
-  const closeAccountDashboard = () => {
-    setAccountDashboardRequested(false);
-    if (window.location.hash === "#account-dashboard") {
-      window.location.hash = "builder";
-    }
-  };
-  useEffect(() => {
-    if (window.location.hash === "#signin") {
-      setAuthOpen(true);
-    }
-    if (window.location.hash === "#account-dashboard") {
-      requestAccountDashboard();
-    }
-  }, []);
-  useEffect(() => {
-    if (!accountDashboardRequested || !cloudSavingEnabled) return undefined;
-    setAuthOpen(false);
-    setActiveBuilder("cv");
-    let attempts = 0;
-    const scrollToDashboard = () => {
-      attempts += 1;
-      const target = document.getElementById("account-dashboard");
-      if (target) {
-        target.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-      return Boolean(target) || attempts >= 12;
-    };
-    if (scrollToDashboard()) return undefined;
-    const timer = window.setInterval(() => {
-      if (scrollToDashboard()) window.clearInterval(timer);
-    }, 150);
-    return () => window.clearInterval(timer);
-  }, [accountDashboardRequested, cloudSavingEnabled]);
   const handleNextStep = (section) => {
     logEvent("nextstep_clicked", { step: section });
     if (section === "download") requestCvDownload();
-    else if (section === "template") jumpToStep("template");
     else jumpToStep(section);
   };
   useEffect(() => {
@@ -4620,16 +3991,7 @@ function CVBuilderApp({ onHome }) {
     initAnalytics();
     if (!supabase) return;
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
-      setSession(nextSession);
-      if (nextSession?.user && ["SIGNED_IN", "TOKEN_REFRESHED", "INITIAL_SESSION"].includes(event)) {
-        setUserMode("registered");
-        setAuthOpen(false);
-        if (window.location.hash === "#signin" || window.location.hash === "#account-dashboard") {
-          requestAccountDashboard();
-        }
-      }
-    });
+    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => setSession(nextSession));
     return () => data.subscription.unsubscribe();
   }, []);
   useEffect(() => {
@@ -4671,25 +4033,6 @@ function CVBuilderApp({ onHome }) {
     setCoverFontId(draftData.coverFontId || "sans");
     setCoverLayoutId(draftData.coverLayoutId || "classic");
     return true;
-  };
-  const continueLocalDraft = () => {
-    if (!localDraftNotice) return;
-    if (applyDraftPayload(localDraftNotice)) {
-      setSaveStatus("Draft restored");
-      setLocalDraftNotice(null);
-      trackEvent("restore_local_draft");
-    }
-  };
-  const startFreshLocalDraft = () => {
-    localStorage.removeItem(DRAFT_STORAGE_KEY);
-    setCv(initialCv);
-    setCoverLetter(createCoverLetterFromCv(initialCv, defaultCategory.id));
-    setCategoryId(defaultCategory.id);
-    setThemeId("blue");
-    setLayoutId("sidebar");
-    setLocalDraftNotice(null);
-    setSaveStatus("Fresh CV started");
-    trackEvent("clear_local_draft");
   };
   const draftPayload = () => createDraftPayload({ cv, coverLetter, categoryId, themeId, layoutId, coverThemeId, coverFontId, coverLayoutId });
   const saveCloudDraft = async (statusMessage = "Saving cloud draft...") => {
@@ -4752,33 +4095,7 @@ function CVBuilderApp({ onHome }) {
     return () => window.removeEventListener("beforeunload", warnBeforeLeave);
   }, [noCloudMode, downloaded, coverDownloaded]);
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (parsed?.cv && hasUserEnteredCvData(parsed.cv)) {
-        setLocalDraftNotice(parsed);
-      }
-    } catch {
-      localStorage.removeItem(DRAFT_STORAGE_KEY);
-    }
-  }, []);
-  useEffect(() => {
-    if (localDraftNotice) return undefined;
-    const timer = window.setTimeout(() => {
-      try {
-        setSaveStatus("Saving locally...");
-        localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draftPayload()));
-        setSaveStatus("Draft saved");
-      } catch {
-        setSaveStatus("Save failed");
-      }
-    }, 600);
-    return () => window.clearTimeout(timer);
-  }, [cv, coverLetter, categoryId, themeId, layoutId, coverThemeId, coverFontId, coverLayoutId, localDraftNotice]);
-  useEffect(() => {
     const saveDraft = async () => {
-      if (localDraftNotice) return;
       const payload = draftPayload();
       localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payload));
       setSaveStatus("Saved locally");
@@ -4794,7 +4111,7 @@ function CVBuilderApp({ onHome }) {
     };
     const timer = window.setInterval(saveDraft, 30000);
     return () => window.clearInterval(timer);
-  }, [cv, coverLetter, categoryId, themeId, layoutId, coverThemeId, coverFontId, coverLayoutId, cloudSavingEnabled, user?.id, localDraftNotice]);
+  }, [cv, coverLetter, categoryId, themeId, layoutId, coverThemeId, coverFontId, coverLayoutId, cloudSavingEnabled, user?.id]);
   const keepCurrentDataForTemplate = (id) => {
     if (!id || id === categoryId) {
       setPendingTemplateId(null);
@@ -4871,10 +4188,6 @@ function CVBuilderApp({ onHome }) {
     setThemeId(item.theme_id || "blue");
     setLayoutId(item.layout_id || "sidebar");
     setCoverLetter(createCoverLetterFromCv(nextCv, item.category_id || defaultCategory.id));
-    setAccountDashboardRequested(false);
-    setCurrentStep("personal");
-    window.location.hash = "builder";
-    window.setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
     trackEvent("load_saved_cv");
   };
   const updateCvFromCoverLetter = (key, value) => {
@@ -4926,18 +4239,9 @@ function CVBuilderApp({ onHome }) {
       return result;
     }
     await downloadCvFile(cv, type, theme, layoutId);
-    if (cloudSavingEnabled && user?.id) {
-      try {
-        await saveCvForUser({ userId: user.id, cv, categoryId, themeId, layoutId });
-        setStorageMessage(`Downloaded and saved online. Saved CVs expire after ${SAVED_CV_RETENTION_DAYS} days.`);
-        setSavedCvRefreshKey((value) => value + 1);
-        requestAccountDashboard();
-      } catch (error) {
-        setStorageMessage(`Downloaded, but online saving did not finish: ${error.message}`);
-      }
-    }
     logEvent("cv_downloaded", { format: type, templateId: categoryId, completionPercent: completion.percent });
     setDownloaded(true);
+    if (showSharePrompt) sessionStorage.setItem("bmcv_share_prompt_seen", "1");
     setDownloadTarget(null);
   };
   const handleCoverDownload = async (type) => {
@@ -4955,27 +4259,20 @@ function CVBuilderApp({ onHome }) {
     setUserMode("guest");
     trackEvent("logout");
   };
-  const openAccountDashboard = () => {
-    requestAccountDashboard();
-  };
   const startUrgentMode = (method) => {
     setUserMode("urgent-local");
     setAuthOpen(false);
   };
   const startRegisteredMode = () => {
     setUserMode("registered");
-    setAuthOpen(false);
-    requestAccountDashboard();
   };
-  const accountDashboardView = activeBuilder === "cv" && accountDashboardRequested && cloudSavingEnabled;
   return (
     <main className="builder-app-shell">
       <BuilderTopBar onHome={onHome} saveStatus={saveStatus} onDownload={() => (activeBuilder === "cv" ? requestCvDownload() : setDownloadTarget("cover"))} />
-      {activeBuilder === "cv" && !accountDashboardView && <CompletionBar completion={completion} onNextStep={handleNextStep} />}
-      {activeBuilder === "cv" && !accountDashboardView && <BuilderProgressBar currentStep={currentStep} completedSteps={completedSteps} onStep={handleNextStep} />}
       <div className="builder-tabbar">
-        <div className="builder-tabbar-inner">
-          <div className="builder-mode-switch">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex gap-2">
             {[
               ["cv", "CV Builder"],
               ["cover", "Cover Letter Builder"],
@@ -4983,27 +4280,27 @@ function CVBuilderApp({ onHome }) {
               <button
                 key={id}
                 onClick={() => switchBuilder(id)}
-                className={activeBuilder === id ? "active" : ""}
+                className={`rounded px-5 py-3 text-sm font-black ${activeBuilder === id ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
               >
                 {label}
               </button>
             ))}
           </div>
-          <div className="builder-account-strip">
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
             <span>{cloudSavingEnabled ? `Cloud saving as ${user.email}` : noCloudMode ? "Download-only mode. No cloud saving." : "Choose download-only or sign in to save online."}</span>
             {cloudSavingEnabled ? (
-              <>
-                <button onClick={openAccountDashboard} className="account-dashboard-button">Account dashboard</button>
-                <button onClick={signOut} className="account-logout-button">Logout</button>
-              </>
+              <button onClick={signOut} className="rounded border border-slate-300 px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50">Logout</button>
             ) : (
-              <button onClick={() => setAuthOpen(true)} className="account-dashboard-button">Sign In / Sign Up</button>
+              <button onClick={() => setAuthOpen(true)} className="rounded border border-blue-600 px-3 py-2 text-xs font-black text-blue-700 hover:bg-blue-50">Access</button>
             )}
           </div>
+          </div>
+          {activeBuilder === "cv" && (
+            <BuilderStageTabs currentStep={currentStep} completedSteps={completedSteps} onStep={jumpToStep} />
+          )}
         </div>
       </div>
-      {activeBuilder === "cv" && !accountDashboardView && <BuilderHeaderGuide cloudSavingEnabled={cloudSavingEnabled} noCloudMode={noCloudMode} />}
-      {activeBuilder === "cv" && !accountDashboardView && <DraftRecoveryBanner draft={localDraftNotice} onContinue={continueLocalDraft} onStartFresh={startFreshLocalDraft} />}
+      {activeBuilder === "cv" && <BuilderHeaderGuide cloudSavingEnabled={cloudSavingEnabled} noCloudMode={noCloudMode} />}
       {noCloudMode && (
         <section className="border-b border-amber-200 bg-amber-50 px-5 py-3">
           <div className="mx-auto max-w-7xl text-sm font-bold leading-6 text-amber-950">
@@ -5011,46 +4308,12 @@ function CVBuilderApp({ onHome }) {
           </div>
         </section>
       )}
-      {accountDashboardView ? (
-        <section className="account-dashboard-page">
-          <div className="account-dashboard-shell">
-            <div className="account-dashboard-hero">
-              <div>
-                <p className="account-dashboard-kicker">Cloud saving as {user.email}</p>
-                <h1>Saved CV dashboard</h1>
-                <p>View the CVs saved in your account. Each CV shows its creation date and automatic expiration date.</p>
-              </div>
-              <button type="button" onClick={closeAccountDashboard}>Create or edit CV</button>
-            </div>
-            <MyCvsPanel
-              user={user}
-              cv={cv}
-              categoryId={categoryId}
-              themeId={themeId}
-              layoutId={layoutId}
-              onLoad={loadSavedCv}
-              onSaveDraft={() => saveCloudDraft()}
-              onLoadDraft={restoreCloudDraft}
-              draftStatus={draftStatus}
-              refreshKey={savedCvRefreshKey}
-              dashboardOnly
-            />
-          </div>
-        </section>
-      ) : activeBuilder === "cv" ? (
+      {activeBuilder === "cv" ? (
         <>
         <div className="builder-layout-v2">
-          <BuilderSidebar
-            currentStep={currentStep}
-            onStep={jumpToStep}
-            completedSteps={completedSteps}
-            categoryId={categoryId}
-            onCategory={handleCategory}
-            themeId={themeId}
-            onTheme={setThemeId}
-          />
           <section className="builder-form-panel-v2">
             <div className="builder-form-inner">
+              <BuilderTemplateDock categoryId={categoryId} onCategory={handleCategory} themeId={themeId} onTheme={setThemeId} />
               <ExistingCVImporter onImport={handleImport} />
               <ProfilePhotoUploader cv={cv} onChange={handleProfilePhotoChange} />
               {storageMessage && cloudSavingEnabled && <p className="rounded bg-slate-50 p-3 text-xs font-bold leading-5 text-slate-600">{storageMessage}</p>}
@@ -5060,7 +4323,6 @@ function CVBuilderApp({ onHome }) {
                 <div className="mt-4 grid gap-4 lg:grid-cols-2">
                   <div className="grid gap-4">
                     <LayoutSelector selected={layoutId} onSelect={setLayoutId} />
-                    <PageMarginSelector value={cv.pageMargin} onChange={(pageMargin) => updateCvField("pageMargin", pageMargin)} />
                     <button
                       type="button"
                       onClick={() => setSectionReorderOpen(true)}
@@ -5071,7 +4333,7 @@ function CVBuilderApp({ onHome }) {
                     </button>
                   </div>
                   <div>
-                    {cloudSavingEnabled && !accountDashboardRequested ? (
+                    {cloudSavingEnabled ? (
                       <MyCvsPanel
                         user={user}
                         cv={cv}
@@ -5082,9 +4344,8 @@ function CVBuilderApp({ onHome }) {
                         onSaveDraft={() => saveCloudDraft()}
                         onLoadDraft={restoreCloudDraft}
                         draftStatus={draftStatus}
-                        refreshKey={savedCvRefreshKey}
                       />
-                    ) : !cloudSavingEnabled ? (
+                    ) : (
                       <section className="rounded border border-amber-200 bg-amber-50 p-4">
                         <h3 className="panel-title text-amber-950">Download-only mode</h3>
                         <p className="mt-2 text-xs font-bold leading-5 text-amber-900">
@@ -5092,16 +4353,6 @@ function CVBuilderApp({ onHome }) {
                         </p>
                         <button onClick={() => setAuthOpen(true)} className="mt-3 w-full rounded border border-amber-300 bg-white px-4 py-3 text-sm font-black text-amber-900 hover:bg-amber-100">
                           Sign in to save online
-                        </button>
-                      </section>
-                    ) : (
-                      <section className="rounded border border-blue-100 bg-blue-50 p-4">
-                        <h3 className="panel-title text-blue-950">Dashboard is open</h3>
-                        <p className="mt-2 text-xs font-bold leading-5 text-blue-900">
-                          Your saved CV dashboard is shown above the builder so it is easier to view and manage.
-                        </p>
-                        <button onClick={closeAccountDashboard} className="mt-3 w-full rounded bg-blue-600 px-4 py-3 text-sm font-black text-white hover:bg-blue-700">
-                          Back to builder
                         </button>
                       </section>
                     )}
@@ -5124,22 +4375,10 @@ function CVBuilderApp({ onHome }) {
             </div>
           </section>
           <div className="builder-right-stack">
-            {downloaded ? (
-              <DownloadSuccessScreen
-                isSignedIn={cloudSavingEnabled}
-                onSaveAccount={() => setAuthOpen(true)}
-                onCoverLetter={() => switchBuilder("cover")}
-                onDownloadAgain={requestCvDownload}
-                onEdit={() => {
-                  setDownloaded(false);
-                  setCurrentStep("personal");
-                }}
-              />
-            ) : (
-              <BuilderPreviewPanel cv={cv} theme={theme} layout={layoutId} onDownload={requestCvDownload} onCoverLetter={() => switchBuilder("cover")} />
-            )}
+            <BuilderPreviewPanel cv={cv} theme={theme} layout={layoutId} onDownload={requestCvDownload} />
             <ATSPanel cv={cv} />
           </div>
+          <CompletionBar completion={completion} onNextStep={handleNextStep} />
         </div>
         <button type="button" onClick={() => setMobileCvView("preview")} className="btn-preview-float">
           <Icon name="eye" className="h-4 w-4" /> Preview CV
@@ -5183,8 +4422,14 @@ function CVBuilderApp({ onHome }) {
           </div>
         )}
         {downloaded && (
-          <div className="download-confirm-toast">
-            Download confirmed. Your next steps are shown in the preview panel.
+          <div className="download-success-stack">
+            <div className="rounded border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-900 shadow-lg">Download confirmed. Your CV file is ready.</div>
+            {showSharePrompt && (
+              <div>
+                <ShareTool moment="post_download" />
+                <EmailCapture source="download" roleInterest={cv.jobTitle} />
+              </div>
+            )}
           </div>
         )}
         {completionMessage && (
@@ -5241,14 +4486,7 @@ function CVBuilderApp({ onHome }) {
         />
       )}
       {sectionReorderOpen && <SectionReorderPanel cv={cv} onChange={updateCvField} onClose={() => setSectionReorderOpen(false)} />}
-      {authOpen && (
-        <AuthModal
-          onClose={() => setAuthOpen(false)}
-          onUrgentMode={startUrgentMode}
-          onRegisteredMode={startRegisteredMode}
-          onAuthenticated={setSession}
-        />
-      )}
+      {authOpen && <AuthModal onClose={() => setAuthOpen(false)} onUrgentMode={startUrgentMode} onRegisteredMode={startRegisteredMode} />}
     </main>
   );
 }
@@ -5267,7 +4505,6 @@ export default function App() {
   const location = useLocation();
   const isBuilderHash = ["#builder", "#cover-letter"].includes(location.hash);
   const goToBuilder = () => navigate("/builder");
-  const goToSignIn = () => navigate("/builder#signin");
   const goHome = () => navigate("/");
 
   useEffect(() => {
@@ -5307,8 +4544,8 @@ export default function App() {
           path="/"
           element={
             <>
-              <Header onStart={goToBuilder} onSignIn={goToSignIn} />
-              <LandingPage onStart={goToBuilder} onUpload={goToBuilder} />
+              <Header onStart={goToBuilder} />
+              <LandingPage onStart={goToBuilder} />
             </>
           }
         />
