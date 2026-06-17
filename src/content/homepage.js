@@ -14,13 +14,44 @@ export const HOME_TRUST_ITEMS = ["No sign-up needed", "ATS-optimized", "5-minute
 
 export const HOME_CITY_PILLS = ["Dubai", "London", "Toronto", "Lagos"];
 
-export const HOME_BUILD_STEPS = [
-  "Choose a template",
-  "Upload your existing CV (optional)",
-  "Fill in your personal information",
-  "Add work experience and education",
-  "Review your CV strength score",
-  "Download your CV as PDF",
+export const HOME_HOW_IT_WORKS_TITLE = "Build a professional CV in minutes";
+
+export const HOME_HOW_IT_WORKS_SUBTITLE =
+  "Choose a template, add or import your details, improve your wording with AI, and download an ATS-friendly PDF for free.";
+
+export const HOME_HOW_IT_WORKS_BADGES = ["No sign-up needed", "ATS-friendly", "Free PDF download"];
+
+export const HOME_HOW_IT_WORKS_STEPS = [
+  {
+    title: "Choose a template",
+    body: "Start with a job-specific layout for hospitality, IT, finance, engineering, logistics, skilled work, or general roles.",
+  },
+  {
+    title: "Upload or start from scratch",
+    body: "Import your existing CV or type your details manually in the guided builder.",
+  },
+  {
+    title: "Add your key details",
+    body: "Review personal information, work history, education, skills, languages, certifications, and optional global hiring fields.",
+  },
+  {
+    title: "Improve with AI",
+    body: "Rewrite weak descriptions, fix grammar, and turn basic duties into professional CV wording before you approve them.",
+  },
+  {
+    title: "Check your CV strength",
+    body: "Use the live preview and CV score to see what is complete and what still needs improvement.",
+  },
+  {
+    title: "Download or save",
+    body: "Download an ATS-friendly PDF for free, or sign in to save and manage versions online.",
+  },
+];
+
+export const HOME_HOW_IT_WORKS_STATS = [
+  ["5 min", "Average build time"],
+  ["8+", "Job categories"],
+  ["100%", "Free PDF download"],
 ];
 
 export const HOME_VIDEO = {
@@ -42,10 +73,10 @@ export const HOME_PROOF_CARDS = [
 ];
 
 export const HOME_FEATURES = [
-  ["sparkle", "AI writing assist", "Check spelling, grammar, and rewrite rough duties into clear professional wording before you approve it."],
-  ["eye", "Live preview", "See your CV update as you type, with a strength score to guide what still needs attention."],
-  ["qr", "Share via link or QR", "Export and share your finished CV in ways that work for recruiters and mobile users."],
-  ["briefcase", "Global-ready fields", "Add languages, visa status, nationality, driving license, LinkedIn, salary, and references only when needed."],
+  ["globe", "Translate CV into another language", "Upload your current CV, choose your output language, and let AI rewrite it into a professional resume format you can still edit before download."],
+  ["download", "Free download through email OTP", "Unlock your CV download with a quick email OTP step, with no credit card and no hidden paywall."],
+  ["file", "Save CVs online with a free account", "Sign up to keep cloud-based CV copies, manage saved versions, and return later to edit or download again."],
+  ["eye", "Live preview and ATS score", "See every change instantly and follow your CV strength score before you export your final PDF or Word file."],
 ];
 
 export const HOME_TESTIMONIALS = [

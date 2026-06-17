@@ -28,11 +28,14 @@ import {
 import { blogArticles } from "./data/blogArticles";
 import { faqs } from "./data/siteContent";
 import {
-  HOME_BUILD_STEPS,
   HOME_CITY_PILLS,
   HOME_EYEBROW,
   HOME_FEATURES,
   HOME_H1,
+  HOME_HOW_IT_WORKS_BADGES,
+  HOME_HOW_IT_WORKS_SUBTITLE,
+  HOME_HOW_IT_WORKS_TITLE,
+  HOME_HOW_IT_WORKS_STEPS,
   HOME_META_DESCRIPTION,
   HOME_META_TITLE,
   HOME_SUBHEAD,
@@ -441,6 +444,7 @@ function Icon({ name, className = "h-5 w-5" }) {
     upload: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M17 8l-5-5-5 5" /><path d="M12 3v12" /></>,
     camera: <><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z" /><circle cx="12" cy="13" r="3" /></>,
     plus: <><path d="M12 5v14" /><path d="M5 12h14" /></>,
+    play: <polygon points="8 5 19 12 8 19 8 5" fill="currentColor" stroke="none" />,
     sparkle: <><path d="M12 3l1.7 5.1L19 10l-5.3 1.9L12 17l-1.7-5.1L5 10l5.3-1.9L12 3z" /><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z" /></>,
     share: <><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.6 10.7l6.8-4.4" /><path d="M8.6 13.3l6.8 4.4" /></>,
     qr: <><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 14h2v2h-2z" /><path d="M19 14h2v2h-2z" /><path d="M14 19h2v2h-2z" /><path d="M19 19h2v2h-2z" /></>,
@@ -588,47 +592,93 @@ function Header({ onStart }) {
   );
 }
 
+function HomeHowItWorksSection({ onStart }) {
+  const steps = HOME_HOW_IT_WORKS_STEPS;
+
+  return (
+    <section className="home-hiw-section" id="how-it-works">
+      <div className="home-hiw-pro-shell">
+        <div className="home-hiw-pro-head">
+          <span className="home-hiw-pro-eyebrow">HOW IT WORKS</span>
+          <h2 className="home-hiw-pro-title">{HOME_HOW_IT_WORKS_TITLE}</h2>
+          <p className="home-hiw-pro-subtitle">{HOME_HOW_IT_WORKS_SUBTITLE}</p>
+        </div>
+
+        <div className="home-hiw-pro-grid">
+          <div className="home-hiw-pro-intro">
+            <div className="home-hiw-pro-intro-card">
+              <p className="home-hiw-pro-kicker">Start fast</p>
+              <h3>Everything follows the same flow as the builder.</h3>
+              <p>
+                Pick a template, import or type your details, improve weak wording with AI, review your live CV score,
+                and download a recruiter-ready PDF in minutes.
+              </p>
+
+              <div className="home-hiw-pro-badges" role="list" aria-label="BuildMyCVNow trust points">
+                {HOME_HOW_IT_WORKS_BADGES.map((badge) => (
+                  <span key={badge} role="listitem">
+                    <Icon name="check" className="h-4 w-4" /> {badge}
+                  </span>
+                ))}
+              </div>
+
+              <button type="button" className="home-hiw-pro-cta" onClick={onStart}>
+                Start my free CV <Icon name="arrow" className="h-4 w-4" />
+              </button>
+            </div>
+
+            <article className="home-hiw-pro-video-card" aria-label="BuildMyCVNow demo video">
+              <div className="home-hiw-pro-video-copy">
+                <span className="home-hiw-pro-video-eyebrow">Demo</span>
+                <h3>Watch the 2-minute walkthrough</h3>
+                <p>See how to choose a template, add your details, improve your CV with AI, and download your PDF.</p>
+              </div>
+
+              <div className="home-hiw-pro-video-frame">
+                <video controls playsInline preload="metadata" poster={HOME_VIDEO.poster} aria-label={HOME_VIDEO.name}>
+                  <source src={HOME_VIDEO.url} type="video/mp4" />
+                  Your browser cannot play this video. Please open it in a new tab.
+                </video>
+              </div>
+
+              <div className="home-hiw-pro-video-actions">
+                <a href={HOME_VIDEO.url} target="_blank" rel="noreferrer" className="home-hiw-pro-video-link">
+                  <Icon name="play" className="h-4 w-4" /> Open walkthrough
+                </a>
+                <span>2 min demo</span>
+              </div>
+            </article>
+          </div>
+
+          <div className="home-hiw-pro-timeline" aria-label="BuildMyCVNow CV builder steps">
+            {steps.map((step, index) => (
+              <article key={step.title} className="home-hiw-pro-step">
+                <div className="home-hiw-pro-step-marker" aria-hidden="true">
+                  <span>{index + 1}</span>
+                </div>
+                <div className="home-hiw-pro-step-card">
+                  <div className="home-hiw-pro-step-top">
+                    <span className="home-hiw-pro-step-label">Step {index + 1}</span>
+                  </div>
+                  <h3>{step.title}</h3>
+                  <p>{step.body}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function LandingPage({ onStart }) {
-  const videoRef = useRef(null);
-  const [playing, setPlaying] = useState(false);
-  const [activeChapter, setActiveChapter] = useState(0);
-  const chapters = [
-    { label: "1. Pick a template", short: "Choose template", time: 0, ts: "0:00" },
-    { label: "2. Fill details", short: "Fill details", time: 28, ts: "0:28" },
-    { label: "3. AI polishes", short: "AI improve", time: 70, ts: "1:10" },
-    { label: "4. Download", short: "Download", time: 105, ts: "1:45" },
-  ];
-  const buildSteps = HOME_BUILD_STEPS;
   const features = HOME_FEATURES;
   const testimonials = [
     ["Maria G.", "F&B Supervisor - Dubai", "MG", "#E6F1FB", "#0C447C", "Got a callback from a Dubai hotel within 3 days of sending my new CV. The hospitality template was exactly what I needed."],
     ["Raj S.", "IT Support - Abu Dhabi", "RS", "#E1F5EE", "#085041", "Super easy. The AI fixed my job descriptions in one click. Downloaded my CV in under 10 minutes."],
     ["Ana N.", "Admin Assistant - Sharjah", "AN", "#EEEDFE", "#3C3489", "Finally a free CV builder that does not ask for my credit card. The PDF looks clean and professional."],
   ];
-  const videoUrl = HEYGEN_DEMO_VIDEO_URL;
-
-  const toggleVideo = async () => {
-    const video = videoRef.current;
-    if (!video) return;
-    if (video.paused) {
-      video.muted = false;
-      await video.play();
-      setPlaying(true);
-    } else {
-      video.pause();
-      setPlaying(false);
-    }
-  };
-
-  const seekTo = async (time, index) => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.currentTime = time;
-    video.muted = false;
-    await video.play();
-    setActiveChapter(index);
-    setPlaying(true);
-  };
 
   return (
     <main id="top" className="landing-page-redesign">
@@ -637,24 +687,39 @@ function LandingPage({ onStart }) {
         description={HOME_META_DESCRIPTION}
       />
       <section className="homepage-clean-hero">
-        <div className="hero-clean-inner">
-          <span className="hero-clean-badge"><Icon name="globe" className="h-3.5 w-3.5" /> Works worldwide</span>
-          <h1>Build a CV that gets you <span>hired</span>.</h1>
-          <p>
-            ATS-friendly templates for job seekers worldwide. Upload your existing CV, polish it with AI, and download free with no sign-up required.
-          </p>
-          <div className="hero-clean-actions">
-            <button type="button" onClick={onStart} className="hero-clean-primary">
-              <Icon name="file" className="h-4 w-4" /> Create my CV - free
-            </button>
-            <a href="#how-it-works" className="hero-clean-secondary">
-              <Icon name="upload" className="h-4 w-4" /> See how upload works
-            </a>
+        <div className="hero-clean-inner hero-clean-layout">
+          <div className="hero-clean-copy">
+            <span className="hero-clean-badge"><Icon name="globe" className="h-3.5 w-3.5" /> Works worldwide</span>
+            <h1>Build a CV that gets you <span>hired</span>.</h1>
+            <p>
+              ATS-friendly templates for job seekers worldwide. Upload your existing CV, polish it with AI, and download free with no sign-up required.
+            </p>
+            <div className="hero-clean-actions">
+              <button type="button" onClick={onStart} className="hero-clean-primary">
+                <Icon name="file" className="h-4 w-4" /> Create my CV - free
+              </button>
+              <a href="#how-it-works" className="hero-clean-secondary">
+                <Icon name="upload" className="h-4 w-4" /> See how upload works
+              </a>
+            </div>
+            <div className="hero-clean-trust" role="list">
+              {["No sign-up to download", "ATS-optimised format", "Ready in 5 minutes", "PDF download free"].map((item) => (
+                <span key={item} role="listitem"><Icon name="check" className="h-4 w-4" /> {item}</span>
+              ))}
+            </div>
           </div>
-          <div className="hero-clean-trust" role="list">
-            {["No sign-up to download", "ATS-optimised format", "Ready in 5 minutes", "PDF download free"].map((item) => (
-              <span key={item} role="listitem"><Icon name="check" className="h-4 w-4" /> {item}</span>
+
+          <div className="hero-cv-visual hero-cv-gallery" aria-label="Sample CV previews for hotel receptionist and mechanical engineer roles">
+            {[
+              ["/assets/hotel-receptionist-cv.png", "Hotel Receptionist CV", "Hotel Receptionist"],
+              ["/assets/mechanical-engineer-cv.png", "Mechanical Engineer CV", "Mechanical Engineer"],
+            ].map(([src, alt, role], index) => (
+              <figure key={alt} className={`hero-cv-image-card ${index === 0 ? "primary" : "secondary"}`}>
+                <img src={src} alt={alt} className="hero-cv-image" loading="eager" />
+                <figcaption>{role}</figcaption>
+              </figure>
             ))}
+            <div className="hero-cv-floating-note">Real CV previews from BuildMyCVNow templates</div>
           </div>
         </div>
       </section>
@@ -672,75 +737,7 @@ function LandingPage({ onStart }) {
         ))}
       </section>
 
-      <section className="video-section" id="how-it-works">
-        <div className="section-eyebrow">See it in action</div>
-        <h2 className="section-title">{HOME_VIDEO.title}</h2>
-        <p className="section-sub">{HOME_VIDEO.subtitle}</p>
-        <div className="video-wrapper">
-          <div className="browser-chrome">
-            <div className="browser-bar">
-              <div className="browser-dots" aria-hidden="true"><span /><span /><span /></div>
-              <div className="browser-url">buildmycvnow.com/builder</div>
-            </div>
-            <div className="video-screen">
-              <video
-                ref={videoRef}
-                className="demo-video"
-                src={videoUrl}
-                poster={HEYGEN_DEMO_POSTER_URL}
-                preload="metadata"
-                playsInline
-                loop
-                onPlay={() => setPlaying(true)}
-                onPause={() => setPlaying(false)}
-                controls
-              />
-              {!playing && (
-                <button type="button" className="play-overlay" onClick={toggleVideo} aria-label="Play CV builder demo">
-                  <span className="play-btn"><svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3" /></svg></span>
-                  <span className="video-badge">2 min demo - no audio needed</span>
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="chapter-pills" aria-label="Demo steps">
-            {chapters.map((chapter, index) => (
-              <button key={chapter.label} type="button" className={`chapter-pill ${activeChapter === index ? "active" : ""}`} onClick={() => seekTo(chapter.time, index)}>
-                {chapter.label}
-              </button>
-            ))}
-          </div>
-          <div className="chapter-timestamps">
-            {chapters.map((chapter, index) => (
-              <button key={chapter.ts} type="button" className="ts-link" onClick={() => seekTo(chapter.time, index)}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-                {chapter.ts} - {chapter.short}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="build-steps-panel">
-          <h3>How to Build Your CV</h3>
-          <div className="build-steps-grid">
-            {buildSteps.map((step, index) => (
-              <div key={step} className="build-step-card">
-                <span>Step {index + 1}</span>
-                <p>{step}</p>
-              </div>
-            ))}
-          </div>
-          <p className="build-step-tip">Tip: You can switch templates at any time without losing your data.</p>
-        </div>
-        <div className="stats-row">
-          {[
-            ["5 min", "avg. time to finish"],
-            ["8+", "job-specific templates"],
-            ["100%", "free to download"],
-          ].map(([num, label]) => (
-            <div key={num} className="stat-card"><div className="stat-num">{num}</div><div className="stat-label">{label}</div></div>
-          ))}
-        </div>
-      </section>
+      <HomeHowItWorksSection onStart={onStart} />
 
       <TemplatesSectionV3 onStart={onStart} />
 
@@ -1137,9 +1134,6 @@ function SiteFooter({ onStart }) {
   );
 }
 
-const HEYGEN_DEMO_VIDEO_URL = "https://resource2.heygen.ai/video/transcode/37034e74791e4040830908c8fe32f8a0/v45300492faf240b39a88f9905a3267a9/1920x1080_caption.mp4";
-const HEYGEN_DEMO_POSTER_URL = "https://dynamic.heygen.ai/aws_pacific/avatar_tmp/021c62749e9c473098175a3fcc2354c1/v45300492faf240b39a88f9905a3267a9/37034e74791e4040830908c8fe32f8a0.jpeg";
-
 function IPhonePortraitDisplay({ onStart }) {
   return (
     <section id="mobile-preview" className="border-y border-slate-200 bg-white px-5 py-16">
@@ -1157,8 +1151,8 @@ function IPhonePortraitDisplay({ onStart }) {
             </span>
           </div>
           <div className="landing-video-frame">
-            <video controls playsInline preload="metadata" poster={HEYGEN_DEMO_POSTER_URL} aria-label="How to create and download your CV for free">
-              <source src={HEYGEN_DEMO_VIDEO_URL} type="video/mp4" />
+            <video controls playsInline preload="metadata" poster={HOME_VIDEO.poster} aria-label={HOME_VIDEO.name}>
+              <source src={HOME_VIDEO.url} type="video/mp4" />
               Your browser cannot play this video. Please open the video in a new tab.
             </video>
           </div>
@@ -1239,7 +1233,11 @@ function ExistingCVImporter({ onImport }) {
       const translated = await translateCvDetails(extracted, selectedLanguage, improveWording);
       onImport(translated);
       const sourceLanguage = translated.originalLanguage || extracted.originalLanguage || "detected language";
-      setStatus(`Done. Original language: ${sourceLanguage}. Output language: ${translated.outputLanguage || selectedLanguage}. Review and edit before download.`);
+      if (translated.translationFallback) {
+        setStatus(`AI translation is currently unavailable. The imported CV stayed in ${sourceLanguage}. You can still edit it manually before download.`);
+      } else {
+        setStatus(`Done. Original language: ${sourceLanguage}. Output language: ${translated.outputLanguage || selectedLanguage}. Review and edit before download.`);
+      }
     } catch (error) {
       setStatus(error.message);
     } finally {
@@ -2058,6 +2056,7 @@ async function translateCvDetails(cv, outputLanguage = "English", improveWording
     outputLanguage,
     originalLanguage: cv.originalLanguage || "Auto-detected",
     languageDirection: isArabicLanguage(outputLanguage) ? "rtl" : "ltr",
+    translationFallback: true,
   };
 }
 
