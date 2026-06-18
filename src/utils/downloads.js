@@ -80,8 +80,50 @@ const cvContactLines = (cv) =>
     cv.portfolioUrl ? `Portfolio: ${cv.portfolioUrl}` : "",
   ].filter(Boolean);
 
-const inlineContactHtml = (lines = []) =>
-  lines.map((line) => `<span>${escapeHtml(line)}</span>`).join("<span class=\"contact-separator\">|</span>");
+const exportIconSvg = (name) => {
+  const attrs = `viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"`;
+  const icons = {
+    mail: `<svg ${attrs}><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m4 7 8 6 8-6"></path></svg>`,
+    phone: `<svg ${attrs}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.86 19.86 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.86 19.86 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.33 1.78.62 2.63a2 2 0 0 1-.45 2.11L8 9.73a16 16 0 0 0 6.27 6.27l1.27-1.28a2 2 0 0 1 2.11-.45c.85.29 1.73.5 2.63.62A2 2 0 0 1 22 16.92z"></path></svg>`,
+    pin: `<svg ${attrs}><path d="M12 21s-6-4.35-6-10a6 6 0 1 1 12 0c0 5.65-6 10-6 10z"></path><circle cx="12" cy="11" r="2.5"></circle></svg>`,
+    briefcase: `<svg ${attrs}><rect x="2" y="7" width="20" height="14" rx="2"></rect><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"></path></svg>`,
+    graduation: `<svg ${attrs}><path d="m2 9 10-5 10 5-10 5-10-5z"></path><path d="M6 11v4.5c0 .8 2.7 2.5 6 2.5s6-1.7 6-2.5V11"></path><path d="M22 9v6"></path></svg>`,
+    award: `<svg ${attrs}><circle cx="12" cy="8" r="5"></circle><path d="m8.2 13.9-1.4 6.1L12 17l5.2 3-1.4-6.1"></path></svg>`,
+    sparkle: `<svg ${attrs}><path d="M12 3l1.7 5.1L19 10l-5.3 1.9L12 17l-1.7-5.1L5 10l5.3-1.9L12 3z"></path><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z"></path></svg>`,
+    user: `<svg ${attrs}><path d="M20 21a8 8 0 0 0-16 0"></path><circle cx="12" cy="7" r="4"></circle></svg>`,
+    globe: `<svg ${attrs}><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15.3 15.3 0 0 1 0 20"></path><path d="M12 2a15.3 15.3 0 0 0 0 20"></path></svg>`,
+    folder: `<svg ${attrs}><path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6z"></path></svg>`,
+    file: `<svg ${attrs}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M9 15h6"></path><path d="M9 11h2"></path></svg>`,
+  };
+  return icons[name] || icons.file;
+};
+
+const exportSectionIcon = (id) => ({
+  summary: "file",
+  experience: "briefcase",
+  education: "graduation",
+  educationProjects: "folder",
+  skills: "sparkle",
+  certifications: "award",
+  languages: "globe",
+  references: "user",
+  personalDetails: "user",
+}[id] || "file");
+
+const exportHeadingHtml = (title, iconName) =>
+  `<h2><span class="section-icon">${exportIconSvg(iconName)}</span><span>${escapeHtml(title)}</span></h2>`;
+
+const cvContactItems = (cv) =>
+  [
+    cv.email ? { icon: "mail", value: cv.email } : null,
+    cv.phone ? { icon: "phone", value: cv.phone } : null,
+    cv.country ? { icon: "pin", value: cv.country } : null,
+    cv.linkedIn ? { icon: "globe", value: `LinkedIn: ${cv.linkedIn}` } : null,
+    cv.portfolioUrl ? { icon: "globe", value: `Portfolio: ${cv.portfolioUrl}` } : null,
+  ].filter(Boolean);
+
+const inlineContactHtml = (items = []) =>
+  items.map((item) => `<span class="contact-item"><span class="contact-icon">${exportIconSvg(item.icon)}</span><span>${escapeHtml(item.value)}</span></span>`).join("");
 
 const cvPersonalDetails = (cv) =>
   [
@@ -124,6 +166,17 @@ const exportPhotoShapeClass = (shape = "circle") => {
   if (shape === "circle" || shape === "round") return "round";
   if (shape === "rounded") return "rounded";
   return "square";
+};
+
+const getCvPageBorderConfig = (cv = {}) => {
+  const preset = ["1cm", "1in", "custom"].includes(cv.pageBorderPreset) ? cv.pageBorderPreset : "1cm";
+  if (preset === "1cm") return { preset, unit: "cm", value: 1, inches: 1 / 2.54, millimeters: 10 };
+  if (preset === "1in") return { preset, unit: "in", value: 1, inches: 1, millimeters: 25.4 };
+  const unit = cv.pageBorderUnit === "in" ? "in" : "cm";
+  const parsed = Number.parseFloat(cv.pageBorderValue);
+  const safeValue = Number.isFinite(parsed) ? Math.min(3, Math.max(0, parsed)) : 1;
+  const inches = unit === "in" ? safeValue : safeValue / 2.54;
+  return { preset, unit, value: safeValue, inches, millimeters: inches * 25.4 };
 };
 
 const hexToDocxColor = (value = "#0f66d0") => String(value || "#0f66d0").replace("#", "").slice(0, 6).toUpperCase();
@@ -233,14 +286,14 @@ const referencesHtml = (references) => {
 
 const cvSectionHtml = (cv, id) => {
   const sections = {
-    summary: `<div class="section"><h2>Professional Summary</h2><p>${escapeHtml(cleanExportText(cv.summary))}</p></div>`,
-    experience: `<div class="section"><h2>Work Experience</h2>${workExperienceHtml(cv)}</div>`,
-    education: `<div class="section"><h2>Education</h2><p>${escapeHtml(cleanExportText(cv.education))}</p></div>`,
-    educationProjects: `<div class="section"><h2>Projects</h2><p>${escapeHtml(cleanExportText(cv.projects))}</p></div>`,
-    skills: `<div class="section"><h2>Skills</h2><p>${escapeHtml(cleanExportText(cv.skills))}</p></div>`,
-    certifications: `<div class="section"><h2>Certifications</h2><p>${escapeHtml(cleanExportText(cv.certifications))}</p></div>`,
-    languages: `<div class="section"><h2>Languages</h2><p>${escapeHtml(cleanExportText(cv.languages))}</p></div>`,
-    references: `<div class="section references-block"><h2>References</h2>${referencesHtml(cv.references)}</div>`,
+    summary: `<div class="section">${exportHeadingHtml("Professional Summary", exportSectionIcon("summary"))}<p>${escapeHtml(cleanExportText(cv.summary))}</p></div>`,
+    experience: `<div class="section">${exportHeadingHtml("Work Experience", exportSectionIcon("experience"))}${workExperienceHtml(cv)}</div>`,
+    education: `<div class="section">${exportHeadingHtml("Education", exportSectionIcon("education"))}<p>${escapeHtml(cleanExportText(cv.education))}</p></div>`,
+    educationProjects: `<div class="section">${exportHeadingHtml("Projects", exportSectionIcon("educationProjects"))}<p>${escapeHtml(cleanExportText(cv.projects))}</p></div>`,
+    skills: `<div class="section">${exportHeadingHtml("Skills", exportSectionIcon("skills"))}<p>${escapeHtml(cleanExportText(cv.skills))}</p></div>`,
+    certifications: `<div class="section">${exportHeadingHtml("Certifications", exportSectionIcon("certifications"))}<p>${escapeHtml(cleanExportText(cv.certifications))}</p></div>`,
+    languages: `<div class="section">${exportHeadingHtml("Languages", exportSectionIcon("languages"))}<p>${escapeHtml(cleanExportText(cv.languages))}</p></div>`,
+    references: `<div class="section references-block">${exportHeadingHtml("References", exportSectionIcon("references"))}${referencesHtml(cv.references)}</div>`,
   };
   return sections[id] || "";
 };
@@ -375,6 +428,8 @@ const downloadCvDocx = async (cv, filename, theme = { color: "#0f66d0", dark: "#
   const { AlignmentType, Document, ImageRun, Packer, Paragraph, TextRun } = await import("docx");
   const accent = hexToDocxColor(theme.color);
   const dark = hexToDocxColor(theme.dark);
+  const pageBorder = getCvPageBorderConfig(cv);
+  const docMargin = Math.round(pageBorder.inches * 1440);
   const photo = await profilePhotoDataForDocx(cv.profilePhoto);
   const paragraph = (text = "", options = {}) =>
     new Paragraph({
@@ -461,7 +516,7 @@ const downloadCvDocx = async (cv, filename, theme = { color: "#0f66d0", dark: "#
       {
         properties: {
           page: {
-            margin: { top: 720, right: 720, bottom: 720, left: 720 },
+            margin: { top: docMargin, right: docMargin, bottom: docMargin, left: docMargin },
           },
         },
         children: [
@@ -482,6 +537,8 @@ const downloadCvDocx = async (cv, filename, theme = { color: "#0f66d0", dark: "#
 
 export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a" }, layout = "classic") => {
   const isRtl = cv.languageDirection === "rtl" || isArabicLanguage(cv.outputLanguage);
+  const pageBorder = getCvPageBorderConfig(cv);
+  const pageBorderPx = Math.round(pageBorder.inches * 96);
   const qrConfig = { ...defaultQrCode, ...(cv.qrCode || {}) };
   const qrSvg = await buildQrSvg(qrConfig, cv.linkedIn || cv.portfolioUrl, layout === "sidebar" && qrConfig.position === "sidebar" ? "#FFFFFF" : "#1E293B");
   const qrHeader = qrConfig.position === "header" ? qrBlockHtml(qrSvg, qrConfig.label, 64) : "";
@@ -494,18 +551,20 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
       <style>
         * { box-sizing: border-box; }
         html { background: #ffffff; }
-        body { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 10mm 11mm; font-family: Arial, sans-serif; font-size: 11px; color: #111827; line-height: 1.38; background: #ffffff; overflow-wrap: anywhere; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        body { width: 210mm; min-height: 297mm; margin: 0 auto; padding: ${pageBorder.millimeters}mm; font-family: Arial, sans-serif; font-size: 11px; color: #111827; line-height: 1.38; background: #ffffff; overflow-wrap: anywhere; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         body.rtl { direction: rtl; text-align: right; }
         body.rtl ul { padding-left: 0; padding-right: 18px; }
         h1 { color: #0f172a; margin: 0 0 3px; font-size: 26px; line-height: 1.12; }
-        h2 { color: ${theme.dark}; border-bottom: 1px solid ${theme.color}; padding-bottom: 4px; margin: 14px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0; }
+        h2 { color: ${theme.dark}; border-bottom: 1px solid ${theme.color}; padding-bottom: 4px; margin: 14px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0; display: flex; align-items: center; gap: 6px; }
         p { margin: 0 0 8px; white-space: pre-line; }
         ul { margin: 0; padding-left: 18px; }
         li { margin-bottom: 3px; break-inside: auto; page-break-inside: auto; }
+        .section-icon, .contact-icon { display: inline-flex; align-items: center; justify-content: center; }
+        .section-icon svg, .contact-icon svg { width: 12px; height: 12px; }
         .header { display: flex; gap: 12px; align-items: center; border-bottom: 3px solid ${theme.color}; padding-bottom: 12px; margin-bottom: 10px; min-width: 0; }
         .header-main { flex: 1 1 auto; min-width: 0; }
-        .contact { display: flex; flex-wrap: wrap; gap: 2px 7px; align-items: center; color: #4b5563; font-size: 11px; line-height: 1.35; overflow-wrap: anywhere; }
-        .contact-separator { color: #cbd5e1; }
+        .contact { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; color: #4b5563; font-size: 11px; line-height: 1.35; overflow-wrap: anywhere; }
+        .contact-item { display: inline-flex; align-items: center; gap: 4px; }
         .title { color: ${theme.color}; font-weight: 700; }
         .photo { width: 78px; height: 78px; object-fit: cover; flex: 0 0 auto; }
         .round { border-radius: 999px; }
@@ -521,7 +580,7 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
         .qr-block { display: grid; justify-items: center; gap: 3px; text-align: center; color: inherit; }
         .qr-svg svg { display: block; width: 100%; height: 100%; }
         .qr-block p { margin: 0; font-size: 8pt; line-height: 1.15; }
-        .sidebar-paper { display: grid; grid-template-columns: 38% 62%; min-height: 970px; padding: 0; }
+        .sidebar-paper { display: grid; grid-template-columns: 38% 62%; min-height: ${Math.max(760, 1123 - pageBorderPx * 2)}px; padding: 0; }
         .sidebar { background: ${theme.dark}; color: #ffffff; padding: 20px 24px 28px; }
         .sidebar-header { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 20px; }
         .photo-container { width: 100%; display: flex; justify-content: center; margin-bottom: 20px; }
@@ -534,6 +593,7 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
         .sidebar-name { margin: 0; color: #ffffff; font-size: 24px; line-height: 1.15; }
         .sidebar-title { margin: 8px 0 0; color: rgba(255,255,255,0.88); font-size: 14px; font-weight: 700; }
         .sidebar-contact { margin-top: 28px; color: rgba(255,255,255,0.86); font-size: 11px; line-height: 1.8; text-align: left; }
+        .sidebar-contact p { display: flex; align-items: center; gap: 5px; margin-bottom: 6px; }
         .main-content { padding: 20px; min-width: 0; }
         .credit-footer { margin: 24px 0 0; padding-top: 12px; border-top: 1px solid #e5e7eb; color: #9ca3af; font-size: 7pt; text-align: center; }
       </style>
@@ -552,12 +612,12 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
             </div>
           </div>
           <div class="sidebar-contact">
-            ${cvContactLines(cv).map((line) => `<p>${escapeHtml(line)}</p>`).join("")}
+            ${cvContactItems(cv).map((item) => `<p><span class="contact-icon">${exportIconSvg(item.icon)}</span><span>${escapeHtml(item.value)}</span></p>`).join("")}
           </div>
           ${qrSidebar}
         </aside>
         <main class="main-content">
-          ${cvPersonalDetails(cv).length ? `<div class="section"><h2>Personal Details</h2><p>${escapeHtml(cvPersonalDetails(cv).join("\n"))}</p></div>` : ""}
+          ${cvPersonalDetails(cv).length ? `<div class="section">${exportHeadingHtml("Personal Details", exportSectionIcon("personalDetails"))}<p>${escapeHtml(cvPersonalDetails(cv).join("\n"))}</p></div>` : ""}
           ${visibleSectionOrder(cv).map((id) => cvSectionHtml(cv, id)).join("")}
         </main>
       </div>` : `
@@ -566,11 +626,11 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
         <div class="header-main">
           <h1>${escapeHtml(cv.fullName)}</h1>
           <p class="title">${escapeHtml(cv.jobTitle)}</p>
-          <p class="contact">${inlineContactHtml(cvContactLines(cv))}</p>
+          <p class="contact">${inlineContactHtml(cvContactItems(cv))}</p>
         </div>
         ${qrHeader}
       </div>
-      ${cvPersonalDetails(cv).length ? `<div class="section"><h2>Personal Details</h2><p>${escapeHtml(cvPersonalDetails(cv).join("\n"))}</p></div>` : ""}
+      ${cvPersonalDetails(cv).length ? `<div class="section">${exportHeadingHtml("Personal Details", exportSectionIcon("personalDetails"))}<p>${escapeHtml(cvPersonalDetails(cv).join("\n"))}</p></div>` : ""}
       ${visibleSectionOrder(cv).map((id) => cvSectionHtml(cv, id)).join("")}
       ${qrFooter}
       `}
