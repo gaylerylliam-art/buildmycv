@@ -63,6 +63,11 @@ import {
 const defaultCategory = categories[0];
 const defaultSectionOrder = ["summary", "experience", "education", "skills", "educationProjects", "certifications", "languages", "references"];
 const defaultQrCode = { enabled: false, url: "", label: "Scan for LinkedIn", position: "header" };
+const pageBorderPresets = [
+  { id: "1cm", label: "1 cm", unit: "cm", value: 1 },
+  { id: "1in", label: "1 inch", unit: "in", value: 1 },
+  { id: "custom", label: "Custom" },
+];
 const createReferenceEntry = () => ({
   id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
   name: "",
@@ -225,6 +230,25 @@ const photoShapeClass = (shape = "circle", roundedClass = "rounded-xl") => {
   return "rounded-none";
 };
 
+const getCvPageBorderConfig = (cv = {}) => {
+  const preset = pageBorderPresets.some((option) => option.id === cv.pageBorderPreset) ? cv.pageBorderPreset : "1cm";
+  if (preset === "1cm") return { preset, unit: "cm", value: 1, inches: 1 / 2.54, millimeters: 10 };
+  if (preset === "1in") return { preset, unit: "in", value: 1, inches: 1, millimeters: 25.4 };
+  const unit = cv.pageBorderUnit === "in" ? "in" : "cm";
+  const parsed = Number.parseFloat(cv.pageBorderValue);
+  const safeValue = Number.isFinite(parsed) ? Math.min(3, Math.max(0, parsed)) : 1;
+  const inches = unit === "in" ? safeValue : safeValue / 2.54;
+  return {
+    preset,
+    unit,
+    value: safeValue,
+    inches,
+    millimeters: inches * 25.4,
+  };
+};
+
+const getCvPageBorderPixels = (cv = {}) => Math.round(getCvPageBorderConfig(cv).inches * 96);
+
 const hasUserEnteredCvData = (cv) => {
   const meaningfulFields = [
     "fullName",
@@ -283,6 +307,9 @@ const initialCv = {
   industry: "general",
   tipsEnabled: true,
   qrCode: defaultQrCode,
+  pageBorderPreset: "1cm",
+  pageBorderUnit: "cm",
+  pageBorderValue: "1",
   showCredit: true,
   references: defaultReferences,
   sectionOrder: defaultSectionOrder,
@@ -431,6 +458,13 @@ function Icon({ name, className = "h-5 w-5" }) {
   };
   const paths = {
     file: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M9 15h6" /><path d="M9 11h2" /></>,
+    mail: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m4 7 8 6 8-6" /></>,
+    phone: <><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.86 19.86 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.86 19.86 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.33 1.78.62 2.63a2 2 0 0 1-.45 2.11L8 9.73a16 16 0 0 0 6.27 6.27l1.27-1.28a2 2 0 0 1 2.11-.45c.85.29 1.73.5 2.63.62A2 2 0 0 1 22 16.92z" /></>,
+    pin: <><path d="M12 21s-6-4.35-6-10a6 6 0 1 1 12 0c0 5.65-6 10-6 10z" /><circle cx="12" cy="11" r="2.5" /></>,
+    graduation: <><path d="m2 9 10-5 10 5-10 5-10-5z" /><path d="M6 11v4.5c0 .8 2.7 2.5 6 2.5s6-1.7 6-2.5V11" /><path d="M22 9v6" /></>,
+    award: <><circle cx="12" cy="8" r="5" /><path d="m8.2 13.9-1.4 6.1L12 17l5.2 3-1.4-6.1" /></>,
+    folder: <><path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6z" /></>,
+    user: <><path d="M20 21a8 8 0 0 0-16 0" /><circle cx="12" cy="7" r="4" /></>,
     arrow: <><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></>,
     check: <path d="m20 6-11 11-5-5" />,
     alert: <><path d="M12 9v4" /><path d="M12 17h.01" /><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></>,
@@ -2386,34 +2420,138 @@ function LayoutSelector({ selected, onSelect }) {
   );
 }
 
+function PageBorderSelector({ cv, onChange }) {
+  const current = getCvPageBorderConfig(cv);
+  const selectPreset = (presetId) => {
+    if (presetId === "1cm") {
+      onChange("pageBorderPreset", "1cm");
+      onChange("pageBorderUnit", "cm");
+      onChange("pageBorderValue", "1");
+      return;
+    }
+    if (presetId === "1in") {
+      onChange("pageBorderPreset", "1in");
+      onChange("pageBorderUnit", "in");
+      onChange("pageBorderValue", "1");
+      return;
+    }
+    onChange("pageBorderPreset", "custom");
+  };
+
+  return (
+    <section>
+      <h3 className="panel-title">Page borders</h3>
+      <p className="mt-2 text-xs font-bold leading-5 text-slate-500">Apply the page margin to preview and CV download.</p>
+      <div className="page-border-options mt-3">
+        {pageBorderPresets.map((option) => (
+          <button
+            key={option.id}
+            type="button"
+            onClick={() => selectPreset(option.id)}
+            className={`page-border-option ${current.preset === option.id ? "selected" : ""}`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      {current.preset === "custom" && (
+        <div className="mt-3 grid gap-3 sm:grid-cols-[120px_minmax(0,1fr)]">
+          <label className="grid gap-2">
+            <span className="text-xs font-black uppercase tracking-wide text-slate-500">Unit</span>
+            <select
+              className="form-field"
+              value={current.unit}
+              onChange={(event) => {
+                onChange("pageBorderPreset", "custom");
+                onChange("pageBorderUnit", event.target.value);
+              }}
+            >
+              <option value="cm">Centimeters</option>
+              <option value="in">Inches</option>
+            </select>
+          </label>
+          <label className="grid gap-2">
+            <span className="text-xs font-black uppercase tracking-wide text-slate-500">Size</span>
+            <input
+              className="form-field"
+              type="number"
+              min="0"
+              max="3"
+              step={current.unit === "cm" ? "0.1" : "0.05"}
+              value={cv.pageBorderValue ?? ""}
+              onChange={(event) => {
+                onChange("pageBorderPreset", "custom");
+                onChange("pageBorderValue", event.target.value);
+              }}
+            />
+          </label>
+        </div>
+      )}
+      <p className="mt-2 text-xs font-bold text-slate-500">
+        Current border: {current.unit === "cm" ? `${current.value} cm` : `${current.value} inch${current.value === 1 ? "" : "es"}`}
+      </p>
+    </section>
+  );
+}
+
 function LiveCVPreview({ cv, theme, layout }) {
   const isRtl = cv.languageDirection === "rtl" || isArabicLanguage(cv.outputLanguage);
+  const pageBorderPadding = getCvPageBorderPixels(cv);
   const lines = (value) => String(value || "").split("\n").filter(Boolean);
   const chunks = (items, size) => {
     const result = [];
     for (let index = 0; index < items.length; index += size) result.push(items.slice(index, index + size));
     return result.length ? result : [[]];
   };
-  const contactLines = [
-    cv.email,
-    cv.phone,
-    cv.country,
-    cv.linkedIn && `LinkedIn: ${cv.linkedIn}`,
-    cv.portfolioUrl && `Portfolio: ${cv.portfolioUrl}`,
+  const contactItems = [
+    cv.email ? { id: "email", icon: "mail", label: "Email", value: cv.email } : null,
+    cv.phone ? { id: "phone", icon: "phone", label: "Contact Number", value: cv.phone } : null,
+    cv.country ? { id: "country", icon: "pin", label: "Location", value: cv.country } : null,
+    cv.linkedIn ? { id: "linkedin", icon: "globe", label: "LinkedIn", value: cv.linkedIn } : null,
+    cv.portfolioUrl ? { id: "portfolio", icon: "globe", label: "Portfolio", value: cv.portfolioUrl } : null,
   ].filter(Boolean);
+  const contactLines = contactItems.map((item) => item.value);
   const personalDetails = [
     cv.nationality && `Nationality: ${cv.nationality}`,
     cv.visaStatus && `Visa Status: ${cv.visaStatus}`,
     cv.drivingLicense && `Driving License: ${cv.drivingLicense}`,
     cv.expectedSalaryEnabled && cv.expectedSalary && `Expected Salary: ${cv.expectedSalary}`,
   ].filter(Boolean);
+  const sectionIcons = {
+    "Personal Details": "user",
+    "Professional Summary": "file",
+    "Work Experience": "briefcase",
+    "Work Experience continued": "briefcase",
+    Education: "graduation",
+    Projects: "folder",
+    Skills: "sparkle",
+    Certifications: "award",
+    Languages: "globe",
+    References: "user",
+  };
   const photo = (size = "h-16 w-16") =>
     cv.profilePhoto ? (
       <img src={cv.profilePhoto} alt={`${cv.fullName} profile`} className={`${size} object-cover ${photoShapeClass(cv.photoShape, "rounded-xl")}`} />
     ) : null;
+  const renderSectionHeading = (title) => (
+    <div className="cv-section-heading">
+      <span className="cv-section-icon" style={{ color: theme.color, borderColor: `${theme.color}33`, backgroundColor: `${theme.color}14` }}>
+        <Icon name={sectionIcons[title] || "file"} className="h-3.5 w-3.5" />
+      </span>
+      <h3 className="cv-section-title" style={{ color: theme.dark, borderColor: theme.color }}>{title}</h3>
+    </div>
+  );
+  const renderContactItem = (item, tone = "muted") => (
+    <div key={item.id} className={`cv-contact-item ${tone === "light" ? "light" : ""}`}>
+      <span className="cv-contact-icon">
+        <Icon name={item.icon} className="h-3.5 w-3.5" />
+      </span>
+      <span>{item.value}</span>
+    </div>
+  );
   const section = (title, content, list = false) => (
     <section className="break-inside-avoid">
-      <h3 className="cv-section-title" style={{ color: theme.dark, borderColor: theme.color }}>{title}</h3>
+      {renderSectionHeading(title)}
       {list ? <ul className="mt-2 list-disc space-y-1 pl-5 text-[12px] leading-5 text-slate-700">{lines(content).map((line) => <li key={line}>{line}</li>)}</ul> : <p className="mt-2 whitespace-pre-line text-[12px] leading-5 text-slate-700">{content}</p>}
     </section>
   );
@@ -2425,7 +2563,7 @@ function LiveCVPreview({ cv, theme, layout }) {
     if (!visibleEntries.length) return null;
     return (
       <section className="references-preview-block">
-        <h3 className="cv-section-title" style={{ color: theme.dark, borderColor: theme.color }}>References</h3>
+        {renderSectionHeading("References")}
         <div className="references-preview-grid">
           {visibleEntries.map((entry) => (
             <article key={entry.id} className="reference-preview-card">
@@ -2443,7 +2581,7 @@ function LiveCVPreview({ cv, theme, layout }) {
   const workEntries = normalizeWorkExperiences(cv);
   const renderWorkEntry = (block) => (
     <section className="break-inside-avoid">
-      {block.showTitle && <h3 className="cv-section-title" style={{ color: theme.dark, borderColor: theme.color }}>{block.title}</h3>}
+      {block.showTitle && renderSectionHeading(block.title)}
       <article className="mt-3 text-[12px] leading-5 text-slate-700">
         <div className="flex flex-col justify-between gap-1 sm:flex-row">
           <div>
@@ -2525,7 +2663,7 @@ function LiveCVPreview({ cv, theme, layout }) {
         </div>
       </div>
       <div className="sidebar-contact mt-7 space-y-3 text-[11px] leading-5 text-white/85">
-        {contactLines.map((line) => <p key={line}>{line}</p>)}
+        {contactItems.map((item) => renderContactItem(item, "light"))}
       </div>
       {cv.qrCode?.position === "sidebar" && pageIndex === 0 && (
         <div className="mt-7 flex justify-center">
@@ -2540,7 +2678,9 @@ function LiveCVPreview({ cv, theme, layout }) {
       <div>
         <h2 className="text-2xl font-black leading-tight">{cv.fullName}</h2>
         <p className={`mt-1 text-sm font-bold ${layout === "header" ? "text-white/90" : "text-blue-700"}`} style={layout === "header" ? {} : { color: theme.color }}>{cv.jobTitle}</p>
-        <p className={`mt-3 text-[11px] ${layout === "header" ? "text-white/80" : "text-slate-500"}`}>{contactLines.join(" | ")}</p>
+        <div className={`mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[11px] ${layout === "header" ? "text-white/85" : "text-slate-500"}`}>
+          {contactItems.map((item) => renderContactItem(item, layout === "header" ? "light" : "muted"))}
+        </div>
       </div>
       {cv.qrCode?.position === "header" && <div className="absolute right-4 top-4"><QrBlock qrCode={cv.qrCode} color={layout === "header" ? "#ffffff" : "#1E293B"} /></div>}
     </header>
@@ -2551,20 +2691,22 @@ function LiveCVPreview({ cv, theme, layout }) {
         <h2>{cv.fullName || "Candidate Name"}</h2>
         <p>{cv.jobTitle || "Job title"}</p>
       </div>
-      <p>{[cv.email, cv.phone, cv.country].filter(Boolean).join(" | ")}</p>
+      <div className="cv-continuation-contact">
+        {contactItems.filter((item) => ["email", "phone", "country"].includes(item.id)).map((item) => renderContactItem(item, "muted"))}
+      </div>
     </header>
   );
   return (
     <div className={`cv-page-stack ${isRtl ? "cv-rtl" : ""}`} dir={isRtl ? "rtl" : "ltr"} aria-label={`${pages.length} page CV preview`}>
       {pages.map((pageBlocks, pageIndex) => pageIndex > 0 ? (
-        <article key={pageIndex} className={`cv-paper cv-paper-page ${isRtl ? "cv-rtl" : ""} ${layout === "compact" ? "p-6" : "p-8"}`}>
+        <article key={pageIndex} className={`cv-paper cv-paper-page ${isRtl ? "cv-rtl" : ""}`} style={{ padding: `${pageBorderPadding}px` }}>
           {renderContinuationHeader()}
           <div className="mt-6">{renderPageContent(pageBlocks)}</div>
           {cv.qrCode?.position === "footer" && pageIndex === pages.length - 1 && <div className="mt-6 flex justify-center"><QrBlock qrCode={cv.qrCode} color="#1E293B" /></div>}
           <p className="cv-page-number">Page {pageIndex + 1} of {pages.length}</p>
         </article>
       ) : layout === "sidebar" ? (
-        <article key={pageIndex} className={`cv-paper cv-paper-page grid grid-cols-[0.38fr_0.62fr] overflow-hidden p-0 ${isRtl ? "cv-rtl" : ""}`}>
+        <article key={pageIndex} className={`cv-paper cv-paper-page grid grid-cols-[0.38fr_0.62fr] overflow-hidden ${isRtl ? "cv-rtl" : ""}`} style={{ padding: `${pageBorderPadding}px` }}>
           {renderSidebar(pageIndex)}
           <div className="p-7">
             {renderPageContent(pageBlocks)}
@@ -2572,7 +2714,7 @@ function LiveCVPreview({ cv, theme, layout }) {
           </div>
         </article>
       ) : (
-        <article key={pageIndex} className={`cv-paper cv-paper-page ${isRtl ? "cv-rtl" : ""} ${layout === "compact" ? "p-6" : "p-8"}`}>
+        <article key={pageIndex} className={`cv-paper cv-paper-page ${isRtl ? "cv-rtl" : ""}`} style={{ padding: `${pageBorderPadding}px` }}>
           {renderHeader()}
           <div className="mt-6">{renderPageContent(pageBlocks)}</div>
           {cv.qrCode?.position === "footer" && pageIndex === pages.length - 1 && <div className="mt-6 flex justify-center"><QrBlock qrCode={cv.qrCode} color="#1E293B" /></div>}
@@ -4322,6 +4464,7 @@ function CVBuilderApp({ onHome }) {
                 <div className="mt-4 grid gap-4 lg:grid-cols-2">
                   <div className="grid gap-4">
                     <LayoutSelector selected={layoutId} onSelect={setLayoutId} />
+                    <PageBorderSelector cv={cv} onChange={updateCvField} />
                     <button
                       type="button"
                       onClick={() => setSectionReorderOpen(true)}
