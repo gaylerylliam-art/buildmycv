@@ -3392,6 +3392,29 @@ summary {
   border-radius: 0.25rem;
 }
 
+.page-border-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.page-border-option {
+  border: 1px solid #cbd5e1;
+  border-radius: 0.8rem;
+  background: #ffffff;
+  padding: 0.75rem 0.9rem;
+  color: #0f172a;
+  font-size: 0.85rem;
+  font-weight: 900;
+  text-align: center;
+}
+
+.page-border-option.selected {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
 .cv-page-stack {
   display: flex;
   flex-direction: column;
@@ -3430,8 +3453,8 @@ summary {
   padding-right: 1.25rem;
 }
 
-.cv-paper.cv-rtl .cv-continuation-header > p {
-  text-align: left;
+.cv-paper.cv-rtl .cv-continuation-contact {
+  align-items: flex-start;
 }
 
 .cv-continuation-header {
@@ -3457,13 +3480,43 @@ summary {
   font-weight: 800;
 }
 
-.cv-continuation-header > p {
-  max-width: 48%;
+.cv-continuation-contact {
+  display: flex;
+  max-width: 52%;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+}
+
+.cv-contact-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  min-width: 0;
+  color: inherit;
+}
+
+.cv-contact-item.light {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.cv-contact-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  opacity: 0.92;
+}
+
+.cv-contact-item span:last-child {
+  overflow-wrap: anywhere;
+}
+
+.cv-continuation-contact .cv-contact-item {
   color: #64748b;
   font-size: 0.72rem;
   font-weight: 700;
   line-height: 1.5;
-  text-align: right;
 }
 
 @supports not (zoom: 1) {
@@ -3489,11 +3542,29 @@ summary {
 }
 
 .cv-section-title {
+  flex: 1;
   border-bottom-width: 1px;
   padding-bottom: 0.35rem;
   font-size: 0.72rem;
   font-weight: 900;
   text-transform: uppercase;
+}
+
+.cv-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.cv-section-icon {
+  display: inline-flex;
+  height: 1.55rem;
+  width: 1.55rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid;
+  border-radius: 999px;
 }
 
 .builder-app-shell {
