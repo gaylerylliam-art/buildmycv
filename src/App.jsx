@@ -4,7 +4,7 @@ import { closestCenter, DndContext, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { categories, layouts, themes } from "./data/categories";
-import TemplatesSectionV3 from "./components/TemplatesSectionV3";
+import HomeLanding from "./components/HomeLanding";
 import PhotoUploadCrop from "./components/PhotoUploadCrop";
 import ATSPanel from "./components/ATSPanel";
 import { industryOptions, getTips } from "./content/cvTips";
@@ -28,18 +28,12 @@ import {
 import { blogArticles } from "./data/blogArticles";
 import { faqs } from "./data/siteContent";
 import {
-  HOME_CITY_PILLS,
-  HOME_EYEBROW,
-  HOME_FEATURES,
-  HOME_H1,
   HOME_HOW_IT_WORKS_BADGES,
   HOME_HOW_IT_WORKS_SUBTITLE,
   HOME_HOW_IT_WORKS_TITLE,
   HOME_HOW_IT_WORKS_STEPS,
   HOME_META_DESCRIPTION,
   HOME_META_TITLE,
-  HOME_SUBHEAD,
-  HOME_TRUST_ITEMS,
   HOME_VIDEO,
 } from "./content/homepage";
 import { downloadCoverLetterFile, downloadCvFile } from "./utils/downloads";
@@ -48,15 +42,18 @@ import { getRecaptchaToken, isRecaptchaConfigured } from "./utils/recaptcha";
 import {
   deleteUserCv,
   duplicateUserCv,
+  getCvEventSessionId,
   isSupabaseConfigured,
   listUserCvs,
   loadLatestDraftForUser,
+  markCvDownloaded,
   SAVED_CV_LIMIT,
   SAVED_CV_RETENTION_DAYS,
   saveCvForUser,
   saveDraftForUser,
   submitContactMessage,
   supabase,
+  trackCvEvent,
   uploadProfilePhoto,
 } from "./supabaseClient";
 
@@ -82,6 +79,16 @@ const createReferenceEntry = () => ({
 const defaultReferences = { mode: "on-request", entries: [] };
 const translationLanguageOptions = ["English", "French", "German", "Arabic", "Dutch", "Other language"];
 const isArabicLanguage = (language = "") => /arabic|عربي|العربية/i.test(String(language || ""));
+const onboardingStartOptions = [
+  { id: "upload", title: "Upload existing CV", description: "Import your current CV and let the guided builder fill the sections for you.", badge: "Fastest", icon: "upload" },
+  { id: "scratch", title: "Start from scratch", description: "Build a fresh CV with job-specific prompts, live preview, and AI writing help.", badge: "Beginner-friendly", icon: "file" },
+  { id: "targeted", title: "Build CV for a specific job", description: "Set your target role first and tailor your CV around the job you want.", badge: "Best match", icon: "briefcase" },
+  { id: "translate", title: "Translate or improve my CV", description: "Upload, translate, and professionally rewrite your CV before downloading.", badge: "Global", icon: "globe" },
+];
+const onboardingTrustBadges = ["No sign-up needed", "ATS-friendly", "Free PDF download"];
+const cvStylePreferences = ["Modern", "Classic", "Simple", "Executive"];
+const photoPreferences = ["Photo CV", "No-photo CV", "Decide later"];
+const onboardingExperienceLevels = ["Fresh graduate", "Entry level", "Mid-level", "Experienced", "Manager"];
 const sectionLabels = {
   summary: "Professional Summary",
   experience: "Work Experience",
@@ -93,14 +100,23 @@ const sectionLabels = {
   references: "References",
 };
 
-const createExperienceEntry = (category = defaultCategory) => ({
-  id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
-  jobTitle: category.title,
-  employer: "Employer name",
+const createExperienceId = () => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
+
+const createBlankExperienceEntry = () => ({
+  id: createExperienceId(),
+  jobTitle: "",
+  employer: "",
   companyLocation: "",
   fromDate: "",
   toDate: "",
   isCurrent: false,
+  responsibilities: "",
+});
+
+const createExperienceEntry = (category = defaultCategory) => ({
+  ...createBlankExperienceEntry(),
+  jobTitle: category.title,
+  employer: "Employer name",
   responsibilities: category.experience,
 });
 
@@ -148,12 +164,23 @@ const sortWorkExperiences = (entries = []) =>
     .map((entry, index) => ({
       entry,
       index,
+      manualOrder: Number.isFinite(entry.manualOrder) ? entry.manualOrder : null,
       sortValue: entry.isCurrent
         ? 999999
         : Math.max(parseExperienceDateValue(entry.toDate), parseExperienceDateValue(entry.fromDate)),
     }))
-    .sort((a, b) => (b.sortValue - a.sortValue) || (a.index - b.index))
+    .sort((a, b) => {
+      if (a.manualOrder != null || b.manualOrder != null) {
+        return (a.manualOrder ?? Number.MAX_SAFE_INTEGER) - (b.manualOrder ?? Number.MAX_SAFE_INTEGER);
+      }
+      return (b.sortValue - a.sortValue) || (a.index - b.index);
+    })
     .map(({ entry }) => entry);
+
+const reindexManualWorkExperienceOrder = (entries = []) => {
+  if (!entries.some((entry) => Number.isFinite(entry.manualOrder))) return entries;
+  return sortWorkExperiences(entries).map((entry, index) => ({ ...entry, manualOrder: index }));
+};
 
 const formatWorkExperiences = (entries = []) =>
   sortWorkExperiences(entries)
@@ -210,18 +237,33 @@ const visibleSectionOrder = (cv = {}) => {
 
 const normalizeWorkExperiences = (cv) => {
   if (Array.isArray(cv.workExperiences) && cv.workExperiences.length) {
-    return sortWorkExperiences(cv.workExperiences.map((entry) => ({ ...createExperienceEntry(), ...entry })));
+    return reindexManualWorkExperienceOrder(
+      cv.workExperiences.map((entry) => ({ ...createBlankExperienceEntry(), ...entry })),
+    );
   }
-  if (!cv.experience) return [createExperienceEntry()];
+  if (!cv.experience) return [createBlankExperienceEntry()];
   return [
     {
-      ...createExperienceEntry(),
+      ...createBlankExperienceEntry(),
       jobTitle: cv.jobTitle || "",
       employer: "",
       companyLocation: "",
       responsibilities: cv.experience,
     },
   ];
+};
+
+const prepareImportedWorkExperiences = (workExperiences = [], fallbackJobTitle = "") => {
+  if (!Array.isArray(workExperiences) || !workExperiences.length) {
+    return [{ ...createBlankExperienceEntry(), jobTitle: fallbackJobTitle || "" }];
+  }
+  const importedEntries = workExperiences
+    .map((entry) => ({ ...createBlankExperienceEntry(), ...entry }))
+    .filter((entry) => [entry.jobTitle, entry.employer, entry.companyLocation, entry.fromDate, entry.toDate, entry.responsibilities].some((value) => String(value || "").trim()));
+  if (!importedEntries.length) {
+    return [{ ...createBlankExperienceEntry(), jobTitle: fallbackJobTitle || "" }];
+  }
+  return sortWorkExperiences(importedEntries).map((entry, index) => ({ ...entry, manualOrder: index }));
 };
 
 const photoShapeClass = (shape = "circle", roundedClass = "rounded-xl") => {
@@ -311,6 +353,15 @@ const initialCv = {
   pageBorderUnit: "cm",
   pageBorderValue: "1",
   showCredit: true,
+  builderStartOption: "scratch",
+  targetCountry: "Worldwide",
+  targetJobTitle: "",
+  experienceLevel: "Entry level",
+  cvStylePreference: "Modern",
+  photoPreference: "Decide later",
+  showCountrySpecificFields: true,
+  onboardingCompleted: false,
+  jobDescription: "",
   references: defaultReferences,
   sectionOrder: defaultSectionOrder,
   hiddenSections: [],
@@ -434,7 +485,7 @@ const getCompleteness = (cv) => {
   };
 };
 
-const createDraftPayload = ({ cv, coverLetter, categoryId, themeId, layoutId, coverThemeId, coverFontId, coverLayoutId }) => ({
+const createDraftPayload = ({ cv, coverLetter, categoryId, themeId, layoutId, coverThemeId, coverFontId, coverLayoutId, currentCvId }) => ({
   cv,
   coverLetter,
   categoryId,
@@ -443,6 +494,7 @@ const createDraftPayload = ({ cv, coverLetter, categoryId, themeId, layoutId, co
   coverThemeId,
   coverFontId,
   coverLayoutId,
+  currentCvId: currentCvId || null,
   updatedAt: new Date().toISOString(),
 });
 
@@ -707,157 +759,7 @@ function HomeHowItWorksSection({ onStart }) {
 }
 
 function LandingPage({ onStart }) {
-  const features = HOME_FEATURES;
-  const testimonials = [
-    ["Maria G.", "F&B Supervisor - Dubai", "MG", "#E6F1FB", "#0C447C", "Got a callback from a Dubai hotel within 3 days of sending my new CV. The hospitality template was exactly what I needed."],
-    ["Raj S.", "IT Support - Abu Dhabi", "RS", "#E1F5EE", "#085041", "Super easy. The AI fixed my job descriptions in one click. Downloaded my CV in under 10 minutes."],
-    ["Ana N.", "Admin Assistant - Sharjah", "AN", "#EEEDFE", "#3C3489", "Finally a free CV builder that does not ask for my credit card. The PDF looks clean and professional."],
-  ];
-
-  return (
-    <main id="top" className="landing-page-redesign">
-      <Seo
-        title={HOME_META_TITLE}
-        description={HOME_META_DESCRIPTION}
-      />
-      <section className="homepage-clean-hero">
-        <div className="hero-clean-inner hero-clean-layout">
-          <div className="hero-clean-copy">
-            <span className="hero-clean-badge"><Icon name="globe" className="h-3.5 w-3.5" /> Works worldwide</span>
-            <h1>Build a CV that gets you <span>hired</span>.</h1>
-            <p>
-              ATS-friendly templates for job seekers worldwide. Upload your existing CV, polish it with AI, and download free with no sign-up required.
-            </p>
-            <div className="hero-clean-actions">
-              <button type="button" onClick={onStart} className="hero-clean-primary">
-                <Icon name="file" className="h-4 w-4" /> Create my CV - free
-              </button>
-              <a href="#how-it-works" className="hero-clean-secondary">
-                <Icon name="upload" className="h-4 w-4" /> See how upload works
-              </a>
-            </div>
-            <div className="hero-clean-trust" role="list">
-              {["No sign-up to download", "ATS-optimised format", "Ready in 5 minutes", "PDF download free"].map((item) => (
-                <span key={item} role="listitem"><Icon name="check" className="h-4 w-4" /> {item}</span>
-              ))}
-            </div>
-          </div>
-
-          <div className="hero-cv-visual hero-cv-gallery" aria-label="Sample CV previews for hotel receptionist and mechanical engineer roles">
-            {[
-              ["/assets/hotel-receptionist-cv.png", "Hotel Receptionist CV", "Hotel Receptionist"],
-              ["/assets/mechanical-engineer-cv.png", "Mechanical Engineer CV", "Mechanical Engineer"],
-            ].map(([src, alt, role], index) => (
-              <figure key={alt} className={`hero-cv-image-card ${index === 0 ? "primary" : "secondary"}`}>
-                <img src={src} alt={alt} className="hero-cv-image" loading="eager" />
-                <figcaption>{role}</figcaption>
-              </figure>
-            ))}
-            <div className="hero-cv-floating-note">Real CV previews from BuildMyCVNow templates</div>
-          </div>
-        </div>
-      </section>
-      <section className="homepage-stats-strip" aria-label="BuildMyCVNow stats">
-        {[
-          ["15K+", "CVs created"],
-          ["60+", "Countries"],
-          ["25+", "Templates"],
-          ["4.8/5", "User rating"],
-        ].map(([num, label]) => (
-          <article key={label}>
-            <strong>{num}</strong>
-            <span>{label}</span>
-          </article>
-        ))}
-      </section>
-
-      <HomeHowItWorksSection onStart={onStart} />
-
-      <TemplatesSectionV3 onStart={onStart} />
-
-      <section className="homepage-ats-feature">
-        <div>
-          <span className="section-eyebrow">ATS score</span>
-          <h2 className="section-title">Know if your CV is ready before you download.</h2>
-          <p className="section-sub">The builder checks important fields, formatting signals, and missing details while you write.</p>
-        </div>
-        <article className="homepage-ats-card">
-          <div className="homepage-score-ring" aria-label="Example ATS score 86 percent">
-            <strong>86%</strong>
-            <span>ATS</span>
-          </div>
-          <div className="homepage-ats-list">
-            <p><Icon name="check" className="h-4 w-4" /> Clear professional summary</p>
-            <p><Icon name="check" className="h-4 w-4" /> Job-specific skills included</p>
-            <p className="warn"><Icon name="alert" className="h-4 w-4" /> Add stronger work results</p>
-            <p className="warn"><Icon name="alert" className="h-4 w-4" /> Add certifications if available</p>
-          </div>
-        </article>
-      </section>
-
-      <section className="features-section">
-        <div className="section-inner">
-          <div className="section-eyebrow">Why BuildMyCVNow</div>
-          <h2 className="section-title">Everything you need, nothing you don't</h2>
-          <div className="features-grid">
-            {features.map(([icon, title, desc], index) => (
-              <div key={title} className="feature-card">
-                <div className={`feature-icon feature-icon-${index}`}><Icon name={icon} className="h-5 w-5" /></div>
-                <div className="feature-title">{title}</div>
-                <p className="feature-desc">{desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="testimonials-section">
-        <div className="section-inner">
-          <div className="section-eyebrow">Real stories</div>
-          <h2 className="section-title">Job seekers who got hired</h2>
-          <div className="testi-grid">
-            {testimonials.map(([name, role, initialsText, bg, color, quote]) => (
-              <div key={name} className="testi-card">
-                <div className="testi-stars" aria-label="5 star rating">*****</div>
-                <p className="testi-quote">"{quote}"</p>
-                <div className="testi-person">
-                  <div className="testi-avatar" style={{ background: bg, color }}>{initialsText}</div>
-                  <div><div className="testi-name">{name}</div><div className="testi-role">{role}</div></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="cta-section">
-        <div className="cta-box">
-          <h2 className="cta-h2">Ready to build your CV?</h2>
-          <p className="cta-sub">Free forever. No sign-up. Download as PDF in minutes.</p>
-          <button type="button" onClick={onStart} className="btn-cta-white">Start building now <Icon name="arrow" className="h-4 w-4" /></button>
-          <p className="cta-note">No account required - works on mobile and desktop</p>
-        </div>
-      </section>
-
-      <section id="faq" className="landing-faq">
-        <div>
-          <h2>Frequently asked questions</h2>
-          <p>
-            Simple answers for first-time CV creators, workers, and job seekers using BuildMyCVNow.
-          </p>
-        </div>
-        <div className="faq-list">
-          {faqs.map(([q, a]) => (
-            <details key={q}>
-              <summary>{q}</summary>
-              <p>{a}</p>
-            </details>
-          ))}
-        </div>
-      </section>
-      <SiteFooter onStart={onStart} />
-    </main>
-  );
+  return <><Seo title={HOME_META_TITLE} description={HOME_META_DESCRIPTION} /><HomeLanding onStart={onStart} /></>;
 }
 
 function ContactSection() {
@@ -1230,21 +1132,137 @@ function CVLine({ title, text }) {
   );
 }
 
+function BuilderOnboarding({ cv, onChange, onStart }) {
+  return (
+    <section className="border-b border-slate-200 bg-slate-50 px-5 py-8 sm:py-12">
+      <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+          <span className="inline-flex rounded-full bg-green-50 px-3 py-1 text-xs font-black uppercase tracking-[0.2em] text-green-700">
+            Start your CV
+          </span>
+          <h1 className="mt-4 text-3xl font-black leading-tight text-slate-950 sm:text-5xl">
+            Build an ATS-friendly CV in minutes
+          </h1>
+          <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
+            Free PDF download, no credit card, AI writing help, and layouts that work for global job applications.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            {onboardingTrustBadges.map((badge) => (
+              <span key={badge} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700">
+                <Icon name="check" className="h-3.5 w-3.5 text-green-600" />
+                {badge}
+              </span>
+            ))}
+          </div>
+          <div className="mt-6 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm font-bold leading-6 text-blue-950">
+            Tell us what you are building first, and we will guide the builder with the right fields, suggestions, and download flow.
+          </div>
+        </div>
+        <div className="space-y-5">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {onboardingStartOptions.map((option) => {
+              const active = cv.builderStartOption === option.id;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => onChange("builderStartOption", option.id)}
+                  className={`rounded-3xl border p-5 text-left shadow-sm transition ${active ? "border-green-600 bg-green-50 ring-2 ring-green-100" : "border-slate-200 bg-white hover:border-green-300 hover:shadow-md"}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <span className={`flex h-11 w-11 items-center justify-center rounded-2xl ${active ? "bg-green-600 text-white" : "bg-slate-100 text-slate-700"}`}>
+                      <Icon name={option.icon} className="h-5 w-5" />
+                    </span>
+                    <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${active ? "bg-white text-green-700" : "bg-slate-100 text-slate-600"}`}>
+                      {option.badge}
+                    </span>
+                  </div>
+                  <h2 className="mt-4 text-lg font-black text-slate-950">{option.title}</h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{option.description}</p>
+                </button>
+              );
+            })}
+          </div>
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField label="Target country" value={cv.targetCountry} onChange={(value) => onChange("targetCountry", value)} placeholder="Example: United Arab Emirates or Worldwide" />
+              <FormField label="Target job title or industry" value={cv.targetJobTitle} onChange={(value) => onChange("targetJobTitle", value)} placeholder="Example: Hotel Receptionist" />
+              <label className="block">
+                <span className="form-label">Experience level</span>
+                <select value={cv.experienceLevel || "Entry level"} onChange={(event) => onChange("experienceLevel", event.target.value)} className="form-field">
+                  {onboardingExperienceLevels.map((level) => <option key={level}>{level}</option>)}
+                </select>
+              </label>
+              <label className="block">
+                <span className="form-label">CV style preference</span>
+                <select value={cv.cvStylePreference || "Modern"} onChange={(event) => onChange("cvStylePreference", event.target.value)} className="form-field">
+                  {cvStylePreferences.map((item) => <option key={item}>{item}</option>)}
+                </select>
+              </label>
+              <label className="block">
+                <span className="form-label">Photo preference</span>
+                <select value={cv.photoPreference || "Decide later"} onChange={(event) => onChange("photoPreference", event.target.value)} className="form-field">
+                  {photoPreferences.map((item) => <option key={item}>{item}</option>)}
+                </select>
+              </label>
+              <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={Boolean(cv.showCountrySpecificFields)}
+                  onChange={(event) => onChange("showCountrySpecificFields", event.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-slate-300 text-green-600"
+                />
+                <span>
+                  <span className="block text-sm font-black text-slate-950">Show country-specific fields</span>
+                  <span className="mt-1 block text-xs font-bold leading-5 text-slate-500">
+                    Include fields like nationality, visa status, driving license, and other global hiring details.
+                  </span>
+                </span>
+              </label>
+            </div>
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+              <button type="button" onClick={onStart} className="rounded-2xl bg-green-600 px-6 py-4 text-sm font-black text-white shadow-sm hover:bg-green-700">
+                Continue to the builder
+              </button>
+              <button type="button" onClick={onStart} className="rounded-2xl border border-slate-300 px-6 py-4 text-sm font-black text-slate-700 hover:bg-slate-50">
+                Skip and open builder
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function CategorySelector({ selected, onSelect }) {
   return (
     <div className="template-card-grid">
-      {categories.map((category) => (
-        <button
-          type="button"
-          value={category.id}
-          key={category.id}
-          onClick={() => onSelect(category.id)}
-          className={`template-card-button ${selected === category.id ? "selected" : ""}`}
-        >
-          <span className="template-card-name">{category.name}</span>
-          <span className="template-card-sub">{category.title}</span>
-        </button>
-      ))}
+      {categories.map((category, index) => {
+        const selectedCard = selected === category.id;
+        const styleLabel = index % 3 === 0 ? "Modern" : index % 3 === 1 ? "Classic" : "Simple";
+        const photoLabel = index % 2 === 0 ? "Photo layout" : "No-photo ready";
+        return (
+          <button
+            type="button"
+            value={category.id}
+            key={category.id}
+            aria-pressed={selectedCard}
+            onClick={() => onSelect(category.id)}
+            className={`template-card-button ${selectedCard ? "selected" : ""}`}
+          >
+            <div className="template-card-top">
+              <span className="template-card-name">{category.name}</span>
+              <span className="template-card-badge template-card-badge-neutral">ATS-friendly</span>
+            </div>
+            <span className="template-card-sub">{category.title}</span>
+            <div className="template-card-meta">
+              <span className="template-card-badge template-card-badge-green">{styleLabel}</span>
+              <span className="template-card-badge template-card-badge-blue">{photoLabel}</span>
+            </div>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -1268,9 +1286,9 @@ function ExistingCVImporter({ onImport }) {
       onImport(translated);
       const sourceLanguage = translated.originalLanguage || extracted.originalLanguage || "detected language";
       if (translated.translationFallback) {
-        setStatus(`AI translation is currently unavailable. The imported CV stayed in ${sourceLanguage}. You can still edit it manually before download.`);
+        setStatus(`We imported your CV details. AI translation is currently unavailable, so the CV stayed in ${sourceLanguage}. Please review and edit any information before downloading.`);
       } else {
-        setStatus(`Done. Original language: ${sourceLanguage}. Output language: ${translated.outputLanguage || selectedLanguage}. Review and edit before download.`);
+        setStatus(`We imported your CV details. Original language: ${sourceLanguage}. Output language: ${translated.outputLanguage || selectedLanguage}. Please review and edit any information before downloading.`);
       }
     } catch (error) {
       setStatus(error.message);
@@ -1356,9 +1374,15 @@ function WorkExperienceEditor({ cv, onChange }) {
   const [openId, setOpenId] = useState(entries[0]?.id || "");
   const [aiStatus, setAiStatus] = useState("");
   const [aiSuggestions, setAiSuggestions] = useState({});
+  useEffect(() => {
+    if (!entries.some((entry) => entry.id === openId)) {
+      setOpenId(entries[0]?.id || "");
+    }
+  }, [entries, openId]);
   const commitEntries = (nextEntries) => {
-    onChange("workExperiences", nextEntries);
-    onChange("experience", formatWorkExperiences(nextEntries));
+    const normalizedEntries = reindexManualWorkExperienceOrder(nextEntries);
+    onChange("workExperiences", normalizedEntries);
+    onChange("experience", formatWorkExperiences(normalizedEntries));
   };
   const updateEntry = (id, key, value) => {
     commitEntries(entries.map((entry) => (entry.id === id ? { ...entry, [key]: value } : entry)));
@@ -1371,12 +1395,26 @@ function WorkExperienceEditor({ cv, onChange }) {
     }
   };
   const addEntry = () => {
-    const nextEntry = { ...createExperienceEntry(), jobTitle: cv.jobTitle || "", employer: "" };
+    const nextEntry = {
+      ...createBlankExperienceEntry(),
+      jobTitle: cv.jobTitle || "",
+      manualOrder: entries.some((entry) => Number.isFinite(entry.manualOrder)) ? entries.length : undefined,
+    };
     commitEntries([...entries, nextEntry]);
     setOpenId(nextEntry.id);
   };
   const removeEntry = (id) => {
-    commitEntries(entries.length === 1 ? [{ ...createExperienceEntry(), jobTitle: cv.jobTitle || "" }] : entries.filter((entry) => entry.id !== id));
+    commitEntries(entries.length === 1 ? [{ ...createBlankExperienceEntry(), jobTitle: cv.jobTitle || "" }] : entries.filter((entry) => entry.id !== id));
+  };
+  const moveEntry = (id, direction) => {
+    const ordered = sortWorkExperiences(entries).map((entry, index) => ({ ...entry, manualOrder: index }));
+    const currentIndex = ordered.findIndex((entry) => entry.id === id);
+    const targetIndex = currentIndex + direction;
+    if (currentIndex === -1 || targetIndex < 0 || targetIndex >= ordered.length) return;
+    const nextEntries = [...ordered];
+    [nextEntries[currentIndex], nextEntries[targetIndex]] = [nextEntries[targetIndex], nextEntries[currentIndex]];
+    commitEntries(nextEntries.map((entry, index) => ({ ...entry, manualOrder: index })));
+    setOpenId(id);
   };
   const improveEntry = (id) => {
     const target = entries.find((entry) => entry.id === id);
@@ -1602,9 +1640,17 @@ function WorkExperienceEditor({ cv, onChange }) {
                 </div>
               </div>
             )}
-            <button type="button" onClick={() => removeEntry(entry.id)} className="self-start rounded border border-red-200 px-3 py-2 text-xs font-black text-red-700">
-              Remove role
-            </button>
+            <div className="entry-card-actions">
+              <button type="button" onClick={() => moveEntry(entry.id, -1)} className="entry-order-button" disabled={index === 0}>
+                <Icon name="chevron" className="h-3 w-3 rotate-180" /> Move up
+              </button>
+              <button type="button" onClick={() => moveEntry(entry.id, 1)} className="entry-order-button" disabled={index === entries.length - 1}>
+                <Icon name="chevron" className="h-3 w-3" /> Move down
+              </button>
+              <button type="button" onClick={() => removeEntry(entry.id)} className="self-start rounded border border-red-200 px-3 py-2 text-xs font-black text-red-700">
+                Remove role
+              </button>
+            </div>
             </div>
             )}
           </article>
@@ -1884,6 +1930,10 @@ function CVBuilderForm({ cv, onChange }) {
               <span>Show writing tips</span>
             </label>
           </div>
+          <div className="field-pair">
+            <FormField label="Target country" value={cv.targetCountry} onChange={(value) => onChange("targetCountry", value)} placeholder="Worldwide, UAE, Canada, Germany..." />
+            <FormField label="Target job" value={cv.targetJobTitle} onChange={(value) => onChange("targetJobTitle", value)} placeholder="Hotel Receptionist, Accountant, Mechanical Engineer..." />
+          </div>
         </TipSection>
         <div className="field-pair">
           <FormField label="Full name" value={cv.fullName} onChange={(value) => onChange("fullName", value)} placeholder="Example: Juan Dela Cruz" />
@@ -1903,12 +1953,18 @@ function CVBuilderForm({ cv, onChange }) {
         </div>
         <div className="field-pair">
           <FormField label="Country" value={cv.country} onChange={(value) => onChange("country", value)} placeholder="United Arab Emirates" />
-          <FormField label="Nationality" value={cv.nationality} onChange={(value) => onChange("nationality", value)} placeholder="Filipino" />
+          {cv.showCountrySpecificFields ? (
+            <FormField label="Nationality" value={cv.nationality} onChange={(value) => onChange("nationality", value)} placeholder="Filipino" />
+          ) : (
+            <FormField label="LinkedIn headline (optional)" value={cv.linkedInHeadline || ""} onChange={(value) => onChange("linkedInHeadline", value)} placeholder="Example: Front Office Receptionist | Guest Relations" />
+          )}
         </div>
-        <div className="field-pair">
-          <FormField label="Visa status" value={cv.visaStatus} onChange={(value) => onChange("visaStatus", value)} placeholder="Visit visa / Own visa / Employment visa" />
-          <FormField label="Driving license" value={cv.drivingLicense} onChange={(value) => onChange("drivingLicense", value)} placeholder="UAE driving license / No UAE license" />
-        </div>
+        {cv.showCountrySpecificFields && (
+          <div className="field-pair">
+            <FormField label="Visa status" value={cv.visaStatus} onChange={(value) => onChange("visaStatus", value)} placeholder="Visit visa / Own visa / Employment visa" />
+            <FormField label="Driving license" value={cv.drivingLicense} onChange={(value) => onChange("drivingLicense", value)} placeholder="UAE driving license / No UAE license" />
+          </div>
+        )}
         <div className="field-pair">
           <FormField label="LinkedIn URL" type="url" value={cv.linkedIn} onChange={(value) => onChange("linkedIn", value)} placeholder="https://linkedin.com/in/yourname" />
           <FormField label="Portfolio URL" type="url" value={cv.portfolioUrl} onChange={(value) => onChange("portfolioUrl", value)} placeholder="Portfolio, GitHub, or work sample link" />
@@ -2094,6 +2150,26 @@ async function translateCvDetails(cv, outputLanguage = "English", improveWording
   };
 }
 
+async function readJsonResponseSafely(response, fallbackMessage = "Request failed.") {
+  const rawText = await response.text().catch(() => "");
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    try {
+      return JSON.parse(rawText || "{}");
+    } catch {
+      throw new Error("The server returned invalid JSON. Please try again.");
+    }
+  }
+  if (!rawText.trim()) {
+    throw new Error(fallbackMessage);
+  }
+  const normalized = rawText.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  if (/<!doctype html|<html/i.test(rawText)) {
+    throw new Error("The server returned an unexpected page instead of a valid response. Please try again in a moment.");
+  }
+  throw new Error(normalized || fallbackMessage);
+}
+
 const cvSectionHeading = /^(summary|profile|objective|skills|core\s+competencies|work\s+experience|professional\s+experience|employment\s+history|employment|career\s+history|education|certifications?|licenses?|languages?|references?|projects?)$/i;
 const mojibakeDashPattern = "\u00e2\u20ac[\u201c\u201d]";
 const dateRangePattern = new RegExp(`((?:(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\.?\\s+)?(?:19|20)\\d{2})\\s*(?:-|\\u2013|\\u2014|${mojibakeDashPattern}|to|until|till|through)\\s*((?:(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\.?\\s+)?(?:19|20)\\d{2}|present|current|till\\s+date|to\\s+date|now)`, "i");
@@ -2182,14 +2258,7 @@ const parseInlineExperienceHeader = (line = "", match) => {
 
 const assignExperienceMeta = (beforeMeta, afterMeta, fallbackJobTitle = "") => {
   const entry = {
-    ...createExperienceEntry(),
-    jobTitle: "",
-    employer: "",
-    companyLocation: "",
-    fromDate: "",
-    toDate: "",
-    isCurrent: false,
-    responsibilities: "",
+    ...createBlankExperienceEntry(),
   };
   const before = beforeMeta.map(cleanCvLine).filter(Boolean);
   const after = afterMeta.map(cleanCvLine).filter(Boolean);
@@ -2236,6 +2305,7 @@ const extractStructuredWorkExperiences = (experienceText = "", fallbackJobTitle 
     if (!duties.length && !meta.length) return [];
     return [{
       ...assignExperienceMeta(meta, [], fallbackJobTitle),
+      manualOrder: 0,
       responsibilities: (duties.length ? duties : rawLines).join("\n"),
     }];
   }
@@ -2275,7 +2345,7 @@ const extractStructuredWorkExperiences = (experienceText = "", fallbackJobTitle 
     entry.responsibilities = duties.join("\n") || "Please review imported CV and add responsibilities for this role.";
     return entry;
   }).filter((entry) => entry.jobTitle || entry.employer || entry.responsibilities);
-  return sortWorkExperiences(entries);
+  return sortWorkExperiences(entries).map((entry, index) => ({ ...entry, manualOrder: index }));
 };
 
 function mockAiExtractCv(text, fileName) {
@@ -2325,18 +2395,14 @@ function mockAiExtractCv(text, fileName) {
     return usableLines.join(" ").trim();
   })();
   const structuredWorkExperiences = extractStructuredWorkExperiences(experience, jobTitle || "");
-  const fallbackWorkExperiences = [
-    {
-      ...createExperienceEntry(),
-      jobTitle: jobTitle || "",
-      employer: "",
-      companyLocation: "",
-      fromDate: "",
-      toDate: "",
-      isCurrent: false,
-      responsibilities: experience || "Please review imported CV and add work experience here.",
-    },
-  ];
+  const fallbackWorkExperiences = experience
+    ? [{
+        ...createBlankExperienceEntry(),
+        manualOrder: 0,
+        jobTitle: jobTitle || "",
+        responsibilities: experience,
+      }]
+    : [];
   return {
     fullName: firstLine || fileName.replace(/\.[^.]+$/, "").replaceAll("-", " "),
     jobTitle: jobTitle || "",
@@ -2346,16 +2412,16 @@ function mockAiExtractCv(text, fileName) {
     visaStatus: visaStatus || "",
     linkedIn: linkedIn || "",
     portfolioUrl,
-    drivingLicense: drivingLicense || "Add driving license status here.",
-    summary: sanitizeCvTextForCoverLetter(summary || summaryFallback || compactText.split("\n").filter((line) => line.length > 40 && !line.includes("@") && !/linkedin/i.test(line)).slice(0, 2).join(" ")) || "Please review imported CV and add a professional summary here.",
-    skills: sanitizeCvTextForCoverLetter(skills) || "Please review imported CV and add key skills here.",
-    experience: experience || "Please review imported CV and add work experience here.",
+    drivingLicense: drivingLicense || "",
+    summary: sanitizeCvTextForCoverLetter(summary || summaryFallback || compactText.split("\n").filter((line) => line.length > 40 && !line.includes("@") && !/linkedin/i.test(line)).slice(0, 2).join(" ")) || "",
+    skills: sanitizeCvTextForCoverLetter(skills) || "",
+    experience: experience || "",
     workExperiences: structuredWorkExperiences.length ? structuredWorkExperiences : fallbackWorkExperiences,
-    education: education || "Please review imported CV and add education details here.",
+    education: education || "",
     projects,
-    certifications: certifications || "Add certificates or training here.",
-    languages: languages || "English",
-    references: section(["reference"]) || "Available upon request",
+    certifications: certifications || "",
+    languages: languages || "",
+    references: section(["reference"]) || "",
     originalLanguage: "Auto-detected",
     outputLanguage: "English",
     languageDirection: "ltr",
@@ -2725,7 +2791,7 @@ function LiveCVPreview({ cv, theme, layout }) {
   );
 }
 
-function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, emailCopyAddress = "", title = "Verify to download", description = "Enter your contact details. We will send an OTP before unlocking downloads.", label = "Downloads" }) {
+function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, emailCopyAddress = "", title = "Verify to download", description = "Enter your contact details. We will send an OTP before unlocking downloads.", label = "Downloads", onOtpRequested, onOtpVerified }) {
   const [details, setDetails] = useState({ name: cv.fullName, email: cv.email, country: cv.country, phone: cv.phone });
   const [otp, setOtp] = useState("");
   const [otpChallenge, setOtpChallenge] = useState(null);
@@ -2754,11 +2820,12 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "send", email: details.email, name: details.name }),
       });
-      const result = await response.json();
+      const result = await readJsonResponseSafely(response, "Could not send OTP.");
       if (!response.ok || !result.ok) throw new Error(result.message || "Could not send OTP.");
       setOtpChallenge(result.challenge);
       setMockOtp(result.mockOtp || "");
       setActionStatus(result.message || "OTP sent. Enter the code to unlock downloads.");
+      onOtpRequested?.(details);
     } catch (error) {
       setActionStatus(error.message || "Could not send OTP. Please try again.");
     }
@@ -2770,10 +2837,11 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "verify", email: details.email, otp, challenge: otpChallenge }),
       });
-      const result = await response.json();
+      const result = await readJsonResponseSafely(response, "Could not verify OTP.");
       if (!response.ok || !result.ok) throw new Error(result.message || "Invalid OTP.");
       setVerified(true);
       setActionStatus("OTP verified. Downloads are unlocked.");
+      onOtpVerified?.(details);
     } catch (error) {
       setVerified(false);
       setActionStatus(error.message || "Invalid OTP. Please try again.");
@@ -2819,7 +2887,7 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
           </div>
         )}
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <button disabled={!verified} onClick={() => runDownloadAction("pdf")} className="rounded bg-green-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">Download PDF</button>
+          <button disabled={!verified} onClick={() => runDownloadAction("pdf")} className="rounded bg-green-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">Download Free PDF</button>
           <button disabled={!verified} onClick={() => runDownloadAction("word")} className="rounded border border-blue-600 px-5 py-3 font-bold text-blue-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400">Download DOCX</button>
           {canEmailCopy ? (
             <button disabled={!verified} onClick={() => runDownloadAction("email")} className="rounded border border-green-600 bg-green-50 px-5 py-3 font-bold text-green-800 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-white disabled:text-slate-400 sm:col-span-2">
@@ -2844,6 +2912,22 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
   const [message, setMessage] = useState(isSupabaseConfigured ? "" : "Add VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY or REACT_APP_SUPABASE_URL/REACT_APP_SUPABASE_ANON_KEY to .env to enable login.");
   const [loading, setLoading] = useState(false);
   const [lastSignupEmail, setLastSignupEmail] = useState("");
+  const resendEmailTarget = (lastSignupEmail || form.email || accountOtp.email || "").trim();
+  const canResendConfirmation = Boolean(resendEmailTarget);
+  const sendAccountOtpCode = async ({ email, name, keepMode = true }) => {
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: true,
+        emailRedirectTo: AUTH_REDIRECT_URL,
+        data: { full_name: name },
+      },
+    });
+    if (error) throw error;
+    setAccountOtp({ name: name || "", email, token: "", sent: true });
+    if (keepMode) setMode("accountOtp");
+    trackEvent("account_email_otp_sent");
+  };
   const startUrgentMode = () => {
     trackEvent("urgent_mode_start", { method: "local" });
     onUrgentMode("local");
@@ -2880,38 +2964,47 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
       trackEvent(mode === "signup" ? "signup" : "login", { method: "email" });
       if (mode === "signup") {
         setLastSignupEmail(form.email);
-        setMessage("Signup request sent. Please check your inbox and spam folder for the confirmation email. If it does not arrive, use Resend confirmation email below.");
+        try {
+          await sendAccountOtpCode({ email: form.email, name: form.name });
+          setMessage("Account created. We sent an email OTP so you can open your account right away. If a confirmation link also arrives later, that works too.");
+        } catch (otpError) {
+          setMessage("Signup request sent. Please check your inbox and spam folder for the confirmation email. If it does not arrive, use Email OTP or Resend confirmation email below.");
+        }
       } else {
         setMessage("Signed in successfully.");
         onRegisteredMode();
       }
       if (mode === "signin") onClose();
     } catch (error) {
+      if (String(error.message || "").toLowerCase().includes("email not confirmed")) {
+        setLastSignupEmail(form.email);
+      }
       setMessage(error.message || "Authentication failed.");
     } finally {
       setLoading(false);
     }
   };
   const resendConfirmation = async () => {
-    if (!supabase || !lastSignupEmail) return;
+    if (!supabase || !resendEmailTarget) return;
     setLoading(true);
     setMessage("Sending confirmation email again...");
     try {
       const { error } = await supabase.auth.resend({
         type: "signup",
-        email: lastSignupEmail,
+        email: resendEmailTarget,
         options: { emailRedirectTo: AUTH_REDIRECT_URL },
       });
       if (error) {
         const fallback = await fetch("/.netlify/functions/resendSignupConfirmation", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: lastSignupEmail }),
+          body: JSON.stringify({ email: resendEmailTarget }),
         });
         if (!fallback.ok) throw error;
       }
       trackEvent("signup_confirmation_resend");
-      setMessage("Confirmation email sent again. Please check your inbox and spam folder.");
+      setLastSignupEmail(resendEmailTarget);
+      setMessage(`Confirmation email sent again to ${resendEmailTarget}. Please check your inbox and spam folder.`);
     } catch (error) {
       setMessage(error.message || "Could not resend confirmation email.");
     } finally {
@@ -2927,23 +3020,24 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
     });
     if (error) setMessage(error.message);
   };
+  const switchToEmailOtp = () => {
+    setAccountOtp((current) => ({
+      ...current,
+      name: current.name || form.name,
+      email: current.email || form.email,
+      token: "",
+      sent: false,
+    }));
+    setMode("accountOtp");
+    setMessage("Use email OTP if your account is already registered but not confirmed yet.");
+  };
   const sendAccountEmailOtp = async (event) => {
     event.preventDefault();
     if (!supabase) return;
     setLoading(true);
     setMessage("Sending account verification code...");
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: accountOtp.email,
-        options: {
-          shouldCreateUser: true,
-          emailRedirectTo: AUTH_REDIRECT_URL,
-          data: { full_name: accountOtp.name },
-        },
-      });
-      if (error) throw error;
-      setAccountOtp((current) => ({ ...current, sent: true, token: "" }));
-      trackEvent("account_email_otp_sent");
+      await sendAccountOtpCode({ email: accountOtp.email, name: accountOtp.name, keepMode: false });
       setMessage("Account OTP sent. Check your email inbox and spam folder, then enter the code here.");
     } catch (error) {
       setMessage(error.message || "Could not send account OTP.");
@@ -2957,9 +3051,10 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
     setLoading(true);
     setMessage("Verifying account OTP...");
     try {
+      const normalizedToken = String(accountOtp.token || "").trim().replace(/\s+/g, "");
       const { error } = await supabase.auth.verifyOtp({
         email: accountOtp.email,
-        token: accountOtp.token,
+        token: normalizedToken,
         type: "email",
       });
       if (error) throw error;
@@ -3019,7 +3114,19 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
             {accountOtp.sent && (
               <label>
                 <span className="form-label">Email OTP code</span>
-                <input className="form-field" inputMode="numeric" maxLength={6} value={accountOtp.token} onChange={(event) => setAccountOtp({ ...accountOtp, token: event.target.value })} required />
+                <input
+                  className="form-field"
+                  inputMode="text"
+                  autoComplete="one-time-code"
+                  spellCheck="false"
+                  value={accountOtp.token}
+                  onChange={(event) => setAccountOtp({ ...accountOtp, token: event.target.value })}
+                  placeholder="Paste the code from your email"
+                  required
+                />
+                <p className="mt-2 text-xs font-bold text-slate-500">
+                  Enter the full verification code from your Supabase email. Spaces are removed automatically.
+                </p>
               </label>
             )}
             <button disabled={!isSupabaseConfigured || loading} className="rounded bg-green-600 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
@@ -3060,9 +3167,19 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
             Google login is hidden until the Google provider is enabled in Supabase.
           </p>
         )}
-        {lastSignupEmail && (
+        {canResendConfirmation && (
           <button disabled={loading} onClick={resendConfirmation} className="mt-3 w-full rounded border border-green-600 px-5 py-3 font-bold text-green-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400">
             Resend confirmation email
+          </button>
+        )}
+        {mode === "signin" && String(message || "").toLowerCase().includes("email not confirmed") && (
+          <button
+            type="button"
+            disabled={loading}
+            onClick={switchToEmailOtp}
+            className="mt-3 w-full rounded border border-blue-600 px-5 py-3 font-bold text-blue-700 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400"
+          >
+            Use Email OTP instead
           </button>
         )}
         {message && <p className="mt-4 rounded bg-slate-50 p-3 text-sm font-bold leading-6 text-slate-700">{message}</p>}
@@ -3071,7 +3188,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
   );
 }
 
-function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDraft, onLoadDraft, draftStatus }) {
+function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDraft, onLoadDraft, draftStatus, onSaved }) {
   const [items, setItems] = useState([]);
   const [message, setMessage] = useState(user ? "Load your saved CVs." : `Login to save and manage up to ${SAVED_CV_LIMIT} CVs.`);
   const refresh = async () => {
@@ -3092,7 +3209,8 @@ function MyCvsPanel({ user, cv, categoryId, themeId, layoutId, onLoad, onSaveDra
       return;
     }
     try {
-      await saveCvForUser({ userId: user.id, cv, categoryId, themeId, layoutId });
+      const saved = await saveCvForUser({ userId: user.id, cv, categoryId, themeId, layoutId });
+      onSaved?.(saved);
       trackEvent("save_cv");
       await refresh();
     } catch (error) {
@@ -3610,7 +3728,7 @@ function getBuilderStepState(cv) {
   };
 }
 
-function BuilderTopBar({ onHome, onDownload, saveStatus }) {
+function BuilderTopBar({ onHome, onDownload, saveStatus, cloudSavingEnabled, userEmail, onAccess, onSignOut }) {
   const { mode, setMode, cycleMode } = useTheme();
   const isSaving = /saving/i.test(saveStatus);
   return (
@@ -3620,13 +3738,25 @@ function BuilderTopBar({ onHome, onDownload, saveStatus }) {
         BuildMyCV<span>Now</span>
       </button>
       <div className="builder-topbar-actions">
+        {cloudSavingEnabled ? (
+          <div className="builder-account-pill signed-in">
+            <span className="builder-account-pill-label">Saved online</span>
+            <strong>{userEmail}</strong>
+            <button type="button" onClick={onSignOut}>Logout</button>
+          </div>
+        ) : (
+          <button type="button" onClick={onAccess} className="builder-account-pill">
+            <span className="builder-account-pill-label">Save online</span>
+            <strong>It's free</strong>
+          </button>
+        )}
         <ThemeToggle mode={mode} setMode={setMode} cycleMode={cycleMode} />
         <span className={isSaving ? "builder-save-badge saving" : "builder-save-badge saved"}>
           <Icon name={isSaving ? "sparkle" : "check"} className="h-3 w-3" />
           {isSaving ? "Saving..." : "Saved"}
         </span>
         <button onClick={onDownload} className="builder-download-button">
-          <Icon name="download" className="h-4 w-4" /> Download PDF
+          <Icon name="download" className="h-4 w-4" /> Download Free PDF
         </button>
       </div>
     </header>
@@ -3790,11 +3920,50 @@ function EmailCapture({ source = "download", roleInterest = "" }) {
   );
 }
 
-function BuilderSidebar({ currentStep, onStep, completedSteps, categoryId, onCategory, themeId, onTheme }) {
+function BuilderSidebar({
+  currentStep,
+  onStep,
+  completedSteps,
+  categoryId,
+  onCategory,
+  themeId,
+  onTheme,
+  completion,
+  cloudSavingEnabled,
+  userEmail,
+  onAccess,
+}) {
   const prominent = ["hospitality", "it", "supply-chain-logistics", "finance", "engineering", "domestic", "skilled", "education"];
   const sortedCategories = [...categories].sort((a, b) => prominent.indexOf(a.id) - prominent.indexOf(b.id));
+  const progressStyle = { background: `conic-gradient(#1d9e75 ${completion.percent}%, #e2e8f0 0)` };
+  const completedCount = Array.isArray(completion.milestones) ? completion.milestones.length : 0;
+  const totalCount = 16;
   return (
     <aside className="builder-sidebar-v2">
+      <div className="builder-sidebar-summary">
+        <div className="builder-sidebar-progress" style={progressStyle}>
+          <div>
+            <strong>{completion.percent}%</strong>
+            <span>done</span>
+          </div>
+        </div>
+        <div className="builder-sidebar-summary-copy">
+          <p>CV progress</p>
+          <h3>{completedCount} of {totalCount} checks complete</h3>
+          <span>{completion.nextStep || "Keep filling your CV details."}</span>
+        </div>
+      </div>
+      {cloudSavingEnabled ? (
+        <div className="builder-sidebar-account signed-in">
+          <span>Saving online</span>
+          <strong>{userEmail}</strong>
+        </div>
+      ) : (
+        <button type="button" onClick={onAccess} className="builder-sidebar-account">
+          <span>Save online</span>
+          <strong>Free account access</strong>
+        </button>
+      )}
       <p className="sidebar-label-v2">Sections</p>
       <nav className="builder-step-list">
         {builderSteps.map((step, index) => {
@@ -3827,7 +3996,9 @@ function BuilderSidebar({ currentStep, onStep, completedSteps, categoryId, onCat
           />
         ))}
       </div>
-      {sortedCategories.length > 0 && null}
+      {sortedCategories.length > 0 && (
+        <p className="builder-sidebar-note">Switch templates any time. Your CV details stay in place while the design changes.</p>
+      )}
     </aside>
   );
 }
@@ -3907,7 +4078,7 @@ function BuilderPreviewPanel({ cv, theme, layout, onDownload }) {
       <div className="preview-sheet-scroll" style={{ "--preview-zoom": previewZoom / 100 }}>
         <LiveCVPreview cv={cv} theme={theme} layout={layout} />
         <button type="button" onClick={onDownload} className="mt-4 flex w-full items-center justify-center gap-2 rounded bg-green-600 px-4 py-3 text-sm font-black text-white hover:bg-green-700">
-          <Icon name="download" className="h-4 w-4" /> Download CV
+          <Icon name="download" className="h-4 w-4" /> Download Free PDF
         </button>
       </div>
     </aside>
@@ -4034,12 +4205,30 @@ function CoverLetterBuilder({
 }
 
 function CVBuilderApp({ onHome }) {
+  const [entryOptions] = useState(() => {
+    const query = new URLSearchParams(window.location.search);
+    return {
+      category: categories.find((item) => item.id === query.get("category")),
+      theme: themes.find((item) => item.id === query.get("theme")),
+      layout: layouts.find((item) => item.id === query.get("layout")),
+      upload: query.get("start") === "upload",
+      saveOnline: query.get("access") === "save",
+    };
+  });
   const [activeBuilder, setActiveBuilder] = useState(() => (window.location.hash === "#cover-letter" ? "cover" : "cv"));
-  const [categoryId, setCategoryId] = useState(defaultCategory.id);
-  const [cv, setCv] = useState(initialCv);
-  const [coverLetter, setCoverLetter] = useState(() => createCoverLetterFromCv(initialCv, defaultCategory.id));
-  const [themeId, setThemeId] = useState("blue");
-  const [layoutId, setLayoutId] = useState("sidebar");
+  const [categoryId, setCategoryId] = useState(entryOptions.category?.id || defaultCategory.id);
+  const [cv, setCv] = useState(() => {
+    const category = entryOptions.category;
+    return {
+      ...initialCv,
+      ...(category ? { jobTitle: category.title, summary: category.summary, skills: category.skills, experience: category.experience, workExperiences: [createExperienceEntry(category)] } : {}),
+      ...(entryOptions.upload ? { onboardingCompleted: true, builderStartOption: "Upload existing CV" } : {}),
+    };
+  });
+  const [currentCvId, setCurrentCvId] = useState(null);
+  const [coverLetter, setCoverLetter] = useState(() => createCoverLetterFromCv(cv, categoryId));
+  const [themeId, setThemeId] = useState(entryOptions.theme?.id || "blue");
+  const [layoutId, setLayoutId] = useState(entryOptions.layout?.id || "sidebar");
   const [coverThemeId, setCoverThemeId] = useState("blue");
   const [coverFontId, setCoverFontId] = useState("sans");
   const [coverLayoutId, setCoverLayoutId] = useState("classic");
@@ -4051,7 +4240,7 @@ function CVBuilderApp({ onHome }) {
   const [mobileCvView, setMobileCvView] = useState("edit");
   const [currentStep, setCurrentStep] = useState("personal");
   const [session, setSession] = useState(null);
-  const [authOpen, setAuthOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(entryOptions.saveOnline);
   const [pendingTemplateId, setPendingTemplateId] = useState(null);
   const [sectionReorderOpen, setSectionReorderOpen] = useState(false);
   const [storageMessage, setStorageMessage] = useState("");
@@ -4063,10 +4252,29 @@ function CVBuilderApp({ onHome }) {
   const coverTheme = useMemo(() => themes.find((item) => item.id === coverThemeId), [coverThemeId]);
   const completion = useMemo(() => computeCompletion({ ...cv, categoryId }), [cv, categoryId]);
   const previousCompletionRef = useRef(completion.percent);
+  const cvEventSessionIdRef = useRef(getCvEventSessionId());
+  const trackedSectionRef = useRef({});
   const user = session?.user || null;
   const cloudSavingEnabled = Boolean(user && userMode === "registered");
   const noCloudMode = userMode === "urgent-local";
+  const builderStarted = Boolean(cv.onboardingCompleted);
   const completedSteps = useMemo(() => getBuilderStepState(cv), [cv]);
+  const recordCvEvent = (eventName, metadata = {}) => {
+    trackEvent(eventName, metadata);
+    trackCvEvent({
+      eventName,
+      userId: user?.id || null,
+      cvId: currentCvId,
+      sessionId: cvEventSessionIdRef.current,
+      metadata: {
+        template_id: categoryId,
+        target_country: cv.targetCountry || "",
+        target_job_title: cv.targetJobTitle || "",
+        source_page: activeBuilder === "cover" ? "cover-letter-builder" : "cv-builder",
+        ...metadata,
+      },
+    });
+  };
   const jumpToStep = (id) => {
     setCurrentStep(id);
     const target = document.getElementById(`builder-section-${id}`);
@@ -4077,6 +4285,7 @@ function CVBuilderApp({ onHome }) {
       logEvent("export_below_threshold", { percent: completion.percent });
       if (!window.confirm(`Your CV is only ${completion.percent}% complete. Recruiters may reject incomplete CVs. Export anyway?`)) return;
     }
+    recordCvEvent("download_clicked", { completion_percent: completion.percent });
     setDownloadTarget("cv");
   };
   const handleNextStep = (section) => {
@@ -4129,12 +4338,35 @@ function CVBuilderApp({ onHome }) {
     logEvent("seo_page_to_builder", { role, city: city || "" });
   }, []);
   useEffect(() => {
+    if (!builderStarted) return;
+    recordCvEvent("builder_started", { start_option: cv.builderStartOption || "scratch" });
+    if (!sessionStorage.getItem("bmcv_draft_created")) {
+      sessionStorage.setItem("bmcv_draft_created", "1");
+      recordCvEvent("cv_draft_created", { mode: cloudSavingEnabled ? "registered" : "local" });
+    }
+  }, [builderStarted]);
+  useEffect(() => {
     initAnalytics();
     if (!supabase) return;
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => setSession(nextSession));
     return () => data.subscription.unsubscribe();
   }, []);
+  useEffect(() => {
+    const sectionEvents = {
+      personal: "personal_info_completed",
+      experience: "work_experience_added",
+      education: "education_added",
+      skills: "skills_added",
+      summary: "preview_viewed",
+    };
+    Object.entries(completedSteps).forEach(([section, done]) => {
+      const eventName = sectionEvents[section];
+      if (!done || !eventName || trackedSectionRef.current[eventName]) return;
+      trackedSectionRef.current[eventName] = true;
+      recordCvEvent(eventName, { section });
+    });
+  }, [completedSteps.personal, completedSteps.experience, completedSteps.education, completedSteps.skills, completedSteps.summary]);
   useEffect(() => {
     try {
       const savedOrder = JSON.parse(localStorage.getItem("bmcv_section_order") || "null");
@@ -4166,6 +4398,7 @@ function CVBuilderApp({ onHome }) {
   const applyDraftPayload = (draftData) => {
     if (!draftData?.cv) return false;
     setCv({ ...initialCv, ...draftData.cv });
+    setCurrentCvId(draftData.currentCvId || null);
     setCoverLetter(draftData.coverLetter || createCoverLetterFromCv({ ...initialCv, ...draftData.cv }, draftData.categoryId || defaultCategory.id));
     setCategoryId(draftData.categoryId || defaultCategory.id);
     setThemeId(draftData.themeId || "blue");
@@ -4175,7 +4408,7 @@ function CVBuilderApp({ onHome }) {
     setCoverLayoutId(draftData.coverLayoutId || "classic");
     return true;
   };
-  const draftPayload = () => createDraftPayload({ cv, coverLetter, categoryId, themeId, layoutId, coverThemeId, coverFontId, coverLayoutId });
+  const draftPayload = () => createDraftPayload({ cv, coverLetter, categoryId, themeId, layoutId, coverThemeId, coverFontId, coverLayoutId, currentCvId });
   const saveCloudDraft = async (statusMessage = "Saving cloud draft...") => {
     if (!cloudSavingEnabled) {
       setDraftStatus("Sign in or create an account to save drafts online.");
@@ -4184,6 +4417,7 @@ function CVBuilderApp({ onHome }) {
     try {
       setDraftStatus(statusMessage);
       await saveDraftForUser({ userId: user.id, draftData: draftPayload() });
+      recordCvEvent("cv_draft_updated", { save_mode: "cloud" });
       setDraftStatus(`Cloud draft saved at ${new Date().toLocaleTimeString()}.`);
     } catch (error) {
       setDraftStatus(error.message || "Cloud draft could not be saved.");
@@ -4239,6 +4473,7 @@ function CVBuilderApp({ onHome }) {
     const saveDraft = async () => {
       const payload = draftPayload();
       localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payload));
+      recordCvEvent("cv_draft_updated", { save_mode: cloudSavingEnabled ? "cloud-and-local" : "local" });
       setSaveStatus("Saved locally");
       if (cloudSavingEnabled) {
         try {
@@ -4262,6 +4497,7 @@ function CVBuilderApp({ onHome }) {
     setCoverLetter(createCoverLetterFromCv(cv, id));
     setPendingTemplateId(null);
     trackEvent("switch_template_keep_data");
+    recordCvEvent("template_selected", { mode: "keep_data", template_id: id });
   };
   const loadTemplateSampleData = (id) => {
     const category = categories.find((item) => item.id === id);
@@ -4284,6 +4520,7 @@ function CVBuilderApp({ onHome }) {
     });
     setPendingTemplateId(null);
     trackEvent("switch_template_load_sample");
+    recordCvEvent("template_selected", { mode: "sample_data", template_id: id });
   };
   const handleCategory = (id) => {
     if (!id || id === categoryId) return;
@@ -4297,15 +4534,89 @@ function CVBuilderApp({ onHome }) {
     if (key === "tipsEnabled") localStorage.setItem("bmcv_tips_enabled", String(Boolean(value)));
     setCv((current) => ({ ...current, [key]: value }));
   };
+  const startBuilderFlow = () => {
+    setCv((current) => ({
+      ...current,
+      onboardingCompleted: true,
+      country: current.targetCountry && current.country === initialCv.country ? current.targetCountry : current.country,
+      jobTitle: current.targetJobTitle && current.jobTitle === initialCv.jobTitle ? current.targetJobTitle : current.jobTitle,
+      profilePhoto: current.photoPreference === "No-photo CV" ? "" : current.profilePhoto,
+    }));
+    if (cv.cvStylePreference === "Classic") setLayoutId("classic");
+    if (cv.cvStylePreference === "Simple") setLayoutId("compact");
+    if (cv.cvStylePreference === "Executive") setLayoutId("header");
+    recordCvEvent("onboarding_completed", {
+      start_option: cv.builderStartOption,
+      experience_level: cv.experienceLevel,
+      style_preference: cv.cvStylePreference,
+      photo_preference: cv.photoPreference,
+    });
+  };
+  const applyAtsSuggestion = (action, insights = {}) => {
+    if (!cv.jobDescription?.trim()) return;
+    const missingSkillText = (insights.recommendedSkills || []).filter(Boolean).join(", ");
+    setCv((current) => {
+      let next = { ...current };
+      if (action === "summary" || action === "all") {
+        const additions = (insights.missingKeywords || []).slice(0, 3).join(", ");
+        next.summary = `${String(current.summary || "").trim().replace(/\.$/, "")}. Tailored for ${current.targetJobTitle || current.jobTitle || "this role"} with focus on ${additions || "the job requirements"}.`.trim();
+      }
+      if (action === "experience" || action === "all") {
+        const enriched = normalizeWorkExperiences(current).map((entry, index) => {
+          if (index > 1) return entry;
+          const detail = (insights.missingKeywords || []).slice(0, 2).join(" and ");
+          const extraLine = detail ? `Highlighted ${detail} to better match the target job description.` : "Tailored this experience to better match the target job description.";
+          return {
+            ...entry,
+            responsibilities: String(entry.responsibilities || "").includes(extraLine)
+              ? entry.responsibilities
+              : `${String(entry.responsibilities || "").trim()}\n${extraLine}`.trim(),
+          };
+        });
+        next.workExperiences = enriched;
+        next.experience = formatWorkExperiences(enriched);
+      }
+      if (action === "skills" || action === "all") {
+        const merged = [current.skills, missingSkillText].filter(Boolean).join(", ");
+        next.skills = [...new Set(merged.split(",").map((item) => item.trim()).filter(Boolean))].join(", ");
+      }
+      return next;
+    });
+    recordCvEvent("suggestion_applied", { action, keyword_count: (insights.missingKeywords || []).length });
+  };
   const handleImport = (extracted) => {
     setCv((current) => {
+      const importedWorkExperiences = prepareImportedWorkExperiences(extracted.workExperiences, extracted.jobTitle || "");
       const nextCv = {
         ...current,
-        ...Object.fromEntries(Object.entries(extracted).filter(([, value]) => value)),
+        onboardingCompleted: true,
+        fullName: extracted.fullName ?? "",
+        jobTitle: extracted.jobTitle ?? "",
+        email: extracted.email ?? "",
+        phone: extracted.phone ?? "",
+        country: extracted.country ?? "",
+        nationality: extracted.nationality ?? "",
+        visaStatus: extracted.visaStatus ?? "",
+        linkedIn: extracted.linkedIn ?? "",
+        portfolioUrl: extracted.portfolioUrl ?? "",
+        drivingLicense: extracted.drivingLicense ?? "",
+        summary: extracted.summary ?? "",
+        skills: extracted.skills ?? "",
+        education: extracted.education ?? "",
+        projects: extracted.projects ?? "",
+        certifications: extracted.certifications ?? "",
+        languages: extracted.languages ?? "",
+        references: extracted.references ?? "",
+        originalLanguage: extracted.originalLanguage ?? current.originalLanguage,
+        outputLanguage: extracted.outputLanguage ?? current.outputLanguage,
+        languageDirection: extracted.languageDirection ?? current.languageDirection,
+        workExperiences: importedWorkExperiences,
+        experience: formatWorkExperiences(importedWorkExperiences.filter((entry) => [entry.jobTitle, entry.employer, entry.companyLocation, entry.fromDate, entry.toDate, entry.responsibilities].some((value) => String(value || "").trim()))),
       };
       setCoverLetter(createCoverLetterFromCv(nextCv, categoryId));
       return nextCv;
     });
+    recordCvEvent("cv_uploaded", { import_language: extracted.outputLanguage || extracted.originalLanguage || "unknown" });
   };
   const handleProfilePhotoChange = async (key, value) => {
     if (key !== "profilePhoto" || !value || !cloudSavingEnabled) {
@@ -4325,6 +4636,7 @@ function CVBuilderApp({ onHome }) {
   const loadSavedCv = (item) => {
     const nextCv = item.cv_data || initialCv;
     setCv(nextCv);
+    setCurrentCvId(item.id || null);
     setCategoryId(item.category_id || defaultCategory.id);
     setThemeId(item.theme_id || "blue");
     setLayoutId(item.layout_id || "sidebar");
@@ -4363,6 +4675,17 @@ function CVBuilderApp({ onHome }) {
       setCoverLetter(localDraft);
     }
   };
+  const ensureTrackedCvRecord = async () => {
+    if (!cloudSavingEnabled) return currentCvId;
+    if (currentCvId) return currentCvId;
+    try {
+      const saved = await saveCvForUser({ userId: user.id, cv, categoryId, themeId, layoutId });
+      setCurrentCvId(saved?.id || null);
+      return saved?.id || null;
+    } catch {
+      return null;
+    }
+  };
   const handleDownload = async (type) => {
     if (type === "email") {
       const toEmail = user?.email || session?.user?.email || cv.email;
@@ -4374,13 +4697,16 @@ function CVBuilderApp({ onHome }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: toEmail, cv }),
       });
-      const result = await response.json();
+      const result = await readJsonResponseSafely(response, "Could not email your CV.");
       if (!response.ok || !result.ok) throw new Error(result.message || "Could not email your CV.");
       logEvent("cv_email_requested", { templateId: categoryId, forwarded: result.forwarded });
       return result;
     }
+    const trackedCvId = await ensureTrackedCvRecord();
     await downloadCvFile(cv, type, theme, layoutId);
     logEvent("cv_downloaded", { format: type, templateId: categoryId, completionPercent: completion.percent });
+    recordCvEvent("download_completed", { format: type, completion_percent: completion.percent, cv_id: trackedCvId });
+    if (trackedCvId) await markCvDownloaded(trackedCvId);
     setDownloaded(true);
     if (showSharePrompt) sessionStorage.setItem("bmcv_share_prompt_seen", "1");
     setDownloadTarget(null);
@@ -4409,7 +4735,15 @@ function CVBuilderApp({ onHome }) {
   };
   return (
     <main className="builder-app-shell">
-      <BuilderTopBar onHome={onHome} saveStatus={saveStatus} onDownload={() => (activeBuilder === "cv" ? requestCvDownload() : setDownloadTarget("cover"))} />
+      <BuilderTopBar
+        onHome={onHome}
+        saveStatus={saveStatus}
+        onDownload={() => (activeBuilder === "cv" ? requestCvDownload() : setDownloadTarget("cover"))}
+        cloudSavingEnabled={cloudSavingEnabled}
+        userEmail={user?.email || session?.user?.email || ""}
+        onAccess={() => setAuthOpen(true)}
+        onSignOut={signOut}
+      />
       <div className="builder-tabbar">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -4436,12 +4770,12 @@ function CVBuilderApp({ onHome }) {
             )}
           </div>
           </div>
-          {activeBuilder === "cv" && (
+          {activeBuilder === "cv" && builderStarted && (
             <BuilderStageTabs currentStep={currentStep} completedSteps={completedSteps} onStep={jumpToStep} />
           )}
         </div>
       </div>
-      {activeBuilder === "cv" && <BuilderHeaderGuide cloudSavingEnabled={cloudSavingEnabled} noCloudMode={noCloudMode} />}
+      {activeBuilder === "cv" && builderStarted && <BuilderHeaderGuide cloudSavingEnabled={cloudSavingEnabled} noCloudMode={noCloudMode} />}
       {noCloudMode && (
         <section className="border-b border-amber-200 bg-amber-50 px-5 py-3">
           <div className="mx-auto max-w-7xl text-sm font-bold leading-6 text-amber-950">
@@ -4451,10 +4785,29 @@ function CVBuilderApp({ onHome }) {
       )}
       {activeBuilder === "cv" ? (
         <>
+        {!builderStarted && (
+          <BuilderOnboarding cv={cv} onChange={updateCvField} onStart={startBuilderFlow} />
+        )}
+        {builderStarted && (
         <div className="builder-layout-v2">
+          <BuilderSidebar
+            currentStep={currentStep}
+            onStep={jumpToStep}
+            completedSteps={completedSteps}
+            categoryId={categoryId}
+            onCategory={handleCategory}
+            themeId={themeId}
+            onTheme={setThemeId}
+            completion={completion}
+            cloudSavingEnabled={cloudSavingEnabled}
+            userEmail={user?.email || session?.user?.email || ""}
+            onAccess={() => setAuthOpen(true)}
+          />
           <section className="builder-form-panel-v2">
             <div className="builder-form-inner">
-              <BuilderTemplateDock categoryId={categoryId} onCategory={handleCategory} themeId={themeId} onTheme={setThemeId} />
+              <div className="builder-template-dock-mobile">
+                <BuilderTemplateDock categoryId={categoryId} onCategory={handleCategory} themeId={themeId} onTheme={setThemeId} />
+              </div>
               <ExistingCVImporter onImport={handleImport} />
               <ProfilePhotoUploader cv={cv} onChange={handleProfilePhotoChange} />
               {storageMessage && cloudSavingEnabled && <p className="rounded bg-slate-50 p-3 text-xs font-bold leading-5 text-slate-600">{storageMessage}</p>}
@@ -4483,6 +4836,9 @@ function CVBuilderApp({ onHome }) {
                         themeId={themeId}
                         layoutId={layoutId}
                         onLoad={loadSavedCv}
+                        onSaved={(item) => {
+                          setCurrentCvId(item?.id || null);
+                        }}
                         onSaveDraft={() => saveCloudDraft()}
                         onLoadDraft={restoreCloudDraft}
                         draftStatus={draftStatus}
@@ -4518,10 +4874,19 @@ function CVBuilderApp({ onHome }) {
           </section>
           <div className="builder-right-stack">
             <BuilderPreviewPanel cv={cv} theme={theme} layout={layoutId} onDownload={requestCvDownload} />
-            <ATSPanel cv={cv} />
+            <ATSPanel
+              cv={cv}
+              jobDescription={cv.jobDescription || ""}
+              onJobDescriptionChange={(value) => updateCvField("jobDescription", value)}
+              onApplySuggestion={applyAtsSuggestion}
+              onTrackEvent={recordCvEvent}
+            />
           </div>
           <CompletionBar completion={completion} onNextStep={handleNextStep} />
         </div>
+        )}
+        {builderStarted && (
+          <>
         <button type="button" onClick={() => setMobileCvView("preview")} className="btn-preview-float">
           <Icon name="eye" className="h-4 w-4" /> Preview CV
         </button>
@@ -4559,9 +4924,17 @@ function CVBuilderApp({ onHome }) {
                 <span className="preview-live-label"><span className="live-dot" /> ATS score</span>
                 <button type="button" onClick={() => setMobileCvView("edit")} className="rounded border border-slate-300 px-3 py-2 text-xs font-black text-slate-700">Close</button>
               </div>
-              <ATSPanel cv={cv} />
+              <ATSPanel
+                cv={cv}
+                jobDescription={cv.jobDescription || ""}
+                onJobDescriptionChange={(value) => updateCvField("jobDescription", value)}
+                onApplySuggestion={applyAtsSuggestion}
+                onTrackEvent={recordCvEvent}
+              />
             </div>
           </div>
+        )}
+          </>
         )}
         {downloaded && (
           <div className="download-success-stack">
@@ -4614,6 +4987,8 @@ function CVBuilderApp({ onHome }) {
           cv={cv}
           onClose={() => setDownloadTarget(null)}
           onVerifiedDownload={handleDownload}
+          onOtpRequested={(details) => recordCvEvent("otp_requested", { email: details.email, method: "download-email-otp" })}
+          onOtpVerified={(details) => recordCvEvent("otp_requested", { email: details.email, method: "download-email-otp-verified" })}
           canEmailCopy={Boolean(user?.email || session?.user?.email)}
           emailCopyAddress={user?.email || session?.user?.email || ""}
         />
@@ -4646,7 +5021,7 @@ export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const isBuilderHash = ["#builder", "#cover-letter"].includes(location.hash);
-  const goToBuilder = () => navigate("/builder");
+  const goToBuilder = (target) => navigate(typeof target === "string" && target.startsWith("/builder") ? target : "/builder");
   const goHome = () => navigate("/");
 
   useEffect(() => {
@@ -4686,7 +5061,6 @@ export default function App() {
           path="/"
           element={
             <>
-              <Header onStart={goToBuilder} />
               <LandingPage onStart={goToBuilder} />
             </>
           }

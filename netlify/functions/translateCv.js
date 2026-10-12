@@ -33,6 +33,54 @@ const normalizeExperience = (entry = {}) => ({
     : String(entry.responsibilities || entry.duties || entry.achievements || "").trim(),
 });
 
+const normalizeListItem = (item, preferredKeys = []) => {
+  if (item == null) return "";
+  if (typeof item === "string" || typeof item === "number" || typeof item === "boolean") {
+    return String(item).trim();
+  }
+  if (typeof item !== "object") return "";
+
+  const values = [];
+  preferredKeys.forEach((key) => {
+    const value = item[key];
+    if (value == null) return;
+    const normalized = Array.isArray(value)
+      ? value.map((part) => String(part || "").trim()).filter(Boolean).join(", ")
+      : String(value).trim();
+    if (normalized) values.push(normalized);
+  });
+
+  if (values.length) {
+    return [...new Set(values)].join(", ");
+  }
+
+  return Object.values(item)
+    .flatMap((value) => Array.isArray(value) ? value : [value])
+    .map((value) => String(value || "").trim())
+    .filter(Boolean)
+    .join(", ");
+};
+
+const normalizeTextList = (value, preferredKeys = []) => {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => normalizeListItem(item, preferredKeys))
+      .filter(Boolean)
+      .join("\n");
+  }
+  return normalizeListItem(value, preferredKeys);
+};
+
+const normalizeInlineList = (value, preferredKeys = []) => {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => normalizeListItem(item, preferredKeys))
+      .filter(Boolean)
+      .join(", ");
+  }
+  return normalizeListItem(value, preferredKeys);
+};
+
 const normalizeCv = (data = {}, fallback = {}, outputLanguage = "English") => {
   const experiences = Array.isArray(data.workExperiences)
     ? data.workExperiences.map(normalizeExperience).filter((entry) => entry.jobTitle || entry.employer || entry.responsibilities)
@@ -53,14 +101,14 @@ const normalizeCv = (data = {}, fallback = {}, outputLanguage = "English") => {
     portfolioUrl: String(data.portfolioUrl || fallback.portfolioUrl || "").trim(),
     drivingLicense: String(data.drivingLicense || fallback.drivingLicense || "").trim(),
     summary: String(data.summary || fallback.summary || "").trim(),
-    skills: Array.isArray(data.skills) ? data.skills.filter(Boolean).join(", ") : String(data.skills || fallback.skills || "").trim(),
+    skills: normalizeInlineList(data.skills ?? fallback.skills, ["name", "skill", "title", "value"]),
     workExperiences: experiences,
     experience: experiences.map((entry) => [entry.jobTitle, entry.employer, entry.companyLocation, entry.fromDate || entry.toDate ? `${entry.fromDate} - ${entry.isCurrent ? "Present" : entry.toDate}` : "", entry.responsibilities].filter(Boolean).join("\n")).join("\n\n"),
-    education: Array.isArray(data.education) ? data.education.filter(Boolean).join("\n") : String(data.education || fallback.education || "").trim(),
-    projects: Array.isArray(data.projects) ? data.projects.filter(Boolean).join("\n") : String(data.projects || fallback.projects || "").trim(),
-    certifications: Array.isArray(data.certifications) ? data.certifications.filter(Boolean).join("\n") : String(data.certifications || fallback.certifications || "").trim(),
-    languages: Array.isArray(data.languages) ? data.languages.filter(Boolean).join(", ") : String(data.languages || fallback.languages || "").trim(),
-    references: String(data.references || fallback.references || "Available upon request").trim(),
+    education: normalizeTextList(data.education ?? fallback.education, ["degree", "course", "title", "institution", "school", "university", "location", "year", "date", "period"]),
+    projects: normalizeTextList(data.projects ?? fallback.projects, ["title", "name", "role", "summary", "description", "tech", "year"]),
+    certifications: normalizeTextList(data.certifications ?? fallback.certifications, ["title", "name", "issuer", "authority", "year", "date"]),
+    languages: normalizeInlineList(data.languages ?? fallback.languages, ["language", "name", "level", "proficiency"]),
+    references: String(data.references || fallback.references || "").trim(),
     originalLanguage: String(data.originalLanguage || fallback.originalLanguage || "Auto-detected").trim(),
     outputLanguage,
     languageDirection: isArabicLanguage(outputLanguage) ? "rtl" : "ltr",

@@ -30,6 +30,54 @@ const normalizeExperience = (entry = {}) => ({
     : String(entry.responsibilities || entry.duties || entry.achievements || "").trim(),
 });
 
+const normalizeListItem = (item, preferredKeys = []) => {
+  if (item == null) return "";
+  if (typeof item === "string" || typeof item === "number" || typeof item === "boolean") {
+    return String(item).trim();
+  }
+  if (typeof item !== "object") return "";
+
+  const values = [];
+  preferredKeys.forEach((key) => {
+    const value = item[key];
+    if (value == null) return;
+    const normalized = Array.isArray(value)
+      ? value.map((part) => String(part || "").trim()).filter(Boolean).join(", ")
+      : String(value).trim();
+    if (normalized) values.push(normalized);
+  });
+
+  if (values.length) {
+    return [...new Set(values)].join(", ");
+  }
+
+  return Object.values(item)
+    .flatMap((value) => Array.isArray(value) ? value : [value])
+    .map((value) => String(value || "").trim())
+    .filter(Boolean)
+    .join(", ");
+};
+
+const normalizeTextList = (value, preferredKeys = []) => {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => normalizeListItem(item, preferredKeys))
+      .filter(Boolean)
+      .join("\n");
+  }
+  return normalizeListItem(value, preferredKeys);
+};
+
+const normalizeInlineList = (value, preferredKeys = []) => {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => normalizeListItem(item, preferredKeys))
+      .filter(Boolean)
+      .join(", ");
+  }
+  return normalizeListItem(value, preferredKeys);
+};
+
 const normalizeCv = (data = {}, fileName = "") => {
   const experiences = Array.isArray(data.workExperiences)
     ? data.workExperiences.map(normalizeExperience).filter((entry) => entry.jobTitle || entry.employer || entry.responsibilities)
@@ -48,14 +96,14 @@ const normalizeCv = (data = {}, fileName = "") => {
     portfolioUrl: String(data.portfolioUrl || data.website || "").trim(),
     drivingLicense: String(data.drivingLicense || "").trim(),
     summary: String(data.summary || data.professionalSummary || "").trim(),
-    skills: Array.isArray(data.skills) ? data.skills.filter(Boolean).join(", ") : String(data.skills || "").trim(),
+    skills: normalizeInlineList(data.skills, ["name", "skill", "title", "value"]),
     experience: experiences.map((entry) => [entry.jobTitle, entry.employer, entry.fromDate || entry.toDate ? `${entry.fromDate} - ${entry.isCurrent ? "Present" : entry.toDate}` : "", entry.responsibilities].filter(Boolean).join("\n")).join("\n\n"),
     workExperiences: experiences,
-    education: Array.isArray(data.education) ? data.education.filter(Boolean).join("\n") : String(data.education || "").trim(),
-    projects: Array.isArray(data.projects) ? data.projects.filter(Boolean).join("\n") : String(data.projects || "").trim(),
-    certifications: Array.isArray(data.certifications) ? data.certifications.filter(Boolean).join("\n") : String(data.certifications || "").trim(),
-    languages: Array.isArray(data.languages) ? data.languages.filter(Boolean).join(", ") : String(data.languages || "").trim(),
-    references: String(data.references || "Available upon request").trim(),
+    education: normalizeTextList(data.education, ["degree", "course", "title", "institution", "school", "university", "location", "year", "date", "period"]),
+    projects: normalizeTextList(data.projects, ["title", "name", "role", "summary", "description", "tech", "year"]),
+    certifications: normalizeTextList(data.certifications, ["title", "name", "issuer", "authority", "year", "date"]),
+    languages: normalizeInlineList(data.languages, ["language", "name", "level", "proficiency"]),
+    references: String(data.references || "").trim(),
     originalLanguage: String(data.originalLanguage || data.detectedLanguage || "").trim(),
     outputLanguage: String(data.outputLanguage || "").trim(),
     languageDirection: String(data.languageDirection || "").trim(),

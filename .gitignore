@@ -1,5 +1,7 @@
 node_modules/
 dist/
+.netlify/
+artifacts/
 .env
 .env.*
 npm-debug.log*

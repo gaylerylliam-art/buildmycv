@@ -445,6 +445,20 @@ const downloadCvDocx = async (cv, filename, theme = { color: "#0f66d0", dark: "#
         italics: options.italics,
       })],
     });
+  const multilineParagraphs = (text = "", options = {}) => {
+    const cleaned = cleanExportText(text);
+    if (!cleaned) return [];
+    return cleaned
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line, index, lines) =>
+        paragraph(line, {
+          ...options,
+          after: index === lines.length - 1 ? options.after ?? 150 : options.betweenAfter ?? 60,
+        }),
+      );
+  };
   const sectionHeading = (text) =>
     new Paragraph({
       spacing: { before: 180, after: 90 },
@@ -486,7 +500,7 @@ const downloadCvDocx = async (cv, filename, theme = { color: "#0f66d0", dark: "#
   };
   const sectionChildren = (id) => {
     const sections = {
-      summary: [sectionHeading("Professional Summary"), paragraph(cleanExportText(cv.summary))],
+      summary: [sectionHeading("Professional Summary"), ...multilineParagraphs(cv.summary)],
       experience: [
         sectionHeading("Work Experience"),
         ...workExperiences.flatMap((entry) => {
@@ -502,11 +516,11 @@ const downloadCvDocx = async (cv, filename, theme = { color: "#0f66d0", dark: "#
           ].filter(Boolean);
         }),
       ],
-      education: [sectionHeading("Education"), paragraph(cleanExportText(cv.education))],
-      educationProjects: [sectionHeading("Projects"), paragraph(cleanExportText(cv.projects))],
-      skills: [sectionHeading("Skills"), paragraph(cleanExportText(cv.skills))],
-      certifications: [sectionHeading("Certifications"), paragraph(cleanExportText(cv.certifications))],
-      languages: [sectionHeading("Languages"), paragraph(cleanExportText(cv.languages))],
+      education: [sectionHeading("Education"), ...multilineParagraphs(cv.education)],
+      educationProjects: [sectionHeading("Projects"), ...multilineParagraphs(cv.projects)],
+      skills: [sectionHeading("Skills"), ...multilineParagraphs(cv.skills)],
+      certifications: [sectionHeading("Certifications"), ...multilineParagraphs(cv.certifications)],
+      languages: [sectionHeading("Languages"), ...multilineParagraphs(cv.languages)],
       references: [sectionHeading("References"), ...referenceParagraphs()],
     };
     return sections[id] || [];

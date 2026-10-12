@@ -1,14 +1,14 @@
-export const HOME_H1 = "Every career. Every country.";
+export const HOME_H1 = "Build your professional CV for free.";
 
 export const HOME_META_TITLE = "Free CV Builder - ATS-Friendly CVs for Every Country | BuildMyCVNow";
 
 export const HOME_META_DESCRIPTION =
-  "Build a professional, ATS-friendly CV in under 5 minutes. Free templates trusted by job seekers in the UAE, UK, US, Canada, Australia and 60+ countries. No sign-up, no watermark.";
+  "Create a professional CV with free job-specific templates, AI writing help, and an editable live preview. Download PDF or Word with email verification. Available worldwide.";
 
 export const HOME_EYEBROW = "Free CV Builder - Works Worldwide";
 
 export const HOME_SUBHEAD =
-  "Build a professional, ATS-friendly CV in under 5 minutes. Free templates trusted by job seekers in the UAE, UK, US, Canada, Australia, and 60+ more countries.";
+  "Start fresh or upload your existing CV. Choose a layout, tell your story, and polish it with AI. Free PDF and Word downloads, wherever your next job takes you.";
 
 export const HOME_TRUST_ITEMS = ["No sign-up needed", "ATS-optimized", "5-minute build", "60+ countries"];
 
@@ -67,7 +67,7 @@ export const HOME_VIDEO = {
 
 export const HOME_PROOF_CARDS = [
   ["Built for global applications", "Create a clean CV for local jobs, overseas opportunities, remote roles, and region-specific hiring requirements."],
-  ["Passes ATS screening", "Keep headings, keywords, and formatting easy for applicant tracking systems to read."],
+  ["Designed for ATS readability", "Keep headings, keywords, and formatting easy for applicant tracking systems to read."],
   ["Actually free", "No surprise paywall at download. You can create and download your CV without a credit card."],
   ["Works on your phone", "Large fields, live preview, and simple PDF download make the builder easy on small screens."],
 ];

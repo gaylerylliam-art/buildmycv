@@ -17,6 +17,18 @@ export const supabase = isSupabaseConfigured
 
 export const SAVED_CV_LIMIT = 10;
 export const SAVED_CV_RETENTION_DAYS = 15;
+const CV_EVENT_SESSION_KEY = "bmcv:event-session-id";
+
+export function getCvEventSessionId() {
+  if (typeof window === "undefined") return "server-session";
+  const existing = window.localStorage.getItem(CV_EVENT_SESSION_KEY);
+  if (existing) return existing;
+  const next = typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `bmcv-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  window.localStorage.setItem(CV_EVENT_SESSION_KEY, next);
+  return next;
+}
 
 export async function submitContactMessage({ name, email, message }) {
   const response = await fetch("/.netlify/functions/contact", {
@@ -181,4 +193,53 @@ export async function duplicateUserCv(item) {
   }
   if (error) throw error;
   return data;
+}
+
+export async function trackCvEvent({
+  eventName,
+  userId = null,
+  cvId = null,
+  metadata = {},
+  sessionId = getCvEventSessionId(),
+}) {
+  if (!supabase || !eventName) return { ok: false, skipped: true };
+  try {
+    const { error } = await supabase.from("cv_events").insert({
+      user_id: userId || null,
+      cv_id: cvId || null,
+      session_id: sessionId,
+      event_name: eventName,
+      metadata: metadata || {},
+    });
+    if (error) throw error;
+    return { ok: true };
+  } catch (error) {
+    console.warn("cv_events insert failed", error);
+    return { ok: false, error };
+  }
+}
+
+export async function markCvDownloaded(cvId) {
+  if (!supabase || !cvId) return { ok: false, skipped: true };
+  try {
+    const { data: current, error: fetchError } = await supabase
+      .from("cvs")
+      .select("download_count")
+      .eq("id", cvId)
+      .single();
+    if (fetchError) throw fetchError;
+    const nextCount = Number(current?.download_count || 0) + 1;
+    const { error } = await supabase
+      .from("cvs")
+      .update({
+        download_count: nextCount,
+        last_downloaded_at: new Date().toISOString(),
+      })
+      .eq("id", cvId);
+    if (error) throw error;
+    return { ok: true, downloadCount: nextCount };
+  } catch (error) {
+    console.warn("markCvDownloaded failed", error);
+    return { ok: false, error };
+  }
 }

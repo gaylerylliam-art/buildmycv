@@ -1,23 +1,15 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import React from "react";
+import { renderToString } from "react-dom/server";
+import { createServer } from "vite";
 import { cities, seoJobs, topCityJobSlugs } from "../src/content/programmaticSeo.js";
 import { homepageFaqs } from "../src/content/seoFaq.js";
 import {
-  HOME_CITY_PILLS,
-  HOME_EYEBROW,
-  HOME_FEATURES,
-  HOME_H1,
-  HOME_HOW_IT_WORKS_BADGES,
-  HOME_HOW_IT_WORKS_SUBTITLE,
-  HOME_HOW_IT_WORKS_TITLE,
-  HOME_HOW_IT_WORKS_STEPS,
   HOME_META_DESCRIPTION,
   HOME_META_TITLE,
   HOME_PROOF_CARDS,
-  HOME_SUBHEAD,
-  HOME_TESTIMONIALS,
-  HOME_TRUST_ITEMS,
   HOME_VIDEO,
 } from "../src/content/homepage.js";
 
@@ -27,6 +19,18 @@ const dist = path.join(root, "dist");
 const blogDir = path.join(root, "content", "blog");
 const baseUrl = "https://buildmycvnow.com";
 const buildDate = new Date().toISOString().slice(0, 10);
+const appShell = fs.readFileSync(path.join(dist, "index.html"), "utf8");
+const appAssets = (appShell.match(/<script\b[^>]*type="module"[^>]*>[\s\S]*?<\/script>|<link\b[^>]*rel="stylesheet"[^>]*>/g) || []).join("\n");
+
+// Render the same component used by the app so first-load HTML cannot drift.
+const renderer = await createServer({ root, configFile: false, server: { middlewareMode: true }, optimizeDeps: { noDiscovery: true, entries: [] }, appType: "custom" });
+let homepageMarkup;
+try {
+  const { default: HomeLanding } = await renderer.ssrLoadModule("/src/components/HomeLanding.jsx");
+  homepageMarkup = renderToString(React.createElement(HomeLanding));
+} finally {
+  await renderer.close();
+}
 
 const ensureDir = (dir) => fs.mkdirSync(dir, { recursive: true });
 const escapeHtml = (value = "") => String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
@@ -107,7 +111,7 @@ function writePage(route, html) {
   routes.add(route);
 }
 
-function layout({ title, description, canonical, body, jsonLd = [], type = "website", image = `${baseUrl}/assets/og-image.jpg` }) {
+function layout({ title, description, canonical, body, jsonLd = [], type = "website", image = `${baseUrl}/assets/og-image.jpg`, interactive = false }) {
   const schemas = Array.isArray(jsonLd) ? jsonLd : [jsonLd];
   return `<!doctype html>
 <html lang="en">
@@ -133,12 +137,11 @@ function layout({ title, description, canonical, body, jsonLd = [], type = "webs
   <script defer data-domain="buildmycvnow.com" src="https://plausible.io/js/script.js"></script>
   <script>window.plausible=window.plausible||function(){(window.plausible.q=window.plausible.q||[]).push(arguments)}</script>
   <style>${criticalCss()}</style>
+  ${interactive ? appAssets : ""}
   ${schemas.filter(Boolean).map((schema) => `<script type="application/ld+json">${JSON.stringify(schema)}</script>`).join("\n")}
 </head>
 <body>
-${header()}
-${body}
-${footer()}
+${interactive ? `<div id="root">${body}</div>` : `${header()}${body}${footer()}`}
 </body>
 </html>`;
 }
@@ -323,50 +326,6 @@ function ctaCard(text = "Build your free CV") {
   return `<div class="card" style="background:#ecfdf5;border-color:#bbf7d0"><h3>${text}</h3><p>Create an ATS-friendly CV for local, remote, and international jobs in minutes. No sign-up required.</p><a class="cta" href="/builder">Build My CV Now - Free</a></div>`;
 }
 
-function staticHomepage() {
-  return `<main class="static-home">
-    ${staticHero()}
-    ${staticHowItWorksSection()}
-    ${staticWhySection()}
-    ${staticTemplatesSection()}
-    ${staticFeaturesSection()}
-    ${staticTestimonialsSection()}
-    ${faqSection()}
-    <section class="section static-final-cta"><div class="wrap"><h2>Ready to build your CV?</h2><p class="lead" style="color:#e0f2fe">Free forever. No sign-up. Download as PDF in minutes.</p><p><a class="cta" href="/builder">Build my CV - it's free</a></p></div></section>
-  </main>`;
-}
-
-function staticHero() {
-  return `<section class="static-hero"><div class="wrap static-hero-grid"><div><div class="static-eyebrow">${HOME_EYEBROW.toUpperCase()}</div><h1 class="static-headline">${HOME_H1.replace(". ", ".<br>")}</h1><p class="static-subhead">${HOME_SUBHEAD}</p><div class="static-actions"><a class="cta" href="/builder">Build my CV - it's free</a><a class="btn secondary" href="/templates">Browse templates</a></div><div class="static-trust">${HOME_TRUST_ITEMS.map((item) => `<span>${item}</span>`).join("")}</div></div><div class="static-hero-cv-stack" aria-label="Sample CV previews for hotel receptionist and mechanical engineer roles"><figure class="static-hero-cv-shot primary"><img src="/assets/hotel-receptionist-cv.png" alt="Hotel Receptionist CV" /><figcaption>Hotel Receptionist</figcaption></figure><figure class="static-hero-cv-shot secondary"><img src="/assets/mechanical-engineer-cv.png" alt="Mechanical Engineer CV" /><figcaption>Mechanical Engineer</figcaption></figure><div class="static-hero-cv-note">Real CV previews from BuildMyCVNow templates</div></div></div></section>`;
-}
-
-function staticHowItWorksSection() {
-  return `<section class="section static-video" id="how-it-works"><div class="wrap"><div class="static-hiw-pro-head"><span class="static-hiw-pro-eyebrow">HOW IT WORKS</span><h2 class="static-hiw-pro-title">${HOME_HOW_IT_WORKS_TITLE}</h2><p class="static-hiw-pro-subtitle">${HOME_HOW_IT_WORKS_SUBTITLE}</p></div><div class="static-hiw-pro-grid"><div class="static-hiw-pro-intro"><div class="static-hiw-pro-intro-card"><p class="static-hiw-pro-kicker">Start fast</p><h3>Everything follows the same flow as the builder.</h3><p>Pick a template, import or type your details, improve weak wording with AI, review your live CV score, and download a recruiter-ready PDF in minutes.</p><div class="static-hiw-pro-badges" aria-label="BuildMyCVNow trust points">${HOME_HOW_IT_WORKS_BADGES.map((badge) => `<span>${badge}</span>`).join("")}</div><a class="static-hiw-pro-cta" href="/builder">Start my free CV</a></div><article class="static-hiw-pro-video-card" aria-label="BuildMyCVNow demo video"><div class="static-hiw-pro-video-copy"><span class="static-hiw-pro-video-eyebrow">Demo</span><h3>Watch the 2-minute walkthrough</h3><p>See how to choose a template, add your details, improve your CV with AI, and download your PDF.</p></div><div class="static-hiw-pro-video-frame"><video controls playsinline preload="metadata" poster="${HOME_VIDEO.poster}" aria-label="${escapeHtml(HOME_VIDEO.name)}"><source src="${HOME_VIDEO.url}" type="video/mp4" />Your browser cannot play this video. Please open it in a new tab.</video></div><div class="static-hiw-pro-video-actions"><a class="static-hiw-pro-video-link" href="${HOME_VIDEO.url}" target="_blank" rel="noreferrer">Play walkthrough</a><span>2 min demo</span></div></article></div><div class="static-hiw-pro-timeline" aria-label="BuildMyCVNow CV builder steps">${HOME_HOW_IT_WORKS_STEPS.map((step, index) => `<article class="static-hiw-pro-step"><div class="static-hiw-pro-marker" aria-hidden="true"><span>${index + 1}</span></div><div class="static-hiw-pro-step-card"><span class="static-hiw-pro-step-label">Step ${index + 1}</span><h3>${step.title}</h3><p>${step.body}</p></div></article>`).join("")}</div></div></div></section>`;
-}
-
-function staticWhySection() {
-  return `<section class="section static-features"><div class="wrap"><div class="static-section-title"><h2>Why BuildMyCVNow</h2><p class="lead">Built around real CV workflows and shipped features.</p></div><div class="grid grid-4">${HOME_PROOF_CARDS.map(([title, text], index) => `<article class="card"><div class="static-feature-icon">${index + 1}</div><h3>${title}</h3><p>${text}</p></article>`).join("")}</div></div></section>`;
-}
-
-function staticTemplatesSection() {
-  const templates = [
-    ["Modern Blue", "Business Analyst", "All industries", "Most popular", "#2563eb"],
-    ["Hospitality Pro", "Hotel Manager", "Hotels and F&B", "Global favourite", "#16a34a"],
-    ["IT & Tech", "Software Engineer", "Dev and IT support", "ATS optimised", "#7c3aed"],
-    ["Engineering", "Civil Engineer", "Civil, structural, MEP", "Global-ready", "#ea580c"],
-    ["Finance & Banking", "Finance Analyst", "Accounting and banking", "ATS optimised", "#1d4ed8"],
-    ["General", "Admin Supervisor", "Any industry", "Beginner friendly", "#059669"],
-  ];
-  return `<section class="section" id="templates"><div class="wrap"><div class="static-section-title"><h2>Built for every career, everywhere.</h2><p class="lead">Choose a premium-looking CV template for business, hospitality, IT, engineering, finance, and general roles.</p></div><div class="static-template-grid">${templates.map(([name, role, desc, badge, color]) => `<a class="static-template-card" href="/builder"><div class="static-template-head" style="background:${color}"><strong>${name}</strong><p>${role}</p></div><div class="static-template-body"><span class="static-badge">${badge}</span><h3>${desc}</h3><p class="muted">ATS-friendly format with role-specific guidance.</p><div class="static-line" style="background:${color};width:70%"></div><div class="static-line" style="width:86%"></div><div class="static-line" style="width:62%"></div></div></a>`).join("")}</div><p style="text-align:center;margin-top:24px"><a class="cta" href="/builder">Browse all templates</a></p></div></section>`;
-}
-
-function staticFeaturesSection() {
-  return `<section class="section"><div class="wrap"><div class="static-section-title"><h2>Everything you need, nothing you don't</h2><p class="lead">Simple tools for first-time applicants and experienced workers.</p></div><div class="grid grid-4">${HOME_FEATURES.map(([icon, title, text]) => `<article class="card"><div class="static-feature-icon">${icon.toUpperCase().slice(0, 2)}</div><h3>${title}</h3><p>${text}</p></article>`).join("")}</div></div></section>`;
-}
-
-function staticTestimonialsSection() {
-  return `<section class="section static-testimonials"><div class="wrap"><div class="static-section-title"><h2>Job seekers who got hired</h2><p class="lead">Short, practical CV help for real applications.</p></div><div class="grid grid-3">${HOME_TESTIMONIALS.map(([name, quote]) => `<article class="card"><p class="static-quote">"${quote}"</p><p><strong>${name}</strong></p></article>`).join("")}</div></div></section>`;
-}
 
 const routes = new Set();
 const originalIndex = path.join(dist, "index.html");
@@ -394,7 +353,8 @@ writePage("/", layout({
   description: HOME_META_DESCRIPTION,
   canonical: baseUrl,
   jsonLd: [webAppSchema, faqSchema, orgSchema, videoSchema],
-  body: staticHomepage(),
+  body: homepageMarkup,
+  interactive: true,
 }));
 
 function whySection() {
