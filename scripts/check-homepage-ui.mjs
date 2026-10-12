@@ -7,7 +7,7 @@ const baseUrl = process.env.PREVIEW_URL || "http://127.0.0.1:5174";
 const executablePath = process.env.BROWSER_PATH || "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
 const output = path.resolve("artifacts/homepage-review");
 fs.mkdirSync(output, { recursive: true });
-const browser = await puppeteer.launch({ executablePath, headless: true, args: ["--disable-gpu", "--no-first-run"] });
+const browser = await puppeteer.launch({ executablePath, userDataDir: fs.mkdtempSync(path.join(output, "browser-")), headless: true, args: ["--disable-gpu", "--no-first-run"] });
 const errors = [];
 const page = await browser.newPage();
 await page.setRequestInterception(true);

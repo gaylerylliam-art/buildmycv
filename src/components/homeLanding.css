@@ -108,6 +108,26 @@
 .hm-secondary-tools article { display: flex; gap: 20px; }
 .hm-secondary-tools .hm-tool-icon { flex-shrink: 0; }
 .hm-secondary-tools article:last-child { padding-top: 28px; border-top: 1px solid var(--hm-line); }
+.hm-global { background: #f2f7f9; border-top: 1px solid #dce7ea; overflow: hidden; }
+.hm-global-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 52px; align-items: center; }
+.hm-global h2 { margin-top: 12px; max-width: 480px; }
+.hm-global-copy > p { margin-top: 18px; color: var(--hm-muted); font-size: 16px; max-width: 470px; }
+.hm-global-languages { display: flex; flex-wrap: wrap; gap: 8px 18px; list-style: none; padding: 0; margin: 22px 0; font-size: 13px; font-weight: 600; color: #2563a8; }
+.hm-global-copy .hm-global-note { font-size: 12px; margin-top: 12px; }
+.hm-globe-visual { position: relative; min-width: 0; width: 100%; aspect-ratio: 1; max-width: 510px; justify-self: center; }
+.hm-globe-stage { width: 100%; height: 100%; position: relative; }
+.hm-globe-stage canvas, .hm-globe-fallback { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; }
+.hm-globe-fallback-hidden { visibility: hidden; }
+.hm-globe-pause { position: absolute; right: 12px; bottom: 12px; display: grid; place-items: center; width: 44px; height: 44px; background: #fff; color: #167855; border: 1px solid #bed0cb; border-radius: 6px; }
+.hm-globe-pause:hover { background: #e5f2e9; }
+@media (prefers-reduced-motion: no-preference) {
+  .hm-button svg, .hm-text-button svg, .hm-template-use svg { transition: transform .2s ease; }
+  .hm-button:hover > svg:last-child, .hm-text-button:hover > svg:last-child, .hm-template-use:hover > svg { transform: translateX(3px); }
+  .hm-template { transition: box-shadow .2s ease; }
+  .hm-template:focus-within, .hm-template:hover { box-shadow: 0 8px 24px #1d413014; }
+}
+@media (max-width: 850px) { .hm-global-grid { gap: 24px; } }
+@media (max-width: 600px) { .hm-global-grid { grid-template-columns: 1fr; gap: 20px; } .hm-globe-visual { max-width: 360px; } .hm-global-copy > p { font-size: 15px; } }
 .hm-access { background: #f6f8fa; border-block: 1px solid #dfe5ec; }
 .hm-access-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 36px; }
 .hm-access-grid article { padding: 28px; background: #fff; border: 1px solid #dce4e9; border-radius: 8px; }

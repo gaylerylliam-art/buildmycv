@@ -9,6 +9,7 @@ fs.mkdirSync(output, { recursive: true });
 const browser = await puppeteer.launch({
   executablePath: process.env.BROWSER_PATH || "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
   headless: true,
+  userDataDir: fs.mkdtempSync(path.join(output, "browser-")),
 });
 try {
   const page = await browser.newPage();
