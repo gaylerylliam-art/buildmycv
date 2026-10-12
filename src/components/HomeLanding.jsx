@@ -1,26 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
-import { categories } from "../data/categories.js";
+import { homeCvExamples as designs } from "../data/homeCvExamples.js";
 import { homepageFaqs } from "../content/seoFaq.js";
 import { HOME_H1, HOME_SUBHEAD, HOME_HOW_IT_WORKS_STEPS, HOME_VIDEO } from "../content/homepage.js";
 import "./homeLanding.css";
 import GlobalGlobe from "./GlobalGlobe.jsx";
 
-const designs = [
-  ["hospitality", "Guest-ready", "green", "sidebar", "Modern sidebar", "Amina Williams", "Hotel Receptionist", "Guest service", "Welcomed guests and coordinated check-in with the front desk team.", "/assets/hotel-receptionist-cv.png"],
-  ["it", "Clear & technical", "blue", "classic", "Classic single column", "Rahul Kumar", "IT Support Specialist", "Technical support", "Resolved support tickets and documented solutions for colleagues."],
-  ["engineering", "Precision", "teal", "header", "Focused header", "Daniel Harris", "Mechanical Engineer", "Equipment maintenance", "Coordinated preventive maintenance and reviewed equipment performance.", "/assets/mechanical-engineer-cv.png"],
-  ["finance", "Professional", "slate", "classic", "Classic single column", "Carlos Martin", "Accounts Assistant", "Financial reporting", "Reconciled invoices and maintained accurate transaction records."],
-  ["marketing", "Creative clarity", "red", "header", "Focused header", "Sara Lewis", "Marketing Assistant", "Campaign planning", "Prepared campaign content and tracked social media engagement."],
-  ["supply-chain-logistics", "Organised", "teal", "compact", "Compact layout", "James Morgan", "Logistics Coordinator", "Shipment coordination", "Coordinated dispatch schedules and maintained shipment records."],
-  ["education", "Learning first", "blue", "header", "Focused header", "Maria Santos", "Teaching Assistant", "Student support", "Prepared learning materials and supported classroom activities."],
-  ["domestic", "Simple & personal", "green", "classic", "Classic single column", "Anna Reyes", "Nanny", "Child care", "Supported daily routines and maintained a safe home environment."],
-  ["skilled", "Practical", "slate", "compact", "Compact layout", "Ravi Singh", "Electrician", "Electrical maintenance", "Inspected installations and carried out repairs following safety procedures."],
-  ["helper", "A strong start", "blue", "classic", "Classic single column", "John Davis", "General Helper", "Team support", "Organised materials and supported daily warehouse operations."],
-].map(([id, name, theme, layout, style, person, role, skill, duty, image]) => ({
-  id, name, theme, layout, style, person, role, skill, duty, image,
-  category: categories.find((category) => category.id === id)?.name || id,
-  color: { green: "#167855", blue: "#2563a8", teal: "#157d82", slate: "#374151", red: "#b94848" }[theme],
-}));
 
 function Symbol({ name, ...props }) {
   const paths = {
@@ -48,15 +32,7 @@ function BuilderLink({ onStart, query = "", children, className }) {
 }
 
 function MiniCv({ design }) {
-  return <div className={`hm-mini-cv hm-mini-${design.layout}`} style={{ "--cv-accent": design.color }}>
-    <header><strong>{design.person}</strong><span>{design.role}</span><small>name@example.com | +1 202 555 0142</small></header>
-    <div className="hm-mini-content">
-      <section><h4>Professional summary</h4><p>Dependable {design.role.toLowerCase()} with a practical approach to supporting teams and delivering quality work.</p></section>
-      <section><h4>Work experience</h4><b>{design.role}</b><small>Example employer | 2023 - Present</small><p>{design.duty}</p></section>
-      <section><h4>Skills</h4><p>{design.skill} | Communication | Organisation</p></section>
-      <section><h4>Education</h4><p>Relevant qualification<br />College / training provider</p></section>
-    </div>
-  </div>;
+  return <img className="hm-builder-example" src={design.image} alt={`${design.role} sample CV using ${design.name}`} width="794" height="1123" loading="lazy" />;
 }
 
 function TemplatesGallery({ onStart }) {
@@ -97,14 +73,14 @@ function TemplatesGallery({ onStart }) {
       <div className={`hm-template-grid ${showAll || filter !== "all" ? "hm-template-grid-expanded" : ""}`}>
         {visible.map((design) => <article className="hm-template" key={design.id}>
           <button type="button" className="hm-template-preview" aria-label={`Preview ${design.category} CV`} onClick={(event) => { openerRef.current = event.currentTarget; setPreview(design); }}><MiniCv design={design} /><span className="hm-preview-label">Preview template <Symbol name="arrow" /></span></button>
-          <div className="hm-template-info"><span className="hm-industry">{design.category}</span><h3>{design.name}</h3><p>{design.style}</p><BuilderLink onStart={onStart} query={`category=${design.id}&theme=${design.theme}&layout=${design.layout}`} className="hm-template-use">Use this template <Symbol name="arrow" /></BuilderLink></div>
+          <div className="hm-template-info"><span className="hm-industry">{design.category}</span><h3>{design.name}</h3><p>{design.role}</p><BuilderLink onStart={onStart} query={`category=${design.id}&theme=${design.theme}&layout=${design.layout}`} className="hm-template-use">Use this template <Symbol name="arrow" /></BuilderLink></div>
         </article>)}
       </div>
       {filter === "all" && <button type="button" className="hm-text-button hm-show-all" onClick={() => setShowAll(!showAll)}>{showAll ? "Show featured templates" : `Explore all ${designs.length} job categories`} <Symbol name="arrow" /></button>}
       <p className="hm-small-note">Sample details are illustrative. You can edit every field and switch designs in the builder.</p>
     </div>
     {preview && <div className="hm-modal-backdrop" onClick={() => setPreview(null)}><section className="hm-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="hm-preview-title" onClick={(event) => event.stopPropagation()}>
-      <div className="hm-dialog-heading"><div><h2 id="hm-preview-title">{preview.category}</h2><p>{preview.style}</p></div><button type="button" ref={closeRef} onClick={() => setPreview(null)} className="hm-icon-button" aria-label="Close template preview"><Symbol name="close" /></button></div>
+      <div className="hm-dialog-heading"><div><h2 id="hm-preview-title">{preview.category}</h2><p>{preview.name}</p></div><button type="button" ref={closeRef} onClick={() => setPreview(null)} className="hm-icon-button" aria-label="Close template preview"><Symbol name="close" /></button></div>
       <div className="hm-dialog-document"><MiniCv design={preview} /></div>
       <BuilderLink className="hm-button hm-primary" onStart={onStart} query={`category=${preview.id}&theme=${preview.theme}&layout=${preview.layout}`}>Use this template <Symbol name="arrow" /></BuilderLink>
     </section></div>}

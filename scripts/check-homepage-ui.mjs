@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import puppeteer from "puppeteer-core";
+import { homeCvExamples } from "../src/data/homeCvExamples.js";
+import { categories, layouts, themes } from "../src/data/categories.js";
 
 const baseUrl = process.env.PREVIEW_URL || "http://127.0.0.1:5174";
 const executablePath = process.env.BROWSER_PATH || "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
@@ -38,14 +40,17 @@ try {
   assert.equal(await page.$eval("h1", (item) => item.textContent), staticH1);
   assert.deepEqual(await rectangles(), staticRects, "Static and React homepage layout differs");
   assert.equal(await page.$$eval(".hm-template", (items) => items.length), 6);
+  await page.screenshot({ path: path.join(output, "desktop-hotel-top.png") });
   await clickText("Mechanical Engineer");
-  assert.match(await page.$eval(".hm-example-paper img", (item) => item.src), /mechanical-engineer/);
+  assert.match(await page.$eval(".hm-example-paper img", (item) => item.src), /cv-examples\/engineering-header-v2/);
+  assert.equal(await page.$$eval('img[src*="hotel-receptionist-cv.png"], img[src*="mechanical-engineer-cv.png"]', (items) => items.length), 0, "Unsupported illustrated CV designs must not be displayed");
   await page.screenshot({ path: path.join(output, "desktop.png"), fullPage: true });
   await page.screenshot({ path: path.join(output, "desktop-top.png") });
   await page.select(".hm-filter select", "finance");
   assert.equal(await page.$$eval(".hm-template", (items) => items.length), 1);
   await page.click(".hm-template-preview");
   await page.waitForSelector('[role="dialog"]');
+  await page.waitForFunction(() => document.querySelector('.hm-preview-dialog img')?.naturalWidth === 794);
   assert.equal(await page.$eval("#hm-preview-title", (item) => item.textContent), "Finance");
   await page.keyboard.press("Escape");
   assert.equal(await page.$('[role="dialog"]'), null);
@@ -53,6 +58,17 @@ try {
   await page.select(".hm-filter select", "all");
   await clickText("Explore all 10 job categories");
   assert.equal(await page.$$eval(".hm-template", (items) => items.length), 10);
+  for (const example of homeCvExamples) {
+    assert(categories.some((item) => item.id === example.id));
+    assert(layouts.some((item) => item.id === example.layout && item.name === example.name));
+    assert(themes.some((item) => item.id === example.theme));
+    await page.select(".hm-filter select", example.id);
+    await page.$eval(".hm-template-preview", (element) => element.scrollIntoView({ block: "center", behavior: "instant" }));
+    await page.waitForFunction(() => document.querySelector(".hm-builder-example")?.naturalWidth === 794);
+    assert.equal(await page.$eval(".hm-builder-example", (image) => image.getAttribute("src")), example.image);
+    assert.equal(await page.$eval(".hm-template-info h3", (heading) => heading.textContent), example.name);
+    assert.match(await page.$eval(".hm-template-use", (link) => link.href), new RegExp(`layout=${example.layout}`));
+  }
   for (const [name, width, height] of [["tablet", 1024, 768], ["mobile", 390, 844], ["small-mobile", 320, 720]]) {
     await page.setViewport({ width, height });
     await page.goto(baseUrl, { waitUntil: "networkidle0" });
@@ -80,7 +96,7 @@ try {
   await page.goto(`${baseUrl}/builder?access=save`, { waitUntil: "networkidle0" });
   assert.match(await page.evaluate(() => document.body.textContent), /Continue without cloud saving/);
   assert.deepEqual(errors, [], "Browser runtime errors");
-  console.log("PASS: static/React parity, desktop/tablet/mobile, CV image switch, category filter, preview keyboard handling, template selection, upload and account entry routes.");
+  console.log("PASS: static/React parity, desktop/tablet/mobile, native CV images for all 10 registered categories/layouts, preview keyboard handling, template selection, upload and account entry routes.");
   console.log(`Screenshots: ${output}`);
 } finally {
   await browser.close();

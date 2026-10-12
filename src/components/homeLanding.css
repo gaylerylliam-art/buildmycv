@@ -73,6 +73,9 @@
 .hm-mini-compact .hm-mini-content section { break-inside: avoid; }
 .hm-preview-label { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; white-space: nowrap; padding: 8px 14px; background: #fff; border: 1px solid #d0ddd5; border-radius: 5px; color: #21583f; font-size: 12px; font-weight: 600; box-shadow: 0 3px 8px #1d302515; }
 .hm-template-preview:hover .hm-preview-label { background: #167855; color: #fff; }
+.hm-template-preview { align-items: center; padding: 16px 24px 62px; }
+.hm-builder-example { display: block; width: auto; height: 100%; max-width: 100%; aspect-ratio: 794 / 1123; object-fit: contain; box-shadow: 0 3px 10px #1c332515; }
+.hm-dialog-document .hm-builder-example { width: 100%; height: auto; max-width: 794px; margin-inline: auto; }
 .hm-preview-label svg { width: 15px; height: 15px; }
 .hm-template-info { padding: 18px 20px; }
 .hm-industry { font-size: 11px; color: var(--hm-green); font-weight: 700; }
