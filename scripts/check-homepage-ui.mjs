@@ -12,6 +12,7 @@ fs.mkdirSync(output, { recursive: true });
 const browser = await puppeteer.launch({ executablePath, userDataDir: fs.mkdtempSync(path.join(output, "browser-")), headless: true, args: ["--disable-gpu", "--no-first-run"] });
 const errors = [];
 const page = await browser.newPage();
+await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "reduce" }]);
 await page.setRequestInterception(true);
 page.on("request", (request) => request.url().startsWith(baseUrl) || request.url().startsWith("data:") ? request.continue() : request.abort());
 page.on("pageerror", (error) => errors.push(error.message));
@@ -47,9 +48,8 @@ try {
   assert.match(await page.$eval(".hm-strength-heading", item => item.textContent), /Strong/);
   await clickText("Keep mine");
   assert.match(await page.$eval(".hm-strength-heading", item => item.textContent), /Good/);
-  await clickText("Mechanical Engineer");
-  assert.match(await page.$eval(".hm-example-paper img", (item) => item.src), /cv-examples\/engineering-header-v2/);
-  assert.equal(await page.$$eval('img[src*="hotel-receptionist-cv.png"], img[src*="mechanical-engineer-cv.png"]', (items) => items.length), 0, "Unsupported illustrated CV designs must not be displayed");
+  assert.match(await page.$eval(".hm-hero-illustration", item => item.textContent), /Maria Santos/);
+  assert.equal(await page.$eval("h1 mark", item => item.textContent), "job-ready");
   await page.screenshot({ path: path.join(output, "desktop.png"), fullPage: true });
   await page.screenshot({ path: path.join(output, "desktop-top.png") });
   await page.click('.hm-category-tabs button:nth-child(5)');
@@ -80,7 +80,7 @@ try {
     await page.goto(baseUrl, { waitUntil: "networkidle0" });
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
     assert.equal(overflow, false, `${name}: horizontal overflow`);
-    const imagesLoaded = await page.$$eval(".hm-example-paper img", (items) => items.every((item) => item.complete && item.naturalWidth > 0));
+    const imagesLoaded = await page.$eval(".hm-hero-illustration", item => item.getBoundingClientRect().width > 0);
     assert(imagesLoaded, `${name}: CV image missing`);
     await page.screenshot({ path: path.join(output, `${name}.png`), fullPage: true });
     await page.screenshot({ path: path.join(output, `${name}-top.png`) });

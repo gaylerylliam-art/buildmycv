@@ -5,6 +5,7 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, v
 import { CSS } from "@dnd-kit/utilities";
 import { categories, layouts, themes } from "./data/categories";
 import HomeLanding from "./components/HomeLanding";
+import { useBuilderMotion } from "./hooks/usePageMotion.js";
 import PhotoUploadCrop from "./components/PhotoUploadCrop";
 import ATSPanel from "./components/ATSPanel";
 import { industryOptions, getTips } from "./content/cvTips";
@@ -4258,6 +4259,7 @@ function CVBuilderApp({ onHome }) {
   const cloudSavingEnabled = Boolean(user && userMode === "registered");
   const noCloudMode = userMode === "urgent-local";
   const builderStarted = Boolean(cv.onboardingCompleted);
+  const builderMotionRoot = useBuilderMotion(currentStep, builderStarted);
   const completedSteps = useMemo(() => getBuilderStepState(cv), [cv]);
   const recordCvEvent = (eventName, metadata = {}) => {
     trackEvent(eventName, metadata);
@@ -4789,7 +4791,7 @@ function CVBuilderApp({ onHome }) {
           <BuilderOnboarding cv={cv} onChange={updateCvField} onStart={startBuilderFlow} />
         )}
         {builderStarted && (
-        <div className="builder-layout-v2">
+        <div className="builder-layout-v2" ref={builderMotionRoot}>
           <BuilderSidebar
             currentStep={currentStep}
             onStep={jumpToStep}
