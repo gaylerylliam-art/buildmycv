@@ -73,7 +73,7 @@ export const HOME_PROOF_CARDS = [
 ];
 
 export const HOME_FEATURES = [
-  ["globe", "Translate CV into another language", "Upload your current CV, choose your output language, and let AI rewrite it into a professional resume format you can still edit before download."],
+  ["globe", "Import English or Arabic CVs", "Upload your current CV, review extracted fields beside the source text, and confirm the details before importing. Your wording is preserved."],
   ["download", "Free download through email OTP", "Unlock your CV download with a quick email OTP step, with no credit card and no hidden paywall."],
   ["file", "Save CVs online with a free account", "Sign up to keep cloud-based CV copies, manage saved versions, and return later to edit or download again."],
   ["eye", "Live preview and ATS score", "See every change instantly and follow your CV strength score before you export your final PDF or Word file."],

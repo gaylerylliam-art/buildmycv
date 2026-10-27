@@ -161,3 +161,7 @@ Google reCAPTCHA is verified through `netlify/functions/verifyRecaptcha.js`. Sup
 - `/builder`
 
 Existing hash links such as `/#builder`, `/#templates`, and `/#faq` remain supported.
+
+## Upload Existing CV
+
+Server-side extraction, OCR, editable review, safe replacement and setup are documented in [docs/CV-IMPORT.md](docs/CV-IMPORT.md). Run `npm run test:cv-import` for the document pipeline tests.

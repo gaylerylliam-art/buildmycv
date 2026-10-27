@@ -1,6 +1,6 @@
 import QRCode from "qrcode";
-import { normalizeQrUrl } from "../lib/validateQrUrl";
-import { sanitizeQrSvg } from "../hooks/useQrSvg";
+import { normalizeQrUrl } from "../lib/validateQrUrl.js";
+import { sanitizeQrSvg } from "../hooks/useQrSvg.js";
 
 const escapeHtml = (value = "") =>
   String(value)
@@ -133,7 +133,7 @@ const cvPersonalDetails = (cv) =>
     cv.expectedSalaryEnabled && cleanExportText(cv.expectedSalary) ? `Expected Salary: ${cleanExportText(cv.expectedSalary)}` : "",
   ].filter(Boolean);
 
-const defaultSectionOrder = ["summary", "experience", "education", "skills", "educationProjects", "certifications", "languages", "references"];
+const defaultSectionOrder = ["summary", "experience", "education", "skills", "educationProjects", "awards", "volunteerExperience", "professionalLinks", "certifications", "languages", "references"];
 const defaultQrCode = { enabled: false, url: "", label: "Scan for LinkedIn", position: "header" };
 const isArabicLanguage = (language = "") => /arabic|عربي|العربية/i.test(String(language || ""));
 
@@ -291,6 +291,9 @@ const cvSectionHtml = (cv, id) => {
     education: `<div class="section">${exportHeadingHtml("Education", exportSectionIcon("education"))}<p>${escapeHtml(cleanExportText(cv.education))}</p></div>`,
     educationProjects: `<div class="section">${exportHeadingHtml("Projects", exportSectionIcon("educationProjects"))}<p>${escapeHtml(cleanExportText(cv.projects))}</p></div>`,
     skills: `<div class="section">${exportHeadingHtml("Skills", exportSectionIcon("skills"))}<p>${escapeHtml(cleanExportText(cv.skills))}</p></div>`,
+    awards: `<div class="section">${exportHeadingHtml("Awards", exportSectionIcon("certifications"))}<p>${escapeHtml(cleanExportText(cv.awards))}</p></div>`,
+    volunteerExperience: `<div class="section">${exportHeadingHtml("Volunteer Experience", exportSectionIcon("experience"))}<p>${escapeHtml(cleanExportText(cv.volunteerExperience))}</p></div>`,
+    professionalLinks: `<div class="section">${exportHeadingHtml("Professional Links", exportSectionIcon("skills"))}<p>${escapeHtml(cleanExportText(cv.professionalLinks))}</p></div>`,
     certifications: `<div class="section">${exportHeadingHtml("Certifications", exportSectionIcon("certifications"))}<p>${escapeHtml(cleanExportText(cv.certifications))}</p></div>`,
     languages: `<div class="section">${exportHeadingHtml("Languages", exportSectionIcon("languages"))}<p>${escapeHtml(cleanExportText(cv.languages))}</p></div>`,
     references: `<div class="section references-block">${exportHeadingHtml("References", exportSectionIcon("references"))}${referencesHtml(cv.references)}</div>`,
@@ -424,8 +427,9 @@ const downloadCoverLetterDocx = async (letter, cv, filename) => {
   saveBlob(blob, filename);
 };
 
-const downloadCvDocx = async (cv, filename, theme = { color: "#0f66d0", dark: "#0f172a" }, layout = "classic") => {
+export const buildCvDocxBlob = async (cv, theme = { color: "#0f66d0", dark: "#0f172a" }, layout = "classic") => {
   const { AlignmentType, Document, ImageRun, Packer, Paragraph, TextRun } = await import("docx");
+  const isRtl = cv.languageDirection === "rtl" || isArabicLanguage(cv.outputLanguage);
   const accent = hexToDocxColor(theme.color);
   const dark = hexToDocxColor(theme.dark);
   const pageBorder = getCvPageBorderConfig(cv);
@@ -434,11 +438,13 @@ const downloadCvDocx = async (cv, filename, theme = { color: "#0f66d0", dark: "#
   const paragraph = (text = "", options = {}) =>
     new Paragraph({
       spacing: { before: options.before ?? 0, after: options.after ?? 150 },
-      alignment: options.alignment,
+      bidirectional: isRtl,
+      alignment: options.alignment || (isRtl ? AlignmentType.RIGHT : undefined),
       bullet: options.bullet ? { level: 0 } : undefined,
       keepNext: options.keepNext,
       children: [new TextRun({
         text: String(text || ""),
+        rightToLeft: isRtl,
         bold: options.bold,
         size: options.size || 22,
         color: options.color,
@@ -519,6 +525,9 @@ const downloadCvDocx = async (cv, filename, theme = { color: "#0f66d0", dark: "#
       education: [sectionHeading("Education"), ...multilineParagraphs(cv.education)],
       educationProjects: [sectionHeading("Projects"), ...multilineParagraphs(cv.projects)],
       skills: [sectionHeading("Skills"), ...multilineParagraphs(cv.skills)],
+      awards: [sectionHeading("Awards"), ...multilineParagraphs(cv.awards)],
+      volunteerExperience: [sectionHeading("Volunteer Experience"), ...multilineParagraphs(cv.volunteerExperience)],
+      professionalLinks: [sectionHeading("Professional Links"), ...multilineParagraphs(cv.professionalLinks)],
       certifications: [sectionHeading("Certifications"), ...multilineParagraphs(cv.certifications)],
       languages: [sectionHeading("Languages"), ...multilineParagraphs(cv.languages)],
       references: [sectionHeading("References"), ...referenceParagraphs()],
@@ -545,9 +554,10 @@ const downloadCvDocx = async (cv, filename, theme = { color: "#0f66d0", dark: "#
       },
     ],
   });
-  const blob = await Packer.toBlob(doc);
-  saveBlob(blob, filename);
+  return Packer.toBlob(doc);
 };
+
+const downloadCvDocx = async (cv, filename, theme, layout) => saveBlob(await buildCvDocxBlob(cv, theme, layout), filename);
 
 export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a" }, layout = "classic") => {
   const isRtl = cv.languageDirection === "rtl" || isArabicLanguage(cv.outputLanguage);

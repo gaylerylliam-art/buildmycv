@@ -98,7 +98,7 @@ try {
   await page.goto(baseUrl, { waitUntil: "networkidle0" });
   await page.click('.hm-actions a[href="/builder?start=upload"]');
   await page.waitForSelector(".builder-layout-v2");
-  assert.match(await page.$eval(".builder-form-inner", (item) => item.textContent), /Upload & Translate CV/);
+  assert.match(await page.$eval(".builder-form-inner", (item) => item.textContent), /Upload Existing CV/);
   await page.goto(`${baseUrl}/builder?access=save`, { waitUntil: "networkidle0" });
   assert.match(await page.evaluate(() => document.body.textContent), /Continue without cloud saving/);
   assert.deepEqual(errors, [], "Browser runtime errors");

@@ -5,6 +5,7 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, v
 import { CSS } from "@dnd-kit/utilities";
 import { categories, layouts, themes } from "./data/categories";
 import HomeLanding from "./components/HomeLanding";
+import ExistingCVImporter from "./components/ExistingCVImporter.jsx";
 import { useBuilderMotion } from "./hooks/usePageMotion.js";
 import PhotoUploadCrop from "./components/PhotoUploadCrop";
 import ATSPanel from "./components/ATSPanel";
@@ -59,7 +60,7 @@ import {
 } from "./supabaseClient";
 
 const defaultCategory = categories[0];
-const defaultSectionOrder = ["summary", "experience", "education", "skills", "educationProjects", "certifications", "languages", "references"];
+const defaultSectionOrder = ["summary", "experience", "education", "skills", "educationProjects", "awards", "volunteerExperience", "professionalLinks", "certifications", "languages", "references"];
 const defaultQrCode = { enabled: false, url: "", label: "Scan for LinkedIn", position: "header" };
 const pageBorderPresets = [
   { id: "1cm", label: "1 cm", unit: "cm", value: 1 },
@@ -95,6 +96,9 @@ const sectionLabels = {
   experience: "Work Experience",
   education: "Education",
   educationProjects: "Projects",
+  awards: "Awards",
+  volunteerExperience: "Volunteer Experience",
+  professionalLinks: "Professional Links",
   skills: "Skills",
   certifications: "Certifications",
   languages: "Languages",
@@ -254,19 +258,6 @@ const normalizeWorkExperiences = (cv) => {
   ];
 };
 
-const prepareImportedWorkExperiences = (workExperiences = [], fallbackJobTitle = "") => {
-  if (!Array.isArray(workExperiences) || !workExperiences.length) {
-    return [{ ...createBlankExperienceEntry(), jobTitle: fallbackJobTitle || "" }];
-  }
-  const importedEntries = workExperiences
-    .map((entry) => ({ ...createBlankExperienceEntry(), ...entry }))
-    .filter((entry) => [entry.jobTitle, entry.employer, entry.companyLocation, entry.fromDate, entry.toDate, entry.responsibilities].some((value) => String(value || "").trim()));
-  if (!importedEntries.length) {
-    return [{ ...createBlankExperienceEntry(), jobTitle: fallbackJobTitle || "" }];
-  }
-  return sortWorkExperiences(importedEntries).map((entry, index) => ({ ...entry, manualOrder: index }));
-};
-
 const photoShapeClass = (shape = "circle", roundedClass = "rounded-xl") => {
   if (shape === "circle" || shape === "round") return "rounded-full";
   if (shape === "rounded") return roundedClass;
@@ -308,6 +299,10 @@ const hasUserEnteredCvData = (cv) => {
     "experience",
     "education",
     "projects",
+    "awards",
+    "volunteerExperience",
+    "professionalLinks",
+    "unclassifiedContent",
     "certifications",
     "languages",
     "drivingLicense",
@@ -339,6 +334,10 @@ const initialCv = {
   workExperiences: [createExperienceEntry(defaultCategory)],
   education: "High School Diploma\nManila High School, 2018",
   projects: "",
+  awards: "",
+  volunteerExperience: "",
+  professionalLinks: "",
+  unclassifiedContent: "",
   certifications: "Basic Food Safety Certificate",
   languages: "English, Filipino",
   originalLanguage: "English",
@@ -1268,94 +1267,6 @@ function CategorySelector({ selected, onSelect }) {
   );
 }
 
-function ExistingCVImporter({ onImport }) {
-  const [status, setStatus] = useState("Upload CV -> Extract Content -> Select Output Language -> Translate & Improve -> Edit in Builder -> Download Final CV.");
-  const [outputLanguage, setOutputLanguage] = useState("English");
-  const [customLanguage, setCustomLanguage] = useState("");
-  const [improveWording, setImproveWording] = useState(true);
-  const selectedLanguage = outputLanguage === "Other language" ? customLanguage.trim() || "English" : outputLanguage;
-  const handleFile = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    setStatus("Reading uploaded CV and preparing extraction...");
-    try {
-      const source = await readCvSource(file);
-      setStatus("AI/OCR is extracting CV sections and detecting the original language...");
-      const extracted = await extractCvDetails(source, file.name);
-      setStatus(`Translating and preparing a professional ${selectedLanguage} CV...`);
-      const translated = await translateCvDetails(extracted, selectedLanguage, improveWording);
-      onImport(translated);
-      const sourceLanguage = translated.originalLanguage || extracted.originalLanguage || "detected language";
-      if (translated.translationFallback) {
-        setStatus(`We imported your CV details. AI translation is currently unavailable, so the CV stayed in ${sourceLanguage}. Please review and edit any information before downloading.`);
-      } else {
-        setStatus(`We imported your CV details. Original language: ${sourceLanguage}. Output language: ${translated.outputLanguage || selectedLanguage}. Please review and edit any information before downloading.`);
-      }
-    } catch (error) {
-      setStatus(error.message);
-    } finally {
-      event.target.value = "";
-    }
-  };
-  return (
-    <section className="rounded border border-blue-100 bg-blue-50 p-4">
-      <div className="flex items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-blue-600 text-white">
-          <Icon name="upload" className="h-5 w-5" />
-        </span>
-        <div className="min-w-0">
-          <h3 className="panel-title">Upload & Translate CV</h3>
-          <p className="mt-1 text-sm leading-6 text-slate-600">
-            Upload PDF, DOCX, TXT, JPG, PNG, or WEBP. AI/OCR will extract, translate, improve, and fill the builder.
-          </p>
-          <div className="mt-3 grid gap-3 rounded border border-blue-100 bg-white/70 p-3">
-            <div>
-              <span className="form-label">Final CV output language</span>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {translationLanguageOptions.map((language) => (
-                  <button
-                    key={language}
-                    type="button"
-                    onClick={() => setOutputLanguage(language)}
-                    className={`rounded border px-3 py-2 text-xs font-black ${outputLanguage === language ? "border-blue-700 bg-blue-700 text-white" : "border-blue-100 bg-white text-blue-900"}`}
-                  >
-                    {language}
-                  </button>
-                ))}
-              </div>
-              {outputLanguage === "Other language" && (
-                <input
-                  value={customLanguage}
-                  onChange={(event) => setCustomLanguage(event.target.value)}
-                  className="form-field mt-2"
-                  placeholder="Type any language, for example Spanish or Hindi"
-                />
-              )}
-            </div>
-            <label className="flex items-start gap-3 rounded bg-green-50 p-3 text-sm font-bold text-green-950">
-              <input
-                type="checkbox"
-                checked={improveWording}
-                onChange={(event) => setImproveWording(event.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-green-300 text-green-700"
-              />
-              <span>
-                <span className="block">Improve CV wording during translation</span>
-                <span className="mt-1 block text-xs leading-5 text-green-800">Default ON. Keeps facts the same while making the CV sound professional.</span>
-              </span>
-            </label>
-          </div>
-          <label className="mt-3 inline-flex cursor-pointer items-center justify-center rounded bg-white px-4 py-3 text-sm font-bold text-blue-700 ring-1 ring-blue-200 hover:bg-blue-50">
-            Choose CV file
-            <input className="hidden" type="file" accept=".txt,.pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,image/*" onChange={handleFile} />
-          </label>
-          <p className="mt-3 text-xs font-bold leading-5 text-blue-900">{status}</p>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function ProfilePhotoUploader({ cv, onChange }) {
   return (
     <PhotoUploadCrop
@@ -1998,6 +1909,10 @@ function CVBuilderForm({ cv, onChange }) {
       <CollapsibleFormSection id="education" title="Education and certifications" icon="file" badge={cv.education ? "Done" : ""}>
         <FormField label="Education" type="textarea" rows={4} value={cv.education} onChange={(value) => onChange("education", value)} placeholder="Example: High School Diploma, Manila High School, 2018" />
         <FormField label="Projects (optional)" type="textarea" rows={4} value={cv.projects} onChange={(value) => onChange("projects", value)} placeholder="Example: Website redesign, inventory tracking project, school capstone, or work improvement project" />
+        <FormField label="Awards" type="textarea" rows={3} value={cv.awards || ""} onChange={(value) => onChange("awards", value)} />
+        <FormField label="Volunteer experience" type="textarea" rows={4} value={cv.volunteerExperience || ""} onChange={(value) => onChange("volunteerExperience", value)} />
+        <FormField label="Other professional links" type="textarea" rows={3} value={cv.professionalLinks || ""} onChange={(value) => onChange("professionalLinks", value)} />
+        <FormField label="Unclassified imported content (not printed automatically)" type="textarea" rows={4} value={cv.unclassifiedContent || ""} onChange={(value) => onChange("unclassifiedContent", value)} />
         <FormField label="Certifications & licenses" type="textarea" rows={3} value={cv.certifications} onChange={(value) => onChange("certifications", value)} placeholder="Example: Basic Food Safety Certificate, TESDA NC II, UAE driving license" />
       </CollapsibleFormSection>
 
@@ -2035,122 +1950,6 @@ function CVBuilderForm({ cv, onChange }) {
   );
 }
 
-async function readCvFile(file) {
-  const name = file.name.toLowerCase();
-  if (file.type.startsWith("text/") || name.endsWith(".txt")) {
-    return file.text();
-  }
-
-  if (name.endsWith(".docx")) {
-    const mammoth = await import("mammoth/mammoth.browser");
-    const arrayBuffer = await file.arrayBuffer();
-    const result = await mammoth.extractRawText({ arrayBuffer });
-    if (!result.value?.trim()) {
-      throw new Error("Could not find readable text in this DOCX file.");
-    }
-    return result.value;
-  }
-
-  if (name.endsWith(".pdf")) {
-    const pdfjs = await import("pdfjs-dist");
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.mjs", import.meta.url).toString();
-    const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
-    const pages = [];
-    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-      const page = await pdf.getPage(pageNumber);
-      const content = await page.getTextContent();
-      const lineMap = new Map();
-      content.items.forEach((item) => {
-        const y = Math.round(item.transform?.[5] || 0);
-        const x = item.transform?.[4] || 0;
-        const current = lineMap.get(y) || [];
-        current.push({ x, text: item.str });
-        lineMap.set(y, current);
-      });
-      const pageText = [...lineMap.entries()]
-        .sort((a, b) => b[0] - a[0])
-        .map(([, items]) => items.sort((a, b) => a.x - b.x).map((item) => item.text).join(" ").replace(/\s+/g, " ").trim())
-        .filter(Boolean)
-        .join("\n");
-      pages.push(pageText);
-    }
-    const text = pages.join("\n").trim();
-    if (!text) {
-      throw new Error("Could not find readable text in this PDF. If it is a scanned image, please upload a text-based PDF or DOCX.");
-    }
-    return text;
-  }
-
-  if (name.endsWith(".doc")) {
-    throw new Error("Old .doc files cannot be read reliably in the browser. Please save it as .docx, PDF, or TXT and upload again.");
-  }
-
-  throw new Error("Unsupported file type. Please upload a PDF, DOCX, TXT, or image CV.");
-}
-
-const fileToDataUrl = (file) =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(new Error("Could not read this image file."));
-    reader.readAsDataURL(file);
-  });
-
-async function readCvSource(file) {
-  const name = file.name.toLowerCase();
-  const isImage = file.type.startsWith("image/") || /\.(png|jpe?g|webp)$/i.test(name);
-  if (isImage) {
-    return {
-      fileName: file.name,
-      imageDataUrl: await fileToDataUrl(file),
-      text: "",
-    };
-  }
-  return {
-    fileName: file.name,
-    text: await readCvFile(file),
-  };
-}
-
-async function extractCvDetails(source, fileName) {
-  const payload = typeof source === "string" ? { text: source, fileName } : { ...source, fileName: source.fileName || fileName };
-  try {
-    const response = await fetch("/.netlify/functions/parseCv", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const result = await response.json();
-    if (response.ok && result.ok && result.cv) return result.cv;
-    if (response.status === 422) throw new Error(result.message || "This document does not look like a CV/resume.");
-  } catch (error) {
-    if (/does not look like a CV|actual CV/i.test(error.message || "")) throw error;
-  }
-  if (!payload.text?.trim()) throw new Error("Image OCR needs AI extraction. Please try a text-based PDF/DOCX or check AI configuration.");
-  return mockAiExtractCv(payload.text, payload.fileName);
-}
-
-async function translateCvDetails(cv, outputLanguage = "English", improveWording = true) {
-  try {
-    const response = await fetch("/.netlify/functions/translateCv", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cv, outputLanguage, improveWording }),
-    });
-    const result = await response.json();
-    if (response.ok && result.ok && result.cv) return result.cv;
-  } catch {
-    // Local fallback keeps the extracted CV editable when AI translation is unavailable.
-  }
-  return {
-    ...cv,
-    outputLanguage,
-    originalLanguage: cv.originalLanguage || "Auto-detected",
-    languageDirection: isArabicLanguage(outputLanguage) ? "rtl" : "ltr",
-    translationFallback: true,
-  };
-}
-
 async function readJsonResponseSafely(response, fallbackMessage = "Request failed.") {
   const rawText = await response.text().catch(() => "");
   const contentType = response.headers.get("content-type") || "";
@@ -2169,264 +1968,6 @@ async function readJsonResponseSafely(response, fallbackMessage = "Request faile
     throw new Error("The server returned an unexpected page instead of a valid response. Please try again in a moment.");
   }
   throw new Error(normalized || fallbackMessage);
-}
-
-const cvSectionHeading = /^(summary|profile|objective|skills|core\s+competencies|work\s+experience|professional\s+experience|employment\s+history|employment|career\s+history|education|certifications?|licenses?|languages?|references?|projects?)$/i;
-const mojibakeDashPattern = "\u00e2\u20ac[\u201c\u201d]";
-const dateRangePattern = new RegExp(`((?:(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\.?\\s+)?(?:19|20)\\d{2})\\s*(?:-|\\u2013|\\u2014|${mojibakeDashPattern}|to|until|till|through)\\s*((?:(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\.?\\s+)?(?:19|20)\\d{2}|present|current|till\\s+date|to\\s+date|now)`, "i");
-const singleDatePattern = /((?:(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+)(?:19|20)\d{2})\s*$/i;
-const locationPattern = /\b(abu\s*dhabi|ajman|al\s*ain|bahrain|canada|cebu|chennai|cochin|doha|dubai|gcc|india|kerala|kuwait|lagos|london|mangalore|manila|oman|philippines|qatar|riyadh|saudi|sharjah|singapore|toronto|uae|u\.a\.e\.|united\s+arab\s+emirates|uk|usa)\b/i;
-const jobTitlePattern = /\b(accountant|admin|analyst|assistant|associate|cashier|clerk|controller|coordinator|counsellor|counselor|developer|driver|electrician|engineer|executive|helper|housekeeper|intern|manager|nanny|officer|operator|plumber|receptionist|representative|sales|secretary|supervisor|support|technician|waiter|warehouse|welder)\b/i;
-const employerPattern = /\b(agency|association|bank|company|consultancy|corp|corporation|department|forwarding|fzc|hotel|hypermarket|industries|international|llc|limited|logistics|ltd|mart|restaurant|school|services|shipping|solutions|trading|transport|warehouse)\b/i;
-const responsibilityVerbPattern = /^(achieved|assisted|checked|cleaned|communicated|conducted|coordinated|created|delivered|developed|drove|ensured|followed|gained|greeted|handled|helped|improved|installed|maintained|managed|monitored|operated|organized|oversaw|performed|prepared|processed|provided|received|recorded|repaired|reported|resolved|served|supported|supervised|trained|updated|worked)\b/i;
-
-const cleanCvLine = (line) =>
-  String(line || "")
-    .replace(/[•●▪◦]/g, "-")
-    .replace(/\u00e2\u20ac[\u00a2\u201d]\u008f?|\u00e2\u2013[\u00aa\u00a6]/g, "-")
-    .replace(/\s+/g, " ")
-    .trim();
-
-const normalizeImportedDate = (value = "") =>
-  cleanCvLine(value)
-    .replace(new RegExp(`^(?:-|\\u2013|\\u2014|${mojibakeDashPattern})\\s*`), "")
-    .replace(/\btill\s+date\b/i, "Present")
-    .replace(/\bto\s+date\b/i, "Present")
-    .replace(/\bcurrent\b/i, "Present")
-    .replace(/\bnow\b/i, "Present");
-
-const isResponsibilityLine = (line) => {
-  const cleaned = cleanCvLine(line);
-  return /^[-*]\s+/.test(cleaned) || responsibilityVerbPattern.test(cleaned.replace(/^[-*]\s*/, "")) || cleaned.length > 70;
-};
-
-const splitEmployerAndLocation = (value = "") => {
-  const cleaned = cleanCvLine(value).replace(/^[-*]\s*/, "");
-  if (!cleaned) return { employer: "", companyLocation: "" };
-  const separators = [" | ", " - ", "\u2013", "\u2014", ` ${"\u00e2\u20ac\u201c"} `, ` ${"\u00e2\u20ac\u201d"} `];
-  for (const separator of separators) {
-    if (!cleaned.includes(separator)) continue;
-    const parts = cleaned.split(separator).map((part) => part.trim()).filter(Boolean);
-    if (parts.length >= 2 && locationPattern.test(parts[parts.length - 1])) {
-      return { employer: parts.slice(0, -1).join(separator), companyLocation: parts[parts.length - 1] };
-    }
-  }
-  const commaParts = cleaned.split(",").map((part) => part.trim()).filter(Boolean);
-  if (commaParts.length >= 2 && commaParts.slice(1).some((part) => locationPattern.test(part))) {
-    return { employer: commaParts[0], companyLocation: commaParts.slice(1).join(", ") };
-  }
-  return locationPattern.test(cleaned) && !employerPattern.test(cleaned) && !jobTitlePattern.test(cleaned)
-    ? { employer: "", companyLocation: cleaned }
-    : { employer: cleaned, companyLocation: "" };
-};
-
-const parseInlineExperienceHeader = (line = "", match) => {
-  const beforeDate = cleanCvLine(line.slice(0, match.index)).replace(new RegExp(`[,;|\\-\\u2013\\u2014\\s]+$|(?:${mojibakeDashPattern})\\s*$`), "");
-  if (!beforeDate) return {};
-  const atMatch = beforeDate.match(/(.+?)\s+(?:at|with)\s+(.+)$/i);
-  if (atMatch) {
-    const employerLocation = splitEmployerAndLocation(atMatch[2]);
-    return {
-      jobTitle: cleanCvLine(atMatch[1]),
-      employer: employerLocation.employer,
-      companyLocation: employerLocation.companyLocation,
-    };
-  }
-  const separators = [" | ", " - ", "\u2013", "\u2014", ` ${"\u00e2\u20ac\u201c"} `, ` ${"\u00e2\u20ac\u201d"} `];
-  for (const separator of separators) {
-    if (!beforeDate.includes(separator)) continue;
-    const parts = beforeDate.split(separator).map((part) => part.trim()).filter(Boolean);
-    if (parts.length >= 2) {
-      const employerLocation = splitEmployerAndLocation(parts.slice(1).join(separator));
-      return {
-        jobTitle: parts[0],
-        employer: employerLocation.employer,
-        companyLocation: employerLocation.companyLocation,
-      };
-    }
-  }
-  const commaParts = beforeDate.split(",").map((part) => part.trim()).filter(Boolean);
-  if (commaParts.length >= 3 && jobTitlePattern.test(commaParts[0])) {
-    const employerLocation = splitEmployerAndLocation(commaParts.slice(1).join(", "));
-    return {
-      jobTitle: commaParts[0],
-      employer: employerLocation.employer,
-      companyLocation: employerLocation.companyLocation,
-    };
-  }
-  return jobTitlePattern.test(beforeDate) ? { jobTitle: beforeDate } : splitEmployerAndLocation(beforeDate);
-};
-
-const assignExperienceMeta = (beforeMeta, afterMeta, fallbackJobTitle = "") => {
-  const entry = {
-    ...createBlankExperienceEntry(),
-  };
-  const before = beforeMeta.map(cleanCvLine).filter(Boolean);
-  const after = afterMeta.map(cleanCvLine).filter(Boolean);
-  const titleCandidate = [...before].reverse().find((line) => jobTitlePattern.test(line) && !employerPattern.test(line)) || before[0] || fallbackJobTitle;
-  entry.jobTitle = titleCandidate || fallbackJobTitle || "";
-  const employerCandidates = [...before, ...after].filter((line) => line !== entry.jobTitle && !dateRangePattern.test(line));
-  const employerCandidate = employerCandidates.find((line) => employerPattern.test(line)) || employerCandidates.find((line) => !isResponsibilityLine(line)) || "";
-  const employerLocation = splitEmployerAndLocation(employerCandidate);
-  entry.employer = employerLocation.employer;
-  entry.companyLocation = employerLocation.companyLocation;
-  const locationCandidate = employerCandidates.find((line) => line !== employerCandidate && locationPattern.test(line));
-  if (!entry.companyLocation && locationCandidate) {
-    const split = splitEmployerAndLocation(locationCandidate);
-    entry.companyLocation = split.companyLocation || split.employer;
-  }
-  return entry;
-};
-
-const extractStructuredWorkExperiences = (experienceText = "", fallbackJobTitle = "") => {
-  const rawLines = String(experienceText || "")
-    .replace(/\r/g, "\n")
-    .split("\n")
-    .map(cleanCvLine)
-    .filter(Boolean)
-    .filter((line) => !cvSectionHeading.test(line));
-  if (!rawLines.length) return [];
-
-  const dateIndices = rawLines
-    .map((line, index) => {
-      const rangeMatch = line.match(dateRangePattern);
-      const singleMatch = rangeMatch ? null : line.match(singleDatePattern);
-      return {
-        line,
-        index,
-        match: rangeMatch || singleMatch,
-        isSingleDate: Boolean(singleMatch),
-      };
-    })
-    .filter((item) => item.match);
-
-  if (!dateIndices.length) {
-    const duties = rawLines.filter((line) => isResponsibilityLine(line)).map((line) => line.replace(/^[-*]\s*/, ""));
-    const meta = rawLines.filter((line) => !isResponsibilityLine(line)).slice(0, 3);
-    if (!duties.length && !meta.length) return [];
-    return [{
-      ...assignExperienceMeta(meta, [], fallbackJobTitle),
-      manualOrder: 0,
-      responsibilities: (duties.length ? duties : rawLines).join("\n"),
-    }];
-  }
-
-  const entries = dateIndices.map(({ line: dateLine, index, match, isSingleDate }, datePosition) => {
-    const previousDateIndex = datePosition > 0 ? dateIndices[datePosition - 1].index : -1;
-    const nextDateIndex = datePosition < dateIndices.length - 1 ? dateIndices[datePosition + 1].index : rawLines.length;
-    const beforeMeta = [];
-    for (let pointer = index - 1; pointer > previousDateIndex; pointer -= 1) {
-      const line = rawLines[pointer];
-      if (isResponsibilityLine(line)) break;
-      beforeMeta.unshift(line);
-      if (beforeMeta.length >= 3) break;
-    }
-    const afterMeta = [];
-    let dutiesStart = index + 1;
-    for (let pointer = index + 1; pointer < nextDateIndex; pointer += 1) {
-      const line = rawLines[pointer];
-      if (isResponsibilityLine(line) || dateRangePattern.test(line)) break;
-      afterMeta.push(line);
-      dutiesStart = pointer + 1;
-      if (afterMeta.length >= 2) break;
-    }
-    let duties = rawLines.slice(dutiesStart, nextDateIndex);
-    while (duties.length && !isResponsibilityLine(duties[duties.length - 1])) duties = duties.slice(0, -1);
-    duties = duties.map((line) => line.replace(/^[-*]\s*/, "")).filter(Boolean);
-    const inlineMeta = parseInlineExperienceHeader(dateLine, match);
-    const entry = { ...assignExperienceMeta(beforeMeta, afterMeta, fallbackJobTitle), ...inlineMeta };
-    if (!entry.companyLocation) {
-      const locationAfterDate = afterMeta.find((item) => locationPattern.test(item));
-      if (locationAfterDate) entry.companyLocation = splitEmployerAndLocation(locationAfterDate).companyLocation || locationAfterDate;
-    }
-    entry.fromDate = normalizeImportedDate(match[1]);
-    entry.toDate = isSingleDate ? "" : normalizeImportedDate(match[2]);
-    entry.isCurrent = /present/i.test(entry.toDate);
-    if (entry.isCurrent) entry.toDate = "";
-    entry.responsibilities = duties.join("\n") || "Please review imported CV and add responsibilities for this role.";
-    return entry;
-  }).filter((entry) => entry.jobTitle || entry.employer || entry.responsibilities);
-  return sortWorkExperiences(entries).map((entry, index) => ({ ...entry, manualOrder: index }));
-};
-
-function mockAiExtractCv(text, fileName) {
-  const clean = text.replace(/\r/g, "\n").replace(/[ \t]+/g, " ").trim();
-  const lines = clean.split("\n").map((line) => line.trim()).filter(Boolean);
-  const firstPageText = lines.slice(0, 24).join(" ");
-  if (/(codex\s+developer\s+handoff|client-rendered\s+spa|root\s+cause|features?\s+\d+\s*(?:-|to|through)\s*\d+|prompt\s+batch|traffic\s+growth\s+context)/i.test(firstPageText)) {
-    throw new Error("This file looks like a project brief or prompt, not a CV. Please upload the applicant's actual CV or resume file.");
-  }
-  const email = clean.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];
-  const rawPhone = clean.match(/(\+?\d[\d\s().-]{7,}\d)/)?.[0]?.trim();
-  const phone = rawPhone && rawPhone.replace(/\D/g, "").length >= 8 && rawPhone.length <= 28 ? rawPhone : "";
-  const linkedIn = clean.match(/https?:\/\/(?:www\.)?linkedin\.com\/[^\s)]+/i)?.[0] || clean.match(/linkedin\.com\/[^\s)]+/i)?.[0];
-  const urlMatches = clean.match(/https?:\/\/[^\s)]+/gi) || [];
-  const portfolioUrl = urlMatches.find((url) => !/linkedin\.com/i.test(url)) || "";
-  const nationality = clean.match(/nationality\s*[:\-]\s*([^\n]+)/i)?.[1]?.trim();
-  const visaStatus = clean.match(/visa\s*(?:status)?\s*[:\-]\s*([^\n]+)/i)?.[1]?.trim();
-  const drivingLicense = clean.match(/(?:driving|driver'?s?)\s+licen[cs]e\s*[:\-]?\s*([^\n]*)/i)?.[0]?.trim();
-  const headingPattern = /summary|profile|objective|skills|core competencies|experience|professional experience|employment|work history|education|certification|certificate|language|reference|contact|nationality|visa|driving|linkedin|portfolio|curriculum|resume|cv/i;
-  const hasCvSignals = Boolean(email || phone || linkedIn) || lines.some((line) => /^(professional\s+summary|summary|profile|objective|skills|core\s+competencies|professional\s+experience|work\s+experience|employment\s+history|education|certifications?|languages?)$/i.test(line));
-  if (!hasCvSignals) {
-    throw new Error("Could not identify this file as a CV. Please upload a readable CV with contact details, work experience, education, or skills sections.");
-  }
-  const firstLine = lines.find((line) => !line.includes("@") && !headingPattern.test(line) && !/^\+?\d/.test(line) && line.length <= 60 && /[a-z]/i.test(line));
-  const compactText = lines.join("\n");
-  const section = (names, maxLines = 6) => {
-    const index = lines.findIndex((line) => names.some((name) => new RegExp(`^${name}\\b`, "i").test(line) || line.toLowerCase() === name));
-    if (index === -1) return "";
-    const nextIndex = lines.findIndex((line, lineIndex) => lineIndex > index && /^(summary|profile|objective|skills|core\s+competencies|work\s+experience|professional\s+experience|employment\s+history|employment|career\s+history|work\s+history|education|projects?|certifications?|certificates?|languages?|references?)$/i.test(line));
-    return lines.slice(index + 1, nextIndex === -1 ? Math.min(lines.length, index + 1 + maxLines) : nextIndex).join("\n").trim();
-  };
-  const skills = section(["skills", "core competencies"], 20);
-  const experience = section(["experience", "professional experience", "employment", "employment history", "work history", "career history"], 120);
-  const education = section(["education"], 14);
-  const projects = section(["project", "projects"], 30);
-  const certifications = section(["certification", "certificate"], 10);
-  const languages = section(["language"], 8);
-  const summary = section(["summary", "profile", "objective"], 4);
-  const jobTitle = lines.find((line, index) => index > 0 && index < 8 && !line.includes("@") && !phone?.includes(line) && !headingPattern.test(line) && line.length <= 70);
-  const summaryFallback = (() => {
-    const stopIndex = lines.findIndex((line) => /^(core\s+competencies|skills|professional\s+experience|work\s+experience|employment|education)$/i.test(line));
-    const usableLines = lines
-      .slice(1, stopIndex === -1 ? Math.min(lines.length, 8) : stopIndex)
-      .filter((line) => line.length > 35)
-      .filter((line) => !line.includes("@") && !/linkedin|https?:|^\+?\d/.test(line))
-      .filter((line) => !headingPattern.test(line));
-    return usableLines.join(" ").trim();
-  })();
-  const structuredWorkExperiences = extractStructuredWorkExperiences(experience, jobTitle || "");
-  const fallbackWorkExperiences = experience
-    ? [{
-        ...createBlankExperienceEntry(),
-        manualOrder: 0,
-        jobTitle: jobTitle || "",
-        responsibilities: experience,
-      }]
-    : [];
-  return {
-    fullName: firstLine || fileName.replace(/\.[^.]+$/, "").replaceAll("-", " "),
-    jobTitle: jobTitle || "",
-    email: email || "",
-    phone: phone || "",
-    nationality: nationality || "",
-    visaStatus: visaStatus || "",
-    linkedIn: linkedIn || "",
-    portfolioUrl,
-    drivingLicense: drivingLicense || "",
-    summary: sanitizeCvTextForCoverLetter(summary || summaryFallback || compactText.split("\n").filter((line) => line.length > 40 && !line.includes("@") && !/linkedin/i.test(line)).slice(0, 2).join(" ")) || "",
-    skills: sanitizeCvTextForCoverLetter(skills) || "",
-    experience: experience || "",
-    workExperiences: structuredWorkExperiences.length ? structuredWorkExperiences : fallbackWorkExperiences,
-    education: education || "",
-    projects,
-    certifications: certifications || "",
-    languages: languages || "",
-    references: section(["reference"]) || "",
-    originalLanguage: "Auto-detected",
-    outputLanguage: "English",
-    languageDirection: "ltr",
-  };
 }
 
 function CVCompletenessPanel({ cv }) {
@@ -2685,6 +2226,9 @@ function LiveCVPreview({ cv, theme, layout }) {
     education: () => ({ id: "education", type: "section", title: "Education", content: cv.education, weight: blockWeight(cv.education, 1.3) }),
     educationProjects: () => ({ id: "educationProjects", type: "section", title: "Projects", content: cv.projects, weight: blockWeight(cv.projects, 1.25) }),
     skills: () => ({ id: "skills", type: "section", title: "Skills", content: cv.skills, weight: blockWeight(cv.skills, 1.2) }),
+    awards: () => ({ id: "awards", type: "section", title: "Awards", content: cv.awards, weight: blockWeight(cv.awards, 1.2) }),
+    volunteerExperience: () => ({ id: "volunteerExperience", type: "section", title: "Volunteer Experience", content: cv.volunteerExperience, weight: blockWeight(cv.volunteerExperience, 1.2) }),
+    professionalLinks: () => ({ id: "professionalLinks", type: "section", title: "Professional Links", content: cv.professionalLinks, weight: blockWeight(cv.professionalLinks, .8) }),
     certifications: () => ({ id: "certifications", type: "section", title: "Certifications", content: cv.certifications, weight: blockWeight(cv.certifications, 1.2) }),
     languages: () => ({ id: "languages", type: "section", title: "Languages", content: cv.languages, weight: blockWeight(cv.languages, 0.9) }),
     references: () => ({ id: "references", type: "custom", render: referencesBlock, weight: 1.4 }),
@@ -4240,6 +3784,7 @@ function CVBuilderApp({ onHome }) {
   const [draftStatus, setDraftStatus] = useState("Cloud draft sync is ready.");
   const [mobileCvView, setMobileCvView] = useState("edit");
   const [currentStep, setCurrentStep] = useState("personal");
+  const appliedImportIdsRef = useRef(new Set());
   const [session, setSession] = useState(null);
   const [authOpen, setAuthOpen] = useState(entryOptions.saveOnline);
   const [pendingTemplateId, setPendingTemplateId] = useState(null);
@@ -4586,9 +4131,11 @@ function CVBuilderApp({ onHome }) {
     });
     recordCvEvent("suggestion_applied", { action, keyword_count: (insights.missingKeywords || []).length });
   };
-  const handleImport = (extracted) => {
+  const handleImport = (extracted, metadata = {}) => {
+    if (!metadata.importId || appliedImportIdsRef.current.has(metadata.importId)) return false;
+    appliedImportIdsRef.current.add(metadata.importId);
     setCv((current) => {
-      const importedWorkExperiences = prepareImportedWorkExperiences(extracted.workExperiences, extracted.jobTitle || "");
+      const importedWorkExperiences = extracted.workExperiences.length ? extracted.workExperiences.map((entry, index) => ({ ...createBlankExperienceEntry(), ...entry, manualOrder: index })) : [createBlankExperienceEntry()];
       const nextCv = {
         ...current,
         onboardingCompleted: true,
@@ -4606,19 +4153,24 @@ function CVBuilderApp({ onHome }) {
         skills: extracted.skills ?? "",
         education: extracted.education ?? "",
         projects: extracted.projects ?? "",
+        location: extracted.location ?? "",
+        professionalLinks: extracted.professionalLinks ?? "",
+        awards: extracted.awards ?? "",
+        volunteerExperience: extracted.volunteerExperience ?? "",
+        unclassifiedContent: extracted.unclassifiedContent ?? "",
         certifications: extracted.certifications ?? "",
         languages: extracted.languages ?? "",
-        references: extracted.references ?? "",
+        references: extracted.references?.trim() ? normalizeReferences(extracted.references) : { mode: "none", entries: [] },
         originalLanguage: extracted.originalLanguage ?? current.originalLanguage,
         outputLanguage: extracted.outputLanguage ?? current.outputLanguage,
         languageDirection: extracted.languageDirection ?? current.languageDirection,
         workExperiences: importedWorkExperiences,
         experience: formatWorkExperiences(importedWorkExperiences.filter((entry) => [entry.jobTitle, entry.employer, entry.companyLocation, entry.fromDate, entry.toDate, entry.responsibilities].some((value) => String(value || "").trim()))),
       };
-      setCoverLetter(createCoverLetterFromCv(nextCv, categoryId));
       return nextCv;
     });
-    recordCvEvent("cv_uploaded", { import_language: extracted.outputLanguage || extracted.originalLanguage || "unknown" });
+    // Import intentionally emits no document text, personal fields, or source language to analytics.
+    return true;
   };
   const handleProfilePhotoChange = async (key, value) => {
     if (key !== "profilePhoto" || !value || !cloudSavingEnabled) {
@@ -4810,7 +4362,7 @@ function CVBuilderApp({ onHome }) {
               <div className="builder-template-dock-mobile">
                 <BuilderTemplateDock categoryId={categoryId} onCategory={handleCategory} themeId={themeId} onTheme={setThemeId} />
               </div>
-              <ExistingCVImporter onImport={handleImport} />
+              <ExistingCVImporter onImport={handleImport} currentCv={cv} onRestore={(previous) => { setCv(previous); appliedImportIdsRef.current.clear(); }} />
               <ProfilePhotoUploader cv={cv} onChange={handleProfilePhotoChange} />
               {storageMessage && cloudSavingEnabled && <p className="rounded bg-slate-50 p-3 text-xs font-bold leading-5 text-slate-600">{storageMessage}</p>}
               <CVBuilderForm cv={cv} onChange={updateCvField} />
