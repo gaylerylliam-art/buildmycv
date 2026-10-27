@@ -60,7 +60,7 @@ try {
   await page.goto(base,{waitUntil:'networkidle0'}); await delay(3200);
   assert.equal(await page.$eval('.hm-rotating-word',e=>e.textContent),'job-ready');
   assert.equal(await page.$eval('.hm-marquee-track',e=>getComputedStyle(e).transform),'none');
-  assert.equal(await page.$eval('.hm-improve-card,.hm-template,.hm-access-grid article,.hm-faq details',items=>items.filter(e=>getComputedStyle(e).opacity==='0').length),0);
+  assert.equal(await page.$$eval('.hm-improve-card,.hm-template,.hm-access-grid article,.hm-faq details',items=>items.filter(e=>getComputedStyle(e).opacity==='0').length),0);
   assert.deepEqual(errors,[]);
   console.log('PASS: rotation, moving bands, scroll reveals, no invisible content, pause/resume, live reduced-motion changes, mobile overflow, builder transitions, route cleanup and animation-load failure fallback.');
 } catch(error) { console.log(JSON.stringify({url:page.url(),errors,body:await page.evaluate(()=>document.body.innerText.slice(0,1600))})); throw error; } finally { await browser.close(); }
