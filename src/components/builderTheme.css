@@ -1,0 +1,107 @@
+/* Editor chrome follows the homepage. Document templates keep their own palette. */
+@media screen {
+  .builder-app-shell {
+    --brand: #0b5fa5;
+    --brand-dark: #084a82;
+    --brand-light: #eaf3fb;
+    --accent: #0b5fa5;
+    --accent-soft: #eaf3fb;
+    --bg-app: #f2f7fc;
+    --bg-surface: #fff;
+    --bg-elevated: #fff;
+    --bg-input: #fff;
+    --text-primary: #0f1e3d;
+    --text-secondary: #3d4a60;
+    --text-muted: #59697e;
+    --border: #dce2e9;
+    --border-strong: #b8c9d9;
+    --builder-coral: #ff8a65;
+    --builder-coral-soft: #fff0e9;
+    font-family: 'Plus Jakarta Sans', Arial, sans-serif;
+  }
+
+  .builder-app-shell .builder-topbar { border-bottom-color: var(--border); box-shadow: 0 3px 16px #0f1e3d06; }
+  .builder-app-shell .builder-logo { color: var(--text-primary); }
+  .builder-app-shell .builder-logo-icon { background: var(--brand); color: #fff; }
+  .builder-app-shell .builder-logo > span:last-child { background: #ffe27a; color: #0f1e3d; border-radius: 4px; padding: 0 4px; }
+  .builder-app-shell :is(.builder-download-button, .ai-approve-button, .btn-preview-float) { background: var(--brand); color: #fff; }
+  .builder-app-shell :is(.builder-download-button, .ai-approve-button, .btn-preview-float):hover { background: var(--brand-dark); }
+  .builder-app-shell :is(.builder-account-pill, .builder-sidebar-account) { border-color: var(--border); background: var(--accent-soft); color: var(--brand-dark); }
+  .builder-app-shell :is(.builder-account-pill-label, .builder-sidebar-account span, .builder-sidebar-summary-copy p) { color: var(--brand); }
+  .builder-app-shell :is(.builder-account-pill strong, .builder-sidebar-account strong, .builder-sidebar-summary-copy h3, .builder-sidebar-progress strong) { color: var(--text-primary); }
+  .builder-app-shell .builder-save-badge.saved { background: var(--accent-soft); color: var(--brand-dark); }
+  .builder-app-shell .builder-save-badge.saving { background: var(--builder-coral-soft); color: #863717; }
+  .builder-app-shell .builder-onboarding { background: var(--bg-app); }
+  .builder-app-shell .builder-onboarding .bg-green-50 { background: var(--accent-soft); }
+  .builder-app-shell .builder-onboarding :is(.text-green-600, .text-green-700) { color: var(--brand-dark); }
+  .builder-app-shell .builder-onboarding .bg-green-600 { background: var(--brand); }
+  .builder-app-shell .builder-onboarding button[aria-pressed=true] { border-color: var(--brand); box-shadow: 0 0 0 2px #ff8a6540; }
+  .builder-app-shell .builder-onboarding button[aria-pressed=true] > div > span:first-child { background: var(--builder-coral); color: #0f1e3d; }
+  .builder-app-shell .builder-onboarding button[aria-pressed=false]:hover { border-color: var(--brand); }
+
+  .builder-app-shell .builder-guide-strip { background: var(--bg-app); border-color: var(--border); }
+  .builder-app-shell .builder-guide-steps article { background: var(--bg-surface); border-color: var(--border); border-radius: 10px; }
+  .builder-app-shell :is(.builder-guide-head h2, .builder-guide-steps h3, .form-section-title, .entry-card-title) { color: var(--text-primary); }
+  .builder-app-shell :is(.builder-guide-steps p, .builder-guide-head span) { color: var(--brand); }
+  .builder-app-shell :is(.builder-guide-tip, .entry-current-badge, .template-card-badge-green) { background: var(--accent-soft); color: var(--brand-dark); }
+  .builder-app-shell .builder-guide-warning { background: var(--builder-coral-soft); color: #863717; }
+  .builder-app-shell .builder-stage-tab.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .builder-app-shell .builder-stage-tabs { background: var(--accent-soft); }
+  .builder-app-shell .builder-stage-tab.active span { color: #fff; }
+  .builder-app-shell .builder-stage-tab.done:not(.active) { background: var(--accent-soft); color: var(--brand-dark); }
+  .builder-app-shell .builder-stage-tab:not(.active) span { color: var(--brand); }
+
+  .builder-app-shell :is(.builder-sidebar-v2, .builder-preview-panel-v2) { background: var(--bg-surface); border-color: var(--border); }
+  .builder-app-shell .builder-sidebar-summary { background: var(--accent-soft); border-color: var(--border); }
+  .builder-app-shell .builder-sidebar-progress > div { background: var(--bg-surface); }
+  .builder-app-shell .builder-step:hover { background: var(--accent-soft); }
+  .builder-app-shell .builder-step.active { background: var(--accent-soft); color: var(--brand-dark); box-shadow: inset 3px 0 var(--builder-coral); }
+  .builder-app-shell .builder-step.done .builder-step-dot { background: var(--accent-soft); border-color: var(--brand); color: var(--brand); }
+  .builder-app-shell .builder-step.active .builder-step-dot { background: var(--builder-coral); border-color: var(--builder-coral); color: #0f1e3d; }
+  .builder-app-shell .template-card-button { background: var(--bg-surface); border-color: var(--border); }
+  .builder-app-shell .builder-template-dock { background: var(--bg-surface); border-color: var(--border); }
+  .builder-app-shell .template-card-button:is(:hover, .selected) { background: var(--accent-soft); border-color: var(--brand); }
+  .builder-app-shell .builder-right-stack { background: #eaf1f8; border-color: var(--border); }
+  .builder-app-shell .preview-sheet-scroll { background: #eaf1f8; }
+  .builder-app-shell .live-dot { background: var(--brand); }
+  .builder-app-shell .preview-strength-fill { background: var(--brand) !important; }
+  .builder-app-shell :is(.preview-action-button, .btn-add-more) { color: var(--brand); }
+  .builder-app-shell .btn-ai { background: var(--builder-coral-soft); color: #863717; }
+  .builder-app-shell .btn-ai:hover { border-color: var(--builder-coral); box-shadow: 0 4px 14px #ff8a6522; }
+  .builder-app-shell .btn-ai-work { background: var(--accent-soft); color: var(--brand-dark); }
+  .builder-app-shell :is(.form-section-card, .entry-card, .ats-panel) { border-color: var(--border); box-shadow: 0 4px 18px #0f1e3d05; }
+
+  /* Legacy utility classes on editor controls, never on the CV/letter itself. */
+  .builder-app-shell :is(button, a).bg-green-600 { background: var(--brand); }
+  .builder-app-shell :is(button, a).bg-green-600:hover { background: var(--brand-dark); }
+  .builder-app-shell :is(button, a).text-green-700 { color: var(--brand-dark); }
+  .builder-app-shell :is(input, select, textarea):not(.cv-paper *):not(.letter-paper *) { accent-color: var(--brand); }
+  .builder-app-shell :is(button, a, input, select, textarea, summary):focus-visible:not(.cv-paper *):not(.letter-paper *) { outline: 3px solid var(--brand); outline-offset: 3px; }
+  .builder-app-shell .mobile-builder-tabbar { background: var(--bg-surface); border-color: var(--border); }
+  .builder-app-shell .mobile-builder-tabbar button.active { background: var(--accent-soft); color: var(--brand); }
+  .builder-app-shell .mobile-sheet { background: var(--bg-surface); }
+
+  .dark .builder-app-shell {
+    --brand: #8bc8ff;
+    --brand-dark: #b6ddff;
+    --accent: #8bc8ff;
+    --accent-soft: #192e49;
+    --bg-app: #0b1528;
+    --bg-surface: #12213a;
+    --bg-elevated: #192e49;
+    --bg-input: #192e49;
+    --text-primary: #edf4ff;
+    --text-secondary: #c0cee2;
+    --text-muted: #a4b5cc;
+    --border: #31445f;
+    --border-strong: #526b89;
+    --builder-coral-soft: #422b27;
+  }
+  .dark .builder-app-shell :is(.builder-download-button, .builder-logo-icon, .ai-approve-button, .btn-preview-float, button.bg-green-600, .builder-stage-tab.active) { color: #0f1e3d; }
+  .dark .builder-app-shell .builder-stage-tab.active span { color: #0f1e3d; }
+  .dark .builder-app-shell :is(.builder-guide-warning, .btn-ai, .builder-save-badge.saving) { color: #ffc1a9; }
+  .dark .builder-app-shell .btn-ai-work { color: var(--brand); }
+  .dark .builder-app-shell :is(.builder-step, .sidebar-label-v2, .builder-sidebar-note, .builder-sidebar-summary-copy span, .template-card-sub, .builder-guide-head p, .builder-guide-steps small, .builder-stage-tab, .preview-zoom-row, .preview-strength-label) { color: var(--text-secondary); }
+  .dark .builder-app-shell :is(.template-card-name, .preview-live-label) { color: var(--text-primary); }
+  .dark .builder-app-shell :is(.builder-right-stack, .preview-sheet-scroll) { background: var(--bg-app); }
+}

@@ -1134,7 +1134,7 @@ function CVLine({ title, text }) {
 
 function BuilderOnboarding({ cv, onChange, onStart }) {
   return (
-    <section className="border-b border-slate-200 bg-slate-50 px-5 py-8 sm:py-12">
+    <section className="builder-onboarding border-b border-slate-200 bg-slate-50 px-5 py-8 sm:py-12">
       <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[0.95fr_1.05fr]">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
           <span className="inline-flex rounded-full bg-green-50 px-3 py-1 text-xs font-black uppercase tracking-[0.2em] text-green-700">
@@ -1167,6 +1167,7 @@ function BuilderOnboarding({ cv, onChange, onStart }) {
                   key={option.id}
                   type="button"
                   onClick={() => onChange("builderStartOption", option.id)}
+                  aria-pressed={active}
                   className={`rounded-3xl border p-5 text-left shadow-sm transition ${active ? "border-green-600 bg-green-50 ring-2 ring-green-100" : "border-slate-200 bg-white hover:border-green-300 hover:shadow-md"}`}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -3480,7 +3481,7 @@ function BuilderSidebar({
 }) {
   const prominent = ["hospitality", "it", "supply-chain-logistics", "finance", "engineering", "domestic", "skilled", "education"];
   const sortedCategories = [...categories].sort((a, b) => prominent.indexOf(a.id) - prominent.indexOf(b.id));
-  const progressStyle = { background: `conic-gradient(#1d9e75 ${completion.percent}%, #e2e8f0 0)` };
+  const progressStyle = { background: `conic-gradient(var(--brand) ${completion.percent}%, var(--border) 0)` };
   const completedCount = Array.isArray(completion.milestones) ? completion.milestones.length : 0;
   const totalCount = 16;
   return (
