@@ -41,12 +41,18 @@ try {
   assert.deepEqual(await rectangles(), staticRects, "Static and React homepage layout differs");
   assert.equal(await page.$$eval(".hm-template", (items) => items.length), 6);
   await page.screenshot({ path: path.join(output, "desktop-hotel-top.png") });
+  await clickText("Your version");
+  assert.match(await page.$eval(".hm-improve-card blockquote", item => item.textContent), /Did check in/);
+  await clickText("Accept change");
+  assert.match(await page.$eval(".hm-strength-heading", item => item.textContent), /Strong/);
+  await clickText("Keep mine");
+  assert.match(await page.$eval(".hm-strength-heading", item => item.textContent), /Good/);
   await clickText("Mechanical Engineer");
   assert.match(await page.$eval(".hm-example-paper img", (item) => item.src), /cv-examples\/engineering-header-v2/);
   assert.equal(await page.$$eval('img[src*="hotel-receptionist-cv.png"], img[src*="mechanical-engineer-cv.png"]', (items) => items.length), 0, "Unsupported illustrated CV designs must not be displayed");
   await page.screenshot({ path: path.join(output, "desktop.png"), fullPage: true });
   await page.screenshot({ path: path.join(output, "desktop-top.png") });
-  await page.select(".hm-filter select", "finance");
+  await page.click('.hm-category-tabs button:nth-child(5)');
   assert.equal(await page.$$eval(".hm-template", (items) => items.length), 1);
   await page.click(".hm-template-preview");
   await page.waitForSelector('[role="dialog"]');
@@ -55,14 +61,14 @@ try {
   await page.keyboard.press("Escape");
   assert.equal(await page.$('[role="dialog"]'), null);
   assert(await page.$eval(".hm-template-preview", (item) => item === document.activeElement));
-  await page.select(".hm-filter select", "all");
+  await page.click('.hm-category-tabs button:first-child');
   await clickText("Explore all 10 job categories");
   assert.equal(await page.$$eval(".hm-template", (items) => items.length), 10);
   for (const example of homeCvExamples) {
     assert(categories.some((item) => item.id === example.id));
     assert(layouts.some((item) => item.id === example.layout && item.name === example.name));
     assert(themes.some((item) => item.id === example.theme));
-    await page.select(".hm-filter select", example.id);
+    await page.evaluate((label) => [...document.querySelectorAll(".hm-category-tabs button")].find(item => item.textContent === label).click(), example.category);
     await page.$eval(".hm-template-preview", (element) => element.scrollIntoView({ block: "center", behavior: "instant" }));
     await page.waitForFunction(() => document.querySelector(".hm-builder-example")?.naturalWidth === 794);
     assert.equal(await page.$eval(".hm-builder-example", (image) => image.getAttribute("src")), example.image);
@@ -81,7 +87,7 @@ try {
   }
   await page.setViewport({ width: 1440, height: 1000 });
   await page.goto(baseUrl, { waitUntil: "networkidle0" });
-  await page.select(".hm-filter select", "finance");
+  await page.click('.hm-category-tabs button:nth-child(5)');
   await page.click(".hm-template-use");
   await page.waitForFunction(() => location.pathname === "/builder");
   assert.match(page.url(), /category=finance/);

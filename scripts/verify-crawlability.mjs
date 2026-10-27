@@ -65,7 +65,7 @@ for (const snippet of [
   "Choose a template",
   "Improve with AI",
   "Download or save",
-  "Watch the 2-minute walkthrough",
+  "Watch the walkthrough",
 ]) {
   if (!homeText.includes(snippet)) failures.push(`/: missing homepage how-it-works snippet "${snippet}"`);
 }

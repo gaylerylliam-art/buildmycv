@@ -1,4 +1,4 @@
-export const HOME_H1 = "Build your professional CV for free.";
+export const HOME_H1 = "Make your CV job-ready today.";
 
 export const HOME_META_TITLE = "Free CV Builder - ATS-Friendly CVs for Every Country | BuildMyCVNow";
 
@@ -8,7 +8,7 @@ export const HOME_META_DESCRIPTION =
 export const HOME_EYEBROW = "Free CV Builder - Works Worldwide";
 
 export const HOME_SUBHEAD =
-  "Start fresh or upload your existing CV. Choose a layout, tell your story, and polish it with AI. Free PDF and Word downloads, wherever your next job takes you.";
+  "Upload the CV you already have, or start from a template. Improve it with AI, then download it free — no paywall at the end.";
 
 export const HOME_TRUST_ITEMS = ["No sign-up needed", "ATS-optimized", "5-minute build", "60+ countries"];
 

@@ -38,6 +38,7 @@ const stripMd = (value = "") => value.replace(/[#*_`>\[\]\(\)]/g, "").replace(/\
 const slugify = (value = "") => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 function parseFrontmatter(raw) {
+  raw = raw.replace(/\r\n/g, "\n");
   const match = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
   if (!match) return { data: {}, body: raw };
   const data = {};
