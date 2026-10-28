@@ -1141,7 +1141,7 @@ function BuilderOnboarding({ cv, onChange, onStart }) {
             Start your CV
           </span>
           <h1 className="mt-4 text-3xl font-black leading-tight text-slate-950 sm:text-5xl">
-            Build an ATS-friendly CV in minutes
+            Build an ATS-friendly CV <mark>in minutes.</mark>
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
             Free PDF download, no credit card, AI writing help, and layouts that work for global job applications.
@@ -1184,7 +1184,8 @@ function BuilderOnboarding({ cv, onChange, onStart }) {
               );
             })}
           </div>
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className="builder-setup-card rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <header><h2>Set up your CV</h2><span>You can change all of this later</span></header>
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField label="Target country" value={cv.targetCountry} onChange={(value) => onChange("targetCountry", value)} placeholder="Example: United Arab Emirates or Worldwide" />
               <FormField label="Target job title or industry" value={cv.targetJobTitle} onChange={(value) => onChange("targetJobTitle", value)} placeholder="Example: Hotel Receptionist" />
@@ -1577,17 +1578,22 @@ function WorkExperienceEditor({ cv, onChange }) {
   );
 }
 
+const BuilderSectionContext = React.createContext(null);
 function CollapsibleFormSection({ id, title, icon = "file", defaultOpen = false, badge, children }) {
+  const activeSection = React.useContext(BuilderSectionContext);
+  const group = id === "references" ? "education" : id === "qr" ? "summary" : id;
   const [open, setOpen] = useState(defaultOpen);
+  const visible = !activeSection || group === activeSection;
+  const Heading = activeSection ? "div" : "button";
   return (
-    <section id={`builder-section-${id}`} className={`form-section-card ${open ? "open" : ""}`}>
-      <button type="button" className="form-section-head" onClick={() => setOpen(!open)}>
+    <section hidden={!visible} id={`builder-section-${id}`} className={`form-section-card ${open || activeSection ? "open" : ""}`}>
+      <Heading type={activeSection ? undefined : "button"} className="form-section-head" aria-expanded={activeSection ? undefined : open} onClick={activeSection ? undefined : () => setOpen(!open)}>
         <Icon name={icon} className="h-4 w-4 text-blue-700" />
         <span className="form-section-title">{title}</span>
         {badge && <span className="entry-current-badge">{badge}</span>}
         <Icon name="chevron" className={`h-4 w-4 text-slate-400 transition ${open ? "rotate-180" : ""}`} />
-      </button>
-      {open && <div className="form-section-body">{children}</div>}
+      </Heading>
+      {(open || activeSection) && <div className="form-section-body">{children}</div>}
     </section>
   );
 }
@@ -3274,7 +3280,7 @@ function getBuilderStepState(cv) {
   };
 }
 
-function BuilderTopBar({ onHome, onDownload, saveStatus, cloudSavingEnabled, userEmail, onAccess, onSignOut }) {
+function BuilderTopBar({ onHome, onDownload, saveStatus, cloudSavingEnabled, userEmail, onAccess, onSignOut, activeBuilder, onSwitchBuilder }) {
   const { mode, setMode, cycleMode } = useTheme();
   const isSaving = /saving/i.test(saveStatus);
   return (
@@ -3283,6 +3289,9 @@ function BuilderTopBar({ onHome, onDownload, saveStatus, cloudSavingEnabled, use
         <span className="builder-logo-icon"><Icon name="file" className="h-5 w-5" /></span>
         BuildMyCV<span>Now</span>
       </button>
+      <nav className="builder-type-switch" aria-label="Builder type">
+        {[["cv", "CV Builder"], ["cover", "Cover Letter Builder"]].map(([id, label]) => <button key={id} type="button" aria-pressed={activeBuilder === id} onClick={() => onSwitchBuilder(id)}>{label}</button>)}
+      </nav>
       <div className="builder-topbar-actions">
         {cloudSavingEnabled ? (
           <div className="builder-account-pill signed-in">
@@ -3359,7 +3368,7 @@ function BuilderStageTabs({ currentStep, completedSteps, onStep }) {
 
   return (
     <nav className="builder-stage-tabs" aria-label="CV builder stages">
-      {tabs.map((tab) => {
+      {tabs.map((tab, index) => {
         const active = currentStep === tab.id;
         const done = completedSteps[tab.id];
         return (
@@ -3367,9 +3376,10 @@ function BuilderStageTabs({ currentStep, completedSteps, onStep }) {
             key={tab.id}
             type="button"
             onClick={() => onStep(tab.id)}
+            aria-current={active ? "step" : undefined}
             className={`builder-stage-tab ${active ? "active" : ""} ${done ? "done" : ""}`}
           >
-            <span>{done ? <Icon name="check" className="h-3.5 w-3.5" /> : null}</span>
+            <span>{done ? <Icon name="check" className="h-3.5 w-3.5" /> : index + 1}</span>
             {tab.label}
           </button>
         );
@@ -3378,7 +3388,7 @@ function BuilderStageTabs({ currentStep, completedSteps, onStep }) {
   );
 }
 
-function CompletionBar({ completion, onNextStep }) {
+function CompletionBar({ completion, onNextStep, onDownload }) {
   const color = completion.percent >= 80 ? "#16a34a" : completion.percent >= 40 ? "var(--accent)" : "#d97706";
   return (
     <section className="completion-bar" aria-label="CV completion">
@@ -3391,6 +3401,7 @@ function CompletionBar({ completion, onNextStep }) {
       <div className="completion-track">
         <div className="completion-fill" style={{ width: `${completion.percent}%`, background: color }} />
       </div>
+      <button type="button" className="builder-bottom-download" onClick={onDownload}><Icon name="download" className="h-4 w-4" /> Download Free PDF</button>
     </section>
   );
 }
@@ -3499,6 +3510,7 @@ function BuilderSidebar({
           <span>{completion.nextStep || "Keep filling your CV details."}</span>
         </div>
       </div>
+      <button type="button" className="builder-next-card" onClick={() => onStep(completion.nextSection === "download" ? "summary" : completion.nextSection || "summary")}><span>Next step</span><strong>{completion.nextStep || "Review your CV"}</strong><span aria-hidden="true">→</span></button>
       {cloudSavingEnabled ? (
         <div className="builder-sidebar-account signed-in">
           <span>Saving online</span>
@@ -3526,7 +3538,8 @@ function BuilderSidebar({
           );
         })}
       </nav>
-      <p className="sidebar-label-v2 mt-5">Template</p>
+      <div className="builder-design-card">
+      <div className="builder-design-heading"><p className="sidebar-label-v2">Template</p><span>10 job categories</span></div>
       <CategorySelector selected={categoryId} onSelect={onCategory} />
       <p className="sidebar-label-v2 mt-4">Accent colour</p>
       <div className="sidebar-swatch-row">
@@ -3545,6 +3558,7 @@ function BuilderSidebar({
       {sortedCategories.length > 0 && (
         <p className="builder-sidebar-note">Switch templates any time. Your CV details stay in place while the design changes.</p>
       )}
+      </div>
     </aside>
   );
 }
@@ -3824,9 +3838,13 @@ function CVBuilderApp({ onHome }) {
     });
   };
   const jumpToStep = (id) => {
-    setCurrentStep(id);
-    const target = document.getElementById(`builder-section-${id}`);
-    if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+    const step = id === "references" ? "education" : id === "qr" ? "summary" : id;
+    if (!builderSteps.some(item => item.id === step)) return;
+    setCurrentStep(step);
+    requestAnimationFrame(() => {
+      document.getElementById("builder-editor-heading")?.focus({ preventScroll: true });
+      document.querySelector(".builder-form-panel-v2")?.scrollTo({ top: 0, behavior: "auto" });
+    });
   };
   const requestCvDownload = () => {
     if (completion.percent < 40) {
@@ -4298,39 +4316,13 @@ function CVBuilderApp({ onHome }) {
         userEmail={user?.email || session?.user?.email || ""}
         onAccess={() => setAuthOpen(true)}
         onSignOut={signOut}
+        activeBuilder={activeBuilder}
+        onSwitchBuilder={switchBuilder}
       />
       <div className="builder-tabbar">
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="flex gap-2">
-            {[
-              ["cv", "CV Builder"],
-              ["cover", "Cover Letter Builder"],
-            ].map(([id, label]) => (
-              <button
-                key={id}
-                onClick={() => switchBuilder(id)}
-                className={`rounded px-5 py-3 text-sm font-black ${activeBuilder === id ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-            <span>{cloudSavingEnabled ? `Cloud saving as ${user.email}` : noCloudMode ? "Download-only mode. No cloud saving." : "Choose download-only or sign in to save online."}</span>
-            {cloudSavingEnabled ? (
-              <button onClick={signOut} className="rounded border border-slate-300 px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50">Logout</button>
-            ) : (
-              <button onClick={() => setAuthOpen(true)} className="rounded border border-blue-600 px-3 py-2 text-xs font-black text-blue-700 hover:bg-blue-50">Access</button>
-            )}
-          </div>
-          </div>
-          {activeBuilder === "cv" && builderStarted && (
-            <BuilderStageTabs currentStep={currentStep} completedSteps={completedSteps} onStep={jumpToStep} />
-          )}
-        </div>
+        {activeBuilder === "cv" && builderStarted && <BuilderStageTabs currentStep={currentStep} completedSteps={completedSteps} onStep={jumpToStep} />}
+        <p className="builder-session-status">{cloudSavingEnabled ? "Saved online" : "Download-only mode"} · <button type="button" onClick={() => setAuthOpen(true)}>{cloudSavingEnabled ? "Manage account" : "Sign in to save online"}</button></p>
       </div>
-      {activeBuilder === "cv" && builderStarted && <BuilderHeaderGuide cloudSavingEnabled={cloudSavingEnabled} noCloudMode={noCloudMode} />}
       {noCloudMode && (
         <section className="border-b border-amber-200 bg-amber-50 px-5 py-3">
           <div className="mx-auto max-w-7xl text-sm font-bold leading-6 text-amber-950">
@@ -4361,13 +4353,18 @@ function CVBuilderApp({ onHome }) {
           <section className="builder-form-panel-v2">
             <div className="builder-form-inner">
               <div className="builder-template-dock-mobile">
-                <BuilderTemplateDock categoryId={categoryId} onCategory={handleCategory} themeId={themeId} onTheme={setThemeId} />
+                <details className="builder-mobile-design"><summary>Template and colour · {categories.find(item => item.id === categoryId)?.name}<span aria-hidden="true">⌄</span></summary><BuilderTemplateDock categoryId={categoryId} onCategory={handleCategory} themeId={themeId} onTheme={setThemeId} /></details>
               </div>
               <ExistingCVImporter onImport={handleImport} currentCv={cv} onRestore={(previous) => { setCv(previous); appliedImportIdsRef.current.clear(); }} />
-              <ProfilePhotoUploader cv={cv} onChange={handleProfilePhotoChange} />
               {storageMessage && cloudSavingEnabled && <p className="rounded bg-slate-50 p-3 text-xs font-bold leading-5 text-slate-600">{storageMessage}</p>}
-              <CVBuilderForm cv={cv} onChange={updateCvField} />
-              <section className="rounded border border-slate-200 bg-white p-4">
+              <section className="builder-editor-card" aria-labelledby="builder-editor-heading">
+                <header className="builder-editor-heading"><div><p>SECTION {builderSteps.findIndex(step => step.id === currentStep) + 1} OF 5</p><h1 id="builder-editor-heading" tabIndex={-1}>{currentStep === "summary" ? "Summary and extras" : builderSteps.find(step => step.id === currentStep)?.label}</h1></div><label className="builder-writing-toggle"><input type="checkbox" checked={cv.tipsEnabled !== false} onChange={event => updateCvField("tipsEnabled", event.target.checked)} /> Writing tips</label></header>
+                {cv.tipsEnabled !== false && <p className="builder-section-tip">{({personal: "Use an email and phone number employers can reach. Add country-specific details only when relevant.", experience: "Describe your actual responsibilities and achievements. Keep employers, dates, and numbers accurate.", education: "List qualifications, institutions, and dates. Include relevant certifications and projects.", skills: "Choose skills and language levels you can demonstrate in an interview.", summary: "Introduce your experience and strengths in a few clear sentences, using your own words."})[currentStep]}</p>}
+                <details hidden={currentStep !== "personal"} className="builder-photo-details"><summary><span aria-hidden="true">+</span><span>Profile photo <small>(optional)</small><small>JPG, PNG or WEBP up to 2 MB · crop and position after upload</small></span></summary><ProfilePhotoUploader cv={cv} onChange={handleProfilePhotoChange} /></details>
+                <BuilderSectionContext.Provider value={currentStep}><CVBuilderForm cv={cv} onChange={updateCvField} /></BuilderSectionContext.Provider>
+                <footer className="builder-editor-navigation"><button type="button" disabled={currentStep === "personal"} onClick={() => jumpToStep(builderSteps[Math.max(0, builderSteps.findIndex(step => step.id === currentStep) - 1)].id)}>← Back</button><span>Your changes update the preview</span><button type="button" onClick={() => currentStep === "summary" ? requestCvDownload() : jumpToStep(builderSteps[builderSteps.findIndex(step => step.id === currentStep) + 1].id)}>{currentStep === "summary" ? "Review and download" : "Next section →"}</button></footer>
+              </section>
+              <section hidden={currentStep !== "summary"} className="builder-save-layout rounded border border-slate-200 bg-white p-4">
                 <h3 className="panel-title">Save and layout</h3>
                 <div className="mt-4 grid gap-4 lg:grid-cols-2">
                   <div className="grid gap-4">
@@ -4437,7 +4434,7 @@ function CVBuilderApp({ onHome }) {
               onTrackEvent={recordCvEvent}
             />
           </div>
-          <CompletionBar completion={completion} onNextStep={handleNextStep} />
+          <CompletionBar completion={completion} onNextStep={handleNextStep} onDownload={requestCvDownload} />
         </div>
         )}
         {builderStarted && (
@@ -4633,7 +4630,3 @@ export default function App() {
     </>
   );
 }
-
-
-
-

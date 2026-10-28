@@ -29,7 +29,7 @@ const browser=await puppeteer.launch({executablePath:process.env.BROWSER_PATH||'
 const click=async text=>{assert(await page.evaluate(text=>{const button=[...document.querySelectorAll('button')].find(item=>item.textContent.trim()===text);button?.click();return Boolean(button);},text));};
 const builderField=async(label,value)=>page.evaluate((label,value)=>{const caption=[...document.querySelectorAll('.form-label')].find(item=>item.textContent.trim()===label);const input=caption?.closest('label')?.querySelector('input,textarea');if(!input)throw new Error('Missing builder field '+label);if(value!==undefined){Object.getOwnPropertyDescriptor(input.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype,'value').set.call(input,value);input.dispatchEvent(new Event('input',{bubbles:true}));}return input.value;},label,value);
 try{
- await page.goto(`${base}/builder?start=upload`,{waitUntil:'networkidle0'});await page.waitForSelector('.cv-importer');
+ await page.goto(`${base}/builder?start=upload`,{waitUntil:'networkidle0'});await page.waitForSelector('.cv-importer');await click('Upload CV');
  await builderField('Full name','Existing Person');
  await(await page.$('.cv-import-browse input')).uploadFile(english);
  await page.waitForSelector('.cv-import-error');assert.match(await page.$eval('.cv-import-error',e=>e.textContent),/could not be processed/);assert.equal(await builderField('Full name'),'Existing Person');assert(await page.$('.cv-import-source'));

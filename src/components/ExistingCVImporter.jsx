@@ -20,6 +20,7 @@ export default function ExistingCVImporter({
   const [file, setFile] = useState(null),
     [source, setSource] = useState(null),
     [draft, setDraft] = useState(null);
+  const [expanded, setExpanded] = useState(false);
   const [stage, setStage] = useState(-1),
     [progress, setProgress] = useState(0),
     [error, setError] = useState(''),
@@ -176,7 +177,9 @@ export default function ExistingCVImporter({
     }
   };
   const reviewField = (key, label) => <label key={key} className={`cv-import-field ${longFields.has(key) ? 'cv-import-wide' : ''}`}><span>{label}</span>{longFields.has(key) ? <textarea dir="auto" rows={key === 'summary' ? 5 : 3} value={draft[key]} onChange={event => edit(key, event.target.value)} /> : <input dir="auto" value={draft[key]} onChange={event => edit(key, event.target.value)} />}</label>;
-  return <section className="cv-importer" aria-labelledby="cv-import-title">
+  return <section className="cv-importer" aria-labelledby="cv-import-banner-title">
+    <div className="cv-import-banner"><span className="cv-import-banner-icon" aria-hidden="true">↑</span><div><h3 id="cv-import-banner-title">Already have a CV? Upload it and we fill the sections.</h3><p>PDF, DOCX, JPG or PNG · max 3 MB · English and Arabic · your wording is kept</p></div><button type="button" aria-expanded={expanded || Boolean(file)} aria-controls="cv-import-content" onClick={() => setExpanded(value => !value)}>{expanded && !file ? 'Hide upload' : 'Upload CV'}</button></div>
+    <div id="cv-import-content" hidden={!expanded && !file}>
     <h3 id="cv-import-title">Upload Existing CV</h3><p>Import a PDF, DOCX, JPG, or PNG. Maximum 3 MB and 12 PDF pages. Review every field before changing your CV.</p>
     <p className="cv-import-note">Documents are processed privately on the server and by the configured AI provider. The upload service keeps no permanent copy. Your original file stays in this tab until cleared or you leave; imported fields use your existing builder saving settings.</p>
     <div className={`cv-import-drop ${dragging ? 'cv-import-drag' : ''}`} onDragOver={event => {
@@ -220,5 +223,6 @@ export default function ExistingCVImporter({
             setUndoConfirm(false);
           }}>Undo this import</button></div>}</>}
     </div>}
+    </div>
   </section>;
 }
