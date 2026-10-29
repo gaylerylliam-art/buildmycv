@@ -5,6 +5,12 @@ description: Learn where and how to write UAE visa status on your CV, with examp
 date: 2026-06-15
 updated: 2026-06-15
 category: uae-jobs
+image: /assets/blog/visa-status-cv-pexels.jpg
+imageWidth: 1200
+imageHeight: 800
+imageAlt: A clipboard with a CV beside a pen and laptop on a marble surface
+imageCredit: Markus Winkler / Pexels
+imageSource: https://www.pexels.com/photo/a-clipboard-near-pen-and-laptop-on-a-marble-surface-4101343/
 relatedRoles: [office-administrator, driver-light-vehicle, sales-executive]
 ---
 

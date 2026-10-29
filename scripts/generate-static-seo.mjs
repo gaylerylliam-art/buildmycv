@@ -45,7 +45,7 @@ const stripMd = (value = "") => value.replace(/[#*_`>\[\]\(\)]/g, "").replace(/\
 const slugify = (value = "") => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 
-function renderMarkdown(md) {
+function renderMarkdown(md, metadata = {}) {
   const toc = [];
   const lines = md.split("\n");
   let html = "";
@@ -68,6 +68,10 @@ function renderMarkdown(md) {
       const id = slugify(text);
       if (h2) toc.push({ id, text });
       html += h1 ? `<h1>${escapeHtml(text)}</h1>` : `<h2 id="${id}">${escapeHtml(text)}</h2>`;
+      if (h1 && metadata.image) {
+        const credit = metadata.imageCredit ? `<figcaption>Photo: ${metadata.imageSource ? `<a href="${escapeHtml(metadata.imageSource)}" target="_blank" rel="noopener noreferrer">${escapeHtml(metadata.imageCredit)}</a>` : escapeHtml(metadata.imageCredit)}</figcaption>` : "";
+        html += `<figure class="article-cover"><img src="${escapeHtml(metadata.image)}" alt="${escapeHtml(metadata.imageAlt || text)}" width="${Number(metadata.imageWidth) || 1200}" height="${Number(metadata.imageHeight) || 800}" fetchpriority="high" />${credit}</figure>`;
+      }
       continue;
     }
     if (/^-\s+/.test(line)) {
@@ -102,7 +106,7 @@ function writePage(route, html) {
   routes.add(route);
 }
 
-function layout({ title, description, canonical, body, jsonLd = [], type = "website", image = `${baseUrl}/assets/og-image.jpg`, interactive = false }) {
+function layout({ title, description, canonical, body, jsonLd = [], type = "website", image = `${baseUrl}/assets/og-image.jpg`, imageWidth = 1200, imageHeight = 630, interactive = false }) {
   const schemas = Array.isArray(jsonLd) ? jsonLd : [jsonLd];
   return `<!doctype html>
 <html lang="en">
@@ -117,8 +121,8 @@ function layout({ title, description, canonical, body, jsonLd = [], type = "webs
   <meta property="og:type" content="${type}" />
   <meta property="og:url" content="${canonical}" />
   <meta property="og:image" content="${image}" />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="630" />
+  <meta property="og:image:width" content="${imageWidth}" />
+  <meta property="og:image:height" content="${imageHeight}" />
   <meta property="og:image:type" content="image/jpeg" />
   <meta property="og:site_name" content="BuildMyCVNow" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -170,6 +174,10 @@ function criticalCss() {
     .article{max-width:720px;margin:auto}
     .article h1{font-size:42px}
     .article p,.article li{font-size:18px}
+    .article pre{white-space:pre-wrap;overflow-wrap:anywhere}
+    .article-cover{margin:24px 0 32px}
+    .article-cover img{display:block;width:100%;height:auto;border-radius:8px}
+    .article-cover figcaption{margin-top:8px;font-size:12px;color:#59697e}
     .toc{border:1px solid #e2e8f0;border-radius:10px;padding:16px;background:#f8fafc}
     .cv-snippet{border-left:4px solid #185fa5;background:#f8fafc;padding:18px;border-radius:8px}
     .proof{background:#fff;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;padding:16px 20px;text-align:center;font-weight:900;color:#334155}
@@ -465,7 +473,7 @@ function writeCvPage(job, city) {
 
 const articles = fs.readdirSync(blogDir).filter((file) => file.endsWith(".md")).map((file) => {
   const parsed = parseFrontmatter(fs.readFileSync(path.join(blogDir, file), "utf8"));
-  const rendered = renderMarkdown(parsed.body);
+  const rendered = renderMarkdown(parsed.body, parsed.data);
   return { ...parsed.data, body: parsed.body, html: rendered.html, toc: rendered.toc };
 });
 
@@ -474,7 +482,7 @@ writePage("/blog", layout({ title: "CV Writing and Career Tips Blog | BuildMyCVN
 for (const article of articles) {
   const relatedRoles = (article.relatedRoles || []).slice(0, 3);
   const articleSchema = { "@context": "https://schema.org", "@type": "Article", headline: article.title, datePublished: article.date, dateModified: article.updated, author: { "@type": "Organization", name: "BuildMyCVNow Team" } };
-  writePage(`/blog/${article.slug}`, layout({ title: `${article.title} | BuildMyCVNow`, description: article.description, canonical: `${baseUrl}/blog/${article.slug}`, type: "article", image: `${baseUrl}/assets/og/blog-${article.slug}.jpg`, jsonLd: articleSchema, body: `<main class="section"><article class="article"><p class="muted">BuildMyCVNow Team · Published ${article.date} · Updated ${article.updated}</p>${article.toc.length ? `<nav class="toc"><strong>In this article</strong>${article.toc.map((item) => `<p><a href="#${item.id}">${item.text}</a></p>`).join("")}</nav>` : ""}${article.html}${ctaCard()}<h2>Related CV examples</h2><p>${relatedRoles.map((role) => `<a href="/cv/${role}-dubai">${role.replaceAll("-", " ")}</a>`).join(" · ")}</p></article></main>` }));
+  writePage(`/blog/${article.slug}`, layout({ title: `${article.title} | BuildMyCVNow`, description: article.description, canonical: `${baseUrl}/blog/${article.slug}`, type: "article", image: article.image ? `${baseUrl}${article.image}` : `${baseUrl}/assets/og/blog-${article.slug}.jpg`, imageWidth: Number(article.imageWidth) || 1200, imageHeight: Number(article.imageHeight) || 630, jsonLd: articleSchema, body: `<main class="section"><article class="article"><p class="muted">BuildMyCVNow Team · Published ${article.date} · Updated ${article.updated}</p>${article.toc.length ? `<nav class="toc"><strong>In this article</strong>${article.toc.map((item) => `<p><a href="#${item.id}">${item.text}</a></p>`).join("")}</nav>` : ""}${article.html}${ctaCard()}<h2>Related CV examples</h2><p>${relatedRoles.map((role) => `<a href="/cv/${role}-dubai">${role.replaceAll("-", " ")}</a>`).join(" · ")}</p></article></main>` }));
 }
 
 // Keep every existing React article reachable on direct navigation and refresh.

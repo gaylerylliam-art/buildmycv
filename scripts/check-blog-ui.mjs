@@ -32,6 +32,7 @@ try {
   assert.equal(await page.$$eval('h1',items=>items.length),1);
   assert.equal(await page.$$eval('noscript .bl-all-links a',items=>items.length),slugs.size);
   const staticLayout=await rects();
+  assert.equal(await page.$eval('.bl-article-image[href="/blog/visa-status-on-cv-uae"] img',image=>image.getAttribute('src')),'/assets/blog/visa-status-cv-pexels.jpg');
   await page.screenshot({path:path.join(output,'static-desktop.png')});
   await page.setJavaScriptEnabled(true);await page.reload({waitUntil:'networkidle0'});await ready();
   assert.deepEqual(await rects(),staticLayout,'Static and interactive layout differ');
@@ -65,8 +66,16 @@ try {
   assert(await page.$eval('html',element=>element.classList.contains('dark')));
   assert.equal(await page.$eval('.bl-header .brand-logo-word',word=>getComputedStyle(word).color),'rgb(241, 243, 250)');
   await page.screenshot({path:path.join(output,'dark-desktop.png')});
-  const targets=['ats-friendly-cv',blogArticles[0].slug];
+  const targets=['ats-friendly-cv',blogArticles[0].slug,'visa-status-on-cv-uae'];
   for(const slug of targets){const response=await page.goto(base+'/blog/'+slug+'/',{waitUntil:'networkidle0'});assert.equal(response.status(),200);const title=blogArticles.find(article=>article.slug===slug)?.title||parseBlogFrontmatter(fs.readFileSync('content/blog/'+slug+'.md','utf8')).data.title;assert.equal(await page.$eval('h1',heading=>heading.textContent),title);assert(await page.$('a[href="/builder"]'));}
+  await page.waitForFunction(()=>document.querySelector('.article-cover img')?.naturalWidth===1200);
+  assert.equal(await page.$eval('.article-cover img',image=>image.getAttribute('src')),'/assets/blog/visa-status-cv-pexels.jpg');
+  assert.equal(await page.$eval('meta[property="og:image"]',meta=>meta.content),new URL('/assets/blog/visa-status-cv-pexels.jpg',base).href.replace(new URL(base).origin,'https://buildmycvnow.com'));
+  assert.equal(await page.$eval('meta[property="og:image:height"]',meta=>meta.content),'800');
+  await page.screenshot({path:path.join(output,'visa-article-desktop.png')});
+  await page.setViewport({width:390,height:844});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+  await page.screenshot({path:path.join(output,'visa-article-mobile.png')});
   await page.goto(base+'/builder',{waitUntil:'networkidle0'});await page.waitForSelector('.builder-workspace');assert.equal(await page.$('.builder-onboarding'),null);
   assert.deepEqual(errors,[]);
   console.log(`PASS: ${slugs.size} existing article routes, static/React parity, search/filter/reset, all-article pagination, grid/list, real images, shared branding, dark theme, responsive 320-1920px, and direct builder entry.`);

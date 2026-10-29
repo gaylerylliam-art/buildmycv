@@ -23,7 +23,8 @@ function decorate(article) {
     : /hospitality|engineering|finance|logistic|driver|nanny|housemaid|skilled|worker|teacher|electrician|accountant/i.test(subject) ? "industry"
     : /uae|gcc|dubai|ofw|visa/i.test(subject) ? "gulf" : "writing";
   const label = blogTopics.find(item => item.id === topic).label;
-  const media = article.slug === "cv-format-uae-jobs-2026" ? photos.dubai
+  const media = article.image ? { src: article.image, alt: article.imageAlt || article.title }
+    : article.slug === "cv-format-uae-jobs-2026" ? photos.dubai
     : topic === "ats" || topic === "writing" ? photos.documents
     : topic === "search" ? photos.search : topic === "industry" ? photos.team : photos.workspace;
   return { ...article, topic, label, media };
