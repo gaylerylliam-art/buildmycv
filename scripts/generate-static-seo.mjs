@@ -5,6 +5,8 @@ import React from "react";
 import { renderToString } from "react-dom/server";
 import { createServer } from "vite";
 import { cities, seoJobs, topCityJobSlugs } from "../src/content/programmaticSeo.js";
+import { blogArticles as legacyBlogArticles } from "../src/data/blogArticles.js";
+import { parseBlogFrontmatter as parseFrontmatter } from "../src/lib/blogFrontmatter.js";
 import { homepageFaqs } from "../src/content/seoFaq.js";
 import {
   HOME_META_DESCRIPTION,
@@ -24,11 +26,13 @@ const appAssets = (appShell.match(/<script\b[^>]*type="module"[^>]*>[\s\S]*?<\/s
 
 // Render the same component used by the app so first-load HTML cannot drift.
 const renderer = await createServer({ root, configFile: false, server: { middlewareMode: true }, optimizeDeps: { noDiscovery: true, entries: [] }, appType: "custom" });
-let homepageMarkup, brandMarkup, inverseBrandMarkup;
+let homepageMarkup, blogMarkup, brandMarkup, inverseBrandMarkup;
 try {
   const { default: HomeLanding } = await renderer.ssrLoadModule("/src/components/HomeLanding.jsx");
   const { default: BrandLogo } = await renderer.ssrLoadModule("/src/components/BrandLogo.jsx");
+  const { default: BlogLanding } = await renderer.ssrLoadModule("/src/components/BlogLanding.jsx");
   homepageMarkup = renderToString(React.createElement(HomeLanding));
+  blogMarkup = renderToString(React.createElement(BlogLanding));
   brandMarkup = renderToString(React.createElement(BrandLogo));
   inverseBrandMarkup = renderToString(React.createElement(BrandLogo, { tone: "inverse" }));
 } finally {
@@ -40,23 +44,6 @@ const escapeHtml = (value = "") => String(value).replaceAll("&", "&amp;").replac
 const stripMd = (value = "") => value.replace(/[#*_`>\[\]\(\)]/g, "").replace(/\s+/g, " ").trim();
 const slugify = (value = "") => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
-function parseFrontmatter(raw) {
-  raw = raw.replace(/\r\n/g, "\n");
-  const match = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
-  if (!match) return { data: {}, body: raw };
-  const data = {};
-  match[1].split("\n").forEach((line) => {
-    const [key, ...rest] = line.split(":");
-    if (!key) return;
-    const value = rest.join(":").trim();
-    if (/^\[.*\]$/.test(value)) {
-      data[key.trim()] = value.slice(1, -1).split(",").map((item) => item.trim()).filter(Boolean);
-    } else {
-      data[key.trim()] = value;
-    }
-  });
-  return { data, body: match[2] };
-}
 
 function renderMarkdown(md) {
   const toc = [];
@@ -482,12 +469,19 @@ const articles = fs.readdirSync(blogDir).filter((file) => file.endsWith(".md")).
   return { ...parsed.data, body: parsed.body, html: rendered.html, toc: rendered.toc };
 });
 
-writePage("/blog", layout({ title: "CV Writing and Career Tips Blog | BuildMyCVNow", description: "Read practical CV writing and job search tips about ATS, visa status, CV photos, no-experience CVs and international job preparation.", canonical: `${baseUrl}/blog`, body: `<main class="section"><div class="wrap"><h1>CV writing and career tips</h1><p class="lead">Read practical guides for writing a stronger CV, preparing for job applications, avoiding common mistakes, and tailoring your profile for local, remote, overseas, and Gulf-market roles.</p><p>These articles are written for first-time CV creators, fresh graduates, hospitality workers, skilled workers, drivers, finance assistants, IT applicants, domestic workers, OFWs, and job seekers who want simple language instead of confusing career jargon.</p><div class="grid grid-3">${articles.map((article) => `<a class="card" href="/blog/${article.slug}"><h2>${article.title}</h2><p>${article.description}</p><p class="muted">${article.date}</p></a>`).join("")}</div></div></main>` }));
+writePage("/blog", layout({ title: "CV Writing and Career Tips Blog | BuildMyCVNow", description: "Practical CV writing, ATS, and job search guides for your next career move.", canonical: `${baseUrl}/blog`, interactive: true, body: blogMarkup }));
 
 for (const article of articles) {
   const relatedRoles = (article.relatedRoles || []).slice(0, 3);
   const articleSchema = { "@context": "https://schema.org", "@type": "Article", headline: article.title, datePublished: article.date, dateModified: article.updated, author: { "@type": "Organization", name: "BuildMyCVNow Team" } };
   writePage(`/blog/${article.slug}`, layout({ title: `${article.title} | BuildMyCVNow`, description: article.description, canonical: `${baseUrl}/blog/${article.slug}`, type: "article", image: `${baseUrl}/assets/og/blog-${article.slug}.jpg`, jsonLd: articleSchema, body: `<main class="section"><article class="article"><p class="muted">BuildMyCVNow Team · Published ${article.date} · Updated ${article.updated}</p>${article.toc.length ? `<nav class="toc"><strong>In this article</strong>${article.toc.map((item) => `<p><a href="#${item.id}">${item.text}</a></p>`).join("")}</nav>` : ""}${article.html}${ctaCard()}<h2>Related CV examples</h2><p>${relatedRoles.map((role) => `<a href="/cv/${role}-dubai">${role.replaceAll("-", " ")}</a>`).join(" · ")}</p></article></main>` }));
+}
+
+// Keep every existing React article reachable on direct navigation and refresh.
+for (const article of legacyBlogArticles) {
+  const route = `/blog/${article.slug}`;
+  if (routes.has(route)) continue;
+  writePage(route, layout({ title: `${article.title} | BuildMyCVNow`, description: article.excerpt, canonical: `${baseUrl}${route}`, type: "article", image: `${baseUrl}/assets/og/blog-${article.slug}.jpg`, jsonLd: { "@context": "https://schema.org", "@type": "Article", headline: article.title, datePublished: article.date, author: { "@type": "Organization", name: "BuildMyCVNow Team" } }, body: `<main class="section"><article class="article"><p><a href="/blog">Back to the career journal</a></p><p class="muted">${escapeHtml(article.category)} · ${escapeHtml(article.readTime)} · Published ${escapeHtml(article.date)}</p><h1>${escapeHtml(article.title)}</h1><p class="lead">${escapeHtml(article.excerpt)}</p>${article.content.map(paragraph => `<p>${escapeHtml(paragraph)}</p>`).join("")}${ctaCard()}</article></main>` }));
 }
 
 const rss = `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>BuildMyCVNow Blog</title><link>${baseUrl}/blog</link><description>UAE CV and job search tips</description>${articles.map((article) => `<item><title>${escapeHtml(article.title)}</title><link>${baseUrl}/blog/${article.slug}</link><description>${escapeHtml(article.description)}</description><pubDate>${new Date(article.date).toUTCString()}</pubDate></item>`).join("")}</channel></rss>`;

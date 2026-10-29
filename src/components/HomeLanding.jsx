@@ -17,8 +17,14 @@ function MovingBands() {
   return <div className="hm-marquees" aria-label="Job categories and free CV features">{rows.map((items, row) => <div className="hm-marquee" key={row}><div className={"hm-marquee-track " + (row ? "hm-outline" : "")}>{[0, 1].map(copy => <div className="hm-marquee-copy" key={copy} aria-hidden={copy === 1 ? true : undefined}>{items.map(item => <span key={item}>{item}<b aria-hidden="true">✦</b></span>)}</div>)}</div></div>)}</div>;
 }
 
-function Symbol({ name, ...props }) {
+export function Symbol({ name, ...props }) {
   const paths = {
+    search: <><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></>,
+    plus: <path d="M12 5v14M5 12h14" />,
+    grid: <><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></>,
+    list: <><path d="M8 5h13M8 12h13M8 19h13M3 5h.01M3 12h.01M3 19h.01" /></>,
+    sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M2 12h2M20 12h2m-2-12 1.4-1.4M4.6 19.4 6 18M4.6 4.6 6 6m12 12 1.4 1.4" /></>,
+    moon: <path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5 7 7 0 1 0 20.5 14.5z" />,
     file: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M8 13h8M8 17h6" /></>,
     upload: <><path d="M12 16V3m-5 5 5-5 5 5M4 15v5h16v-5" /></>,
     arrow: <path d="M5 12h14m-6-6 6 6-6 6" />,

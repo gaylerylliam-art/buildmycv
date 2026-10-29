@@ -6,6 +6,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { categories, layouts, themes } from "./data/categories";
 import HomeLanding from "./components/HomeLanding";
 import BrandLogo from "./components/BrandLogo.jsx";
+import BlogLanding from "./components/BlogLanding.jsx";
 import ExistingCVImporter from "./components/ExistingCVImporter.jsx";
 import { useBuilderMotion } from "./hooks/usePageMotion.js";
 import PhotoUploadCrop from "./components/PhotoUploadCrop";
@@ -962,35 +963,8 @@ function TermsPage({ onStart }) {
   );
 }
 
-function BlogIndexPage({ onStart }) {
-  return (
-    <PageShell onStart={onStart}>
-      <Seo
-        title="Blog and Career Tips"
-        description="Read CV writing and job search tips for local, overseas, remote, and international job seekers."
-      />
-      <StaticHero title="Blog and Career Tips" description="Practical articles to help job seekers write stronger CVs and prepare for applications." />
-      <section className="mx-auto max-w-7xl px-5 py-14">
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {blogArticles.map((article) => (
-            <article key={article.slug} className="rounded border border-slate-200 bg-white p-5 shadow-sm transition hover:border-green-500 hover:shadow-soft">
-              <p className="flex flex-wrap gap-2 text-xs font-black uppercase text-slate-500">
-                <span>{article.category}</span>
-                <span>-</span>
-                <span>{article.readTime}</span>
-              </p>
-              <h2 className="mt-3 text-xl font-black leading-7 text-slate-950">{article.title}</h2>
-              <p className="mt-3 text-sm leading-6 text-slate-600">{article.excerpt}</p>
-              <p className="mt-4 text-xs font-black uppercase text-slate-400">{new Date(article.date).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}</p>
-              <Link to={`/blog/${article.slug}`} className="mt-5 inline-flex items-center gap-2 text-sm font-black text-green-700">
-                Read more <Icon name="arrow" className="h-4 w-4" />
-              </Link>
-            </article>
-          ))}
-        </div>
-      </section>
-    </PageShell>
-  );
+function BlogIndexPage() {
+  return <><Seo title="CV Writing and Career Tips Blog" description="Practical CV writing, ATS, and job search guides for your next career move." /><BlogLanding /></>;
 }
 
 function BlogArticlePage({ onStart }) {

@@ -23,7 +23,7 @@ try {
     let reference;
     for (const route of ['/', '/templates', '/about', '/contact', '/faq', '/blog', '/privacy', '/terms']) {
       await page.setJavaScriptEnabled(false);
-      await page.goto(base + route, {waitUntil:'networkidle0'});
+      await page.goto(base + route + (route === '/' ? '' : '/'), {waitUntil:'networkidle0'});
       await page.evaluate(()=>document.fonts.ready);
       const current = await snapshot();
       assert.equal(current.text,'BuildMyCVNow');

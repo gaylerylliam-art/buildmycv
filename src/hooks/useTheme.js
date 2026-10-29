@@ -20,7 +20,7 @@ const setThemeColorMeta = (theme) => {
 
 export function useTheme(defaultMode = "system") {
   const [mode, setModeState] = useState(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = typeof window === "undefined" ? null : localStorage.getItem(STORAGE_KEY);
     return options.includes(saved) ? saved : options.includes(defaultMode) ? defaultMode : "system";
   });
   const [resolved, setResolved] = useState(() => resolvedTheme(mode));
