@@ -378,7 +378,7 @@
 .hm-word-inner { display:inline-block; }
 .hm-headline-line,.hm-rotating-line { display:block; }
 .hm-hero-copy { container-type:inline-size; }
-.hm-rotating-line { height:1.28em; overflow:hidden; }
+.hm-rotating-line { height:1.28em; margin-top:.16em; overflow:hidden; }
 .hm-hero-copy h1 .hm-rotating-line mark { display:block; width:max-content; max-width:100%; height:1.2em; overflow:hidden; line-height:1.2; font-size:.8em; font-size:min(1em,11cqi); box-decoration-break:slice; -webkit-box-decoration-break:slice; }
 .hm-rotating-word { display:inline-block; white-space:nowrap; }
 .hm-marquees { padding:28px 0; background:#f7f9fb; overflow:hidden; }
