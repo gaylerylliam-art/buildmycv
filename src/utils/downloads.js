@@ -2,6 +2,7 @@ import QRCode from "qrcode";
 import { normalizeQrUrl } from "../lib/validateQrUrl.js";
 import { sanitizeQrSvg } from "../hooks/useQrSvg.js";
 import { PASSPORT_PHOTO, getPassportPhotoStyles, normalizePhotoShape } from "../lib/profilePhoto.js";
+import { cvTextLines } from "../lib/cvText.js";
 
 const escapeHtml = (value = "") =>
   String(value)
@@ -12,10 +13,8 @@ const escapeHtml = (value = "") =>
     .replaceAll("'", "&#039;");
 
 const joinLines = (value = "") =>
-  value
-    .split("\n")
-    .filter(Boolean)
-    .map((line) => `<li>${escapeHtml(String(line).trim().replace(/^[-•●▪◦*]\s*/, ""))}</li>`)
+  cvTextLines(value)
+    .map((line) => `<li>${escapeHtml(line)}</li>`)
     .join("");
 
 const fileBaseName = (fullName, suffix) => {
@@ -440,7 +439,8 @@ export const buildCvDocxBlob = async (cv, theme = { color: "#0f66d0", dark: "#0f
     new Paragraph({
       spacing: { before: options.before ?? 0, after: options.after ?? 150 },
       bidirectional: isRtl,
-      alignment: options.alignment || (isRtl ? AlignmentType.RIGHT : undefined),
+      alignment: options.alignment || (isRtl ? AlignmentType.RIGHT : AlignmentType.LEFT),
+      indent: options.bullet ? { start: 270, end: 0, hanging: 150 } : { start: 0, end: 0, firstLine: 0 },
       bullet: options.bullet ? { level: 0 } : undefined,
       keepNext: options.keepNext,
       children: [new TextRun({
@@ -519,7 +519,7 @@ export const buildCvDocxBlob = async (cv, theme = { color: "#0f66d0", dark: "#0f
           return [
             cleanExportText(entry.jobTitle) ? paragraph(cleanExportText(entry.jobTitle), { bold: true, after: 50, keepNext: true }) : null,
             meta ? paragraph(meta, { size: 20, after: 60, color: "475569", keepNext: true }) : null,
-            ...cleanExportText(entry.responsibilities).split("\n").map((line) => line.trim().replace(/^[-•●▪◦*]\s*/, "")).filter(Boolean).map((line) => paragraph(line, { bullet: true, after: 45 })),
+            ...cvTextLines(cleanExportText(entry.responsibilities)).map((line) => paragraph(line, { bullet: true, after: 45 })),
           ].filter(Boolean);
         }),
       ],
@@ -584,18 +584,17 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
         html { background: #ffffff; }
         body { width: 210mm; min-height: 297mm; margin: 0 auto; padding: ${pageBorder.millimeters}mm; font-family: Arial, sans-serif; font-size: 11px; color: #111827; line-height: 1.38; background: #ffffff; overflow-wrap: anywhere; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         body.rtl { direction: rtl; text-align: right; }
-        body.rtl ul { padding-left: 0; padding-right: 18px; }
         h1 { color: #0f172a; margin: 0 0 3px; font-size: 26px; line-height: 1.12; }
         h2 { color: ${theme.dark}; border-bottom: 1px solid ${theme.color}; padding-bottom: 4px; margin: 14px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0; display: flex; align-items: center; gap: 6px; }
-        p { margin: 0 0 8px; white-space: pre-line; }
-        ul { margin: 0; padding-left: 18px; }
-        li { margin-bottom: 3px; break-inside: auto; page-break-inside: auto; }
+        p { margin: 0 0 8px; white-space: pre-line; text-indent: 0; }
+        ul { margin: 0; padding-inline-start: 18px; padding-inline-end: 0; list-style-position: outside; text-align: start; }
+        li { padding-inline: 0; text-indent: 0; margin-bottom: 3px; break-inside: auto; page-break-inside: auto; }
         .section-icon, .contact-icon { display: inline-flex; align-items: center; justify-content: center; }
         .section-icon svg, .contact-icon svg { width: 12px; height: 12px; }
         .header { display: flex; gap: 12px; align-items: center; border-bottom: 3px solid ${theme.color}; padding-bottom: 12px; margin-bottom: 10px; min-width: 0; }
         .header-main { flex: 1 1 auto; min-width: 0; }
         .contact { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; color: #4b5563; font-size: 11px; line-height: 1.35; overflow-wrap: anywhere; }
-        .contact-item { display: inline-flex; align-items: center; gap: 4px; }
+        .contact-item { display: inline-grid; grid-template-columns: 12px minmax(0, 1fr); align-items: start; gap: 4px; min-width: 0; max-width: 100%; text-align: start; }
         .title { color: ${theme.color}; font-weight: 700; }
         .photo { width: 78px; height: 78px; object-fit: cover; flex: 0 0 auto; }
         .round { border-radius: 999px; }
@@ -623,7 +622,7 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
         .name-block { text-align: center; }
         .sidebar-name { margin: 0; color: #ffffff; font-size: 24px; line-height: 1.15; }
         .sidebar-title { margin: 8px 0 0; color: rgba(255,255,255,0.88); font-size: 14px; font-weight: 700; }
-        .sidebar-contact { margin-top: 28px; color: rgba(255,255,255,0.86); font-size: 11px; line-height: 1.8; text-align: left; }
+        .sidebar-contact { margin-top: 28px; color: rgba(255,255,255,0.86); font-size: 11px; line-height: 1.8; text-align: start; }
         .sidebar-contact p { display: flex; align-items: center; gap: 5px; margin-bottom: 6px; }
         .main-content { padding: 20px; min-width: 0; }
         .credit-footer { margin: 24px 0 0; padding-top: 12px; border-top: 1px solid #e5e7eb; color: #9ca3af; font-size: 7pt; text-align: center; }

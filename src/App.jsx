@@ -6,6 +6,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { categories, layouts, themes } from "./data/categories";
 import HomeLanding from "./components/HomeLanding";
 import BrandLogo from "./components/BrandLogo.jsx";
+import { cvTextLines } from "./lib/cvText.js";
 import FaqLanding from "./components/FaqLanding.jsx";
 import BlogLanding from "./components/BlogLanding.jsx";
 import ExistingCVImporter from "./components/ExistingCVImporter.jsx";
@@ -1971,10 +1972,10 @@ function PageBorderSelector({ cv, onChange }) {
   );
 }
 
-function LiveCVPreview({ cv, theme, layout }) {
+export function LiveCVPreview({ cv, theme, layout }) {
   const isRtl = cv.languageDirection === "rtl" || isArabicLanguage(cv.outputLanguage);
   const pageBorderPadding = getCvPageBorderPixels(cv);
-  const lines = (value) => String(value || "").split("\n").filter(Boolean);
+  const lines = cvTextLines;
   const chunks = (items, size) => {
     const result = [];
     for (let index = 0; index < items.length; index += size) result.push(items.slice(index, index + size));
@@ -2030,7 +2031,7 @@ function LiveCVPreview({ cv, theme, layout }) {
   const section = (title, content, list = false) => (
     <section className="break-inside-avoid">
       {renderSectionHeading(title)}
-      {list ? <ul className="mt-2 list-disc space-y-1 pl-5 text-[12px] leading-5 text-slate-700">{lines(content).map((line) => <li key={line}>{line}</li>)}</ul> : <p className="mt-2 whitespace-pre-line text-[12px] leading-5 text-slate-700">{content}</p>}
+      {list ? <ul className="cv-bullet-list mt-2 list-disc space-y-1 text-[12px] leading-5 text-slate-700">{lines(content).map((line) => <li key={line}>{line}</li>)}</ul> : <p className="cv-body-text mt-2 whitespace-pre-line text-[12px] leading-5 text-slate-700">{content}</p>}
     </section>
   );
   const referencesBlock = () => {
@@ -2060,17 +2061,17 @@ function LiveCVPreview({ cv, theme, layout }) {
   const renderWorkEntry = (block) => (
     <section className="break-inside-avoid">
       {block.showTitle && renderSectionHeading(block.title)}
-      <article className="mt-3 text-[12px] leading-5 text-slate-700">
-        <div className="flex flex-col justify-between gap-1 sm:flex-row">
+      <article className="cv-work-entry mt-3 text-[12px] leading-5 text-slate-700">
+        <div className="cv-work-heading">
           <div>
             <p className="font-black text-slate-900">{block.entry.jobTitle || "Job title"}</p>
             <p className="font-bold text-slate-700">{block.entry.employer || "Employer name"}</p>
             {block.entry.companyLocation && <p className="font-semibold text-slate-500">{block.entry.companyLocation}</p>}
           </div>
-          <p className="font-bold text-slate-500">{[block.entry.fromDate, block.entry.isCurrent ? "Present" : block.entry.toDate].filter(Boolean).join(" - ")}</p>
+          <p className="cv-work-dates font-bold text-slate-500">{[block.entry.fromDate, block.entry.isCurrent ? "Present" : block.entry.toDate].filter(Boolean).join(" - ")}</p>
         </div>
         {block.responsibilities && (
-          <ul className="mt-2 list-disc space-y-1 pl-5">
+          <ul className="cv-bullet-list mt-2 list-disc space-y-1">
             {lines(block.responsibilities).map((line) => <li key={line}>{line}</li>)}
           </ul>
         )}
@@ -2155,9 +2156,9 @@ function LiveCVPreview({ cv, theme, layout }) {
     </aside>
   );
   const renderHeader = () => (
-    <header className={`relative flex items-center gap-4 ${layout === "header" ? "rounded p-5 pr-24 text-white" : "border-b border-slate-200 pb-5 pr-24"}`} style={layout === "header" ? { background: theme.dark } : {}}>
+    <header className={`cv-profile-header relative flex items-center gap-4 ${cv.qrCode?.enabled && cv.qrCode?.position === "header" ? "pr-24" : ""} ${layout === "header" ? "rounded p-5 text-white" : "border-b border-slate-200 pb-5"}`} style={layout === "header" ? { background: theme.dark } : {}}>
       {photo()}
-      <div>
+      <div className="cv-profile-copy">
         <h2 className="text-2xl font-black leading-tight">{cv.fullName}</h2>
         <p className={`mt-1 text-sm font-bold ${layout === "header" ? "text-white/90" : "text-blue-700"}`} style={layout === "header" ? {} : { color: theme.color }}>{cv.jobTitle}</p>
         <div className={`mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[11px] ${layout === "header" ? "text-white/85" : "text-slate-500"}`}>

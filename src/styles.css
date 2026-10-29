@@ -3449,16 +3449,17 @@ summary {
 }
 
 .cv-paper.cv-rtl ul {
-  padding-left: 0;
-  padding-right: 1.25rem;
+  padding-inline-start: 18px;
+  padding-inline-end: 0;
 }
 
 .cv-paper.cv-rtl .cv-continuation-contact {
-  align-items: flex-start;
+  align-items: stretch;
 }
 
 .cv-continuation-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(170px, 33%);
   align-items: flex-start;
   justify-content: space-between;
   gap: 1.5rem;
@@ -3482,17 +3483,20 @@ summary {
 
 .cv-continuation-contact {
   display: flex;
-  max-width: 52%;
+  min-width: 0;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: stretch;
   gap: 0.35rem;
 }
 
 .cv-contact-item {
-  display: inline-flex;
-  align-items: center;
+  display: inline-grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  align-items: start;
   gap: 0.32rem;
   min-width: 0;
+  max-width: 100%;
+  text-align: start;
   color: inherit;
 }
 
@@ -3509,8 +3513,20 @@ summary {
 }
 
 .cv-contact-item span:last-child {
+  min-width: 0;
   overflow-wrap: anywhere;
 }
+
+/* Shared document geometry: independent of the editor viewport and theme. */
+.cv-profile-copy, .cv-continuation-header > div, .cv-work-heading > div { min-width:0; }
+.cv-profile-copy { flex:1; }
+.cv-profile-copy :is(h2,p), .cv-continuation-header :is(h2,p), .cv-work-entry p { overflow-wrap:anywhere; text-indent:0; }
+.cv-work-heading { display:grid; grid-template-columns:minmax(0,1fr) minmax(140px,38%); align-items:start; gap:6px 18px; }
+.cv-work-dates { min-width:0; text-align:end; }
+.cv-paper .cv-bullet-list { margin-inline:0; padding-inline-start:18px; padding-inline-end:0; list-style-position:outside; text-align:start; }
+.cv-bullet-list li { padding-inline:0; text-indent:0; overflow-wrap:anywhere; }
+.cv-body-text, .cv-work-entry { text-align:start; text-indent:0; }
+.cv-body-text { overflow-wrap:anywhere; }
 
 .cv-continuation-contact .cv-contact-item {
   color: #64748b;
