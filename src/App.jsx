@@ -31,6 +31,7 @@ import {
   sampleCoverLetters,
 } from "./data/coverLetterTemplates";
 import { blogArticles } from "./data/blogArticles";
+import { getBlogPhotography } from "./content/blogPhotography.js";
 import { faqs } from "./data/siteContent";
 import {
   HOME_HOW_IT_WORKS_BADGES,
@@ -533,7 +534,7 @@ function Icon({ name, className = "h-5 w-5" }) {
   return <svg {...common}>{paths[name]}</svg>;
 }
 
-function Seo({ title, description, image = "https://buildmycvnow.com/assets/og-image.jpg", type = "website" }) {
+function Seo({ title, description, image = "https://buildmycvnow.com/assets/og-image.jpg", imageWidth = 1200, imageHeight = 630, type = "website" }) {
   useEffect(() => {
     const fullTitle = title.includes("BuildMyCVNow") ? title : `${title} | BuildMyCVNow`;
     const canonical = `${window.location.origin}${window.location.pathname}`;
@@ -560,15 +561,15 @@ function Seo({ title, description, image = "https://buildmycvnow.com/assets/og-i
     setMeta("meta[property='og:type']", "content", type);
     setMeta("meta[property='og:url']", "content", canonical);
     setMeta("meta[property='og:image']", "content", image);
-    setMeta("meta[property='og:image:width']", "content", "1200");
-    setMeta("meta[property='og:image:height']", "content", "630");
+    setMeta("meta[property='og:image:width']", "content", String(imageWidth));
+    setMeta("meta[property='og:image:height']", "content", String(imageHeight));
     setMeta("meta[property='og:image:type']", "content", "image/jpeg");
     setMeta("meta[property='og:site_name']", "content", "BuildMyCVNow");
     setMeta("meta[name='twitter:card']", "content", "summary_large_image");
     setMeta("meta[name='twitter:title']", "content", fullTitle);
     setMeta("meta[name='twitter:description']", "content", description);
     setMeta("meta[name='twitter:image']", "content", image);
-  }, [title, description, image, type]);
+  }, [title, description, image, imageWidth, imageHeight, type]);
   return null;
 }
 
@@ -969,11 +970,12 @@ function BlogArticlePage({ onStart }) {
   const { slug } = useParams();
   const article = blogArticles.find((item) => item.slug === slug);
   if (!article) return <Navigate to="/blog" replace />;
+  const photography = getBlogPhotography(article);
   const related = blogArticles.filter((item) => item.slug !== article.slug && item.category === article.category).slice(0, 3);
   const splitIndex = Math.ceil(article.content.length / 2);
   return (
     <PageShell onStart={onStart}>
-      <Seo title={article.title} description={article.excerpt} />
+      <Seo title={article.title} description={article.excerpt} image={photography.image ? `https://buildmycvnow.com${photography.image}` : undefined} imageWidth={photography.imageWidth} imageHeight={photography.imageHeight} type="article" />
       <article className="mx-auto max-w-4xl px-5 py-14">
         <Link to="/blog" className="text-sm font-black text-green-700">Back to blog</Link>
         <p className="mt-8 flex flex-wrap gap-2 text-xs font-black uppercase text-slate-500">
@@ -984,6 +986,10 @@ function BlogArticlePage({ onStart }) {
           <span>{new Date(article.date).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}</span>
         </p>
         <h1 className="mt-3 text-4xl font-black leading-tight text-slate-950 sm:text-5xl">{article.title}</h1>
+        {photography.image && <figure className="my-6">
+          <img className="block h-auto w-full rounded-lg" src={photography.image} alt={photography.imageAlt} width={photography.imageWidth} height={photography.imageHeight} fetchPriority="high" />
+          <figcaption className="mt-2 text-xs text-slate-600">Photo: <a href={photography.imageSource} target="_blank" rel="noopener noreferrer" className="underline">{photography.imageCredit}</a></figcaption>
+        </figure>}
         <p className="mt-5 text-lg leading-8 text-slate-600">{article.excerpt}</p>
         <div className="mt-10 space-y-6 text-base leading-8 text-slate-700">
           {article.content.slice(0, splitIndex).map((paragraph) => <p key={paragraph}>{paragraph}</p>)}

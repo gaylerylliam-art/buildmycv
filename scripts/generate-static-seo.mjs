@@ -5,7 +5,8 @@ import React from "react";
 import { renderToString } from "react-dom/server";
 import { createServer } from "vite";
 import { cities, seoJobs, topCityJobSlugs } from "../src/content/programmaticSeo.js";
-import { blogArticles as legacyBlogArticles } from "../src/data/blogArticles.js";
+import { blogArticles as legacyBlogArticleData } from "../src/data/blogArticles.js";
+import { getBlogPhotography } from "../src/content/blogPhotography.js";
 import { parseBlogFrontmatter as parseFrontmatter } from "../src/lib/blogFrontmatter.js";
 import { homepageFaqs } from "../src/content/seoFaq.js";
 import {
@@ -21,6 +22,7 @@ const dist = path.join(root, "dist");
 const blogDir = path.join(root, "content", "blog");
 const baseUrl = "https://buildmycvnow.com";
 const buildDate = new Date().toISOString().slice(0, 10);
+const legacyBlogArticles = legacyBlogArticleData.map(article => ({ ...article, ...getBlogPhotography(article) }));
 const appShell = fs.readFileSync(path.join(dist, "index.html"), "utf8");
 const appAssets = (appShell.match(/<script\b[^>]*type="module"[^>]*>[\s\S]*?<\/script>|<link\b[^>]*rel="stylesheet"[^>]*>/g) || []).join("\n");
 
@@ -44,6 +46,11 @@ const escapeHtml = (value = "") => String(value).replaceAll("&", "&amp;").replac
 const stripMd = (value = "") => value.replace(/[#*_`>\[\]\(\)]/g, "").replace(/\s+/g, " ").trim();
 const slugify = (value = "") => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
+function renderArticleCover(article) {
+  if (!article.image) return "";
+  const credit = article.imageCredit ? `<figcaption>Photo: ${article.imageSource ? `<a href="${escapeHtml(article.imageSource)}" target="_blank" rel="noopener noreferrer">${escapeHtml(article.imageCredit)}</a>` : escapeHtml(article.imageCredit)}</figcaption>` : "";
+  return `<figure class="article-cover"><img src="${escapeHtml(article.image)}" alt="${escapeHtml(article.imageAlt || article.title)}" width="${Number(article.imageWidth) || 1200}" height="${Number(article.imageHeight) || 800}" fetchpriority="high" />${credit}</figure>`;
+}
 
 function renderMarkdown(md, metadata = {}) {
   const toc = [];
@@ -68,10 +75,7 @@ function renderMarkdown(md, metadata = {}) {
       const id = slugify(text);
       if (h2) toc.push({ id, text });
       html += h1 ? `<h1>${escapeHtml(text)}</h1>` : `<h2 id="${id}">${escapeHtml(text)}</h2>`;
-      if (h1 && metadata.image) {
-        const credit = metadata.imageCredit ? `<figcaption>Photo: ${metadata.imageSource ? `<a href="${escapeHtml(metadata.imageSource)}" target="_blank" rel="noopener noreferrer">${escapeHtml(metadata.imageCredit)}</a>` : escapeHtml(metadata.imageCredit)}</figcaption>` : "";
-        html += `<figure class="article-cover"><img src="${escapeHtml(metadata.image)}" alt="${escapeHtml(metadata.imageAlt || text)}" width="${Number(metadata.imageWidth) || 1200}" height="${Number(metadata.imageHeight) || 800}" fetchpriority="high" />${credit}</figure>`;
-      }
+      if (h1) html += renderArticleCover({ ...metadata, title: text });
       continue;
     }
     if (/^-\s+/.test(line)) {
@@ -473,8 +477,9 @@ function writeCvPage(job, city) {
 
 const articles = fs.readdirSync(blogDir).filter((file) => file.endsWith(".md")).map((file) => {
   const parsed = parseFrontmatter(fs.readFileSync(path.join(blogDir, file), "utf8"));
-  const rendered = renderMarkdown(parsed.body, parsed.data);
-  return { ...parsed.data, body: parsed.body, html: rendered.html, toc: rendered.toc };
+  const metadata = { ...parsed.data, ...getBlogPhotography(parsed.data) };
+  const rendered = renderMarkdown(parsed.body, metadata);
+  return { ...metadata, body: parsed.body, html: rendered.html, toc: rendered.toc };
 });
 
 writePage("/blog", layout({ title: "CV Writing and Career Tips Blog | BuildMyCVNow", description: "Practical CV writing, ATS, and job search guides for your next career move.", canonical: `${baseUrl}/blog`, interactive: true, body: blogMarkup }));
@@ -489,7 +494,17 @@ for (const article of articles) {
 for (const article of legacyBlogArticles) {
   const route = `/blog/${article.slug}`;
   if (routes.has(route)) continue;
-  writePage(route, layout({ title: `${article.title} | BuildMyCVNow`, description: article.excerpt, canonical: `${baseUrl}${route}`, type: "article", image: `${baseUrl}/assets/og/blog-${article.slug}.jpg`, jsonLd: { "@context": "https://schema.org", "@type": "Article", headline: article.title, datePublished: article.date, author: { "@type": "Organization", name: "BuildMyCVNow Team" } }, body: `<main class="section"><article class="article"><p><a href="/blog">Back to the career journal</a></p><p class="muted">${escapeHtml(article.category)} · ${escapeHtml(article.readTime)} · Published ${escapeHtml(article.date)}</p><h1>${escapeHtml(article.title)}</h1><p class="lead">${escapeHtml(article.excerpt)}</p>${article.content.map(paragraph => `<p>${escapeHtml(paragraph)}</p>`).join("")}${ctaCard()}</article></main>` }));
+  writePage(route, layout({
+    title: `${article.title} | BuildMyCVNow`,
+    description: article.excerpt,
+    canonical: `${baseUrl}${route}`,
+    type: "article",
+    image: article.image ? `${baseUrl}${article.image}` : `${baseUrl}/assets/og/blog-${article.slug}.jpg`,
+    imageWidth: Number(article.imageWidth) || 1200,
+    imageHeight: Number(article.imageHeight) || 630,
+    jsonLd: { "@context": "https://schema.org", "@type": "Article", headline: article.title, datePublished: article.date, author: { "@type": "Organization", name: "BuildMyCVNow Team" } },
+    body: `<main class="section"><article class="article"><p><a href="/blog">Back to the career journal</a></p><p class="muted">${escapeHtml(article.category)} · ${escapeHtml(article.readTime)} · Published ${escapeHtml(article.date)}</p><h1>${escapeHtml(article.title)}</h1>${renderArticleCover(article)}<p class="lead">${escapeHtml(article.excerpt)}</p>${article.content.map(paragraph => `<p>${escapeHtml(paragraph)}</p>`).join("")}${ctaCard()}</article></main>`,
+  }));
 }
 
 const rss = `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>BuildMyCVNow Blog</title><link>${baseUrl}/blog</link><description>UAE CV and job search tips</description>${articles.map((article) => `<item><title>${escapeHtml(article.title)}</title><link>${baseUrl}/blog/${article.slug}</link><description>${escapeHtml(article.description)}</description><pubDate>${new Date(article.date).toUTCString()}</pubDate></item>`).join("")}</channel></rss>`;

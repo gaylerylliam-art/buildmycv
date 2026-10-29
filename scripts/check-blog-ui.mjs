@@ -4,16 +4,21 @@ import path from 'node:path';
 import puppeteer from 'puppeteer-core';
 import {blogArticles} from '../src/data/blogArticles.js';
 import {parseBlogFrontmatter} from '../src/lib/blogFrontmatter.js';
+import {getBlogPhotography} from '../src/content/blogPhotography.js';
 
 const base = process.env.PREVIEW_URL || 'http://127.0.0.1:5181';
 const output = path.resolve('artifacts/blog-review');
 fs.mkdirSync(output,{recursive:true});
-const slugs = new Set([...blogArticles.map(article=>article.slug),...fs.readdirSync('content/blog').filter(file=>file.endsWith('.md')).map(file=>parseBlogFrontmatter(fs.readFileSync(path.join('content/blog',file),'utf8')).data.slug)]);
+const articles = new Map([...blogArticles,...fs.readdirSync('content/blog').filter(file=>file.endsWith('.md')).map(file=>parseBlogFrontmatter(fs.readFileSync(path.join('content/blog',file),'utf8')).data)].map(article=>[article.slug,article]));
+const slugs = new Set(articles.keys());
 for (const slug of slugs) {
   const html = fs.readFileSync(path.join('dist/blog',slug,'index.html'),'utf8');
   assert(html.includes('class="brand-logo"'),slug+': missing shared logo');
   assert(html.includes(`https://buildmycvnow.com/blog/${slug}`),slug+': missing canonical');
   assert.equal([...html.matchAll(/<h1\b/g)].length,1,slug+': wrong heading count');
+  const photo = getBlogPhotography(articles.get(slug));
+  assert(html.includes(`src="${photo.image}"`),slug+': missing article photograph');
+  assert(html.includes(`content="https://buildmycvnow.com${photo.image}"`),slug+': mismatched sharing photograph');
 }
 const browser = await puppeteer.launch({executablePath:process.env.BROWSER_PATH || 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',headless:true,userDataDir:fs.mkdtempSync(path.join(output,'browser-'))});
 const page = await browser.newPage(),errors=[];
@@ -39,6 +44,10 @@ try {
   assert.equal(await page.$$eval('.bl-article',items=>items.length),9);
   while(await page.$('.bl-load button')) await page.click('.bl-load button');
   assert.equal(await page.$$eval('.bl-article',items=>items.length),slugs.size);
+  const media = await page.$$eval('.bl-article-image img',images=>images.map(image=>image.getAttribute('src')));
+  assert.equal(new Set(media).size,slugs.size,'Blog cards must not reuse photographs');
+  await page.$$eval('.bl-article-image img',images=>images.forEach(image=>image.loading='eager'));
+  await page.waitForFunction(()=>[...document.querySelectorAll('.bl-article-image img')].every(image=>image.complete&&image.naturalWidth>0));
   for (const slug of slugs) assert(await page.$(`.bl-article a[href="/blog/${slug}"]`),'Missing article '+slug);
   await page.type('.bl-search input','ats');
   assert(await page.$$eval('.bl-article',items=>items.length>0&&items.every(item=>item.textContent.toLowerCase().includes('ats'))));
@@ -66,8 +75,21 @@ try {
   assert(await page.$eval('html',element=>element.classList.contains('dark')));
   assert.equal(await page.$eval('.bl-header .brand-logo-word',word=>getComputedStyle(word).color),'rgb(241, 243, 250)');
   await page.screenshot({path:path.join(output,'dark-desktop.png')});
-  const targets=['ats-friendly-cv',blogArticles[0].slug,'visa-status-on-cv-uae'];
-  for(const slug of targets){const response=await page.goto(base+'/blog/'+slug+'/',{waitUntil:'networkidle0'});assert.equal(response.status(),200);const title=blogArticles.find(article=>article.slug===slug)?.title||parseBlogFrontmatter(fs.readFileSync('content/blog/'+slug+'.md','utf8')).data.title;assert.equal(await page.$eval('h1',heading=>heading.textContent),title);assert(await page.$('a[href="/builder"]'));}
+  const targets=[...slugs].filter(slug=>slug!=='visa-status-on-cv-uae').concat('visa-status-on-cv-uae');
+  for(const slug of targets){
+    const response=await page.goto(base+'/blog/'+slug+'/',{waitUntil:'networkidle0'});
+    assert.equal(response.status(),200);
+    assert.equal(await page.$eval('h1',heading=>heading.textContent),articles.get(slug).title);
+    assert(await page.$('a[href="/builder"]'));
+    const photo=getBlogPhotography(articles.get(slug));
+    const actual=await page.$eval('.article-cover img',async image=>{await image.decode();return {src:image.getAttribute('src'),width:image.naturalWidth,height:image.naturalHeight,alt:image.alt};});
+    assert.deepEqual(actual,{src:photo.image,width:photo.imageWidth,height:photo.imageHeight,alt:photo.imageAlt});
+    assert.equal(await page.$eval('meta[property="og:image"]',meta=>meta.content),'https://buildmycvnow.com'+photo.image);
+    await page.setViewport({width:390,height:844});
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,slug+': mobile overflow');
+    if(['best-cv-format-for-hospitality-workers-in-dubai','cv-no-experience-dubai'].includes(slug)) await page.screenshot({path:path.join(output,slug+'-mobile.png'),fullPage:true});
+    await page.setViewport({width:1440,height:1000});
+  }
   await page.waitForFunction(()=>document.querySelector('.article-cover img')?.naturalWidth===1200);
   assert.equal(await page.$eval('.article-cover img',image=>image.getAttribute('src')),'/assets/blog/visa-status-cv-pexels.jpg');
   assert.equal(await page.$eval('meta[property="og:image"]',meta=>meta.content),new URL('/assets/blog/visa-status-cv-pexels.jpg',base).href.replace(new URL(base).origin,'https://buildmycvnow.com'));
@@ -77,6 +99,12 @@ try {
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await page.screenshot({path:path.join(output,'visa-article-mobile.png')});
   await page.goto(base+'/builder',{waitUntil:'networkidle0'});await page.waitForSelector('.builder-workspace');assert.equal(await page.$('.builder-onboarding'),null);
+  const clientArticle=blogArticles[0],clientPhoto=getBlogPhotography(clientArticle);
+  await page.evaluate(slug=>{history.pushState({},'',`/blog/${slug}`);dispatchEvent(new PopStateEvent('popstate'));},clientArticle.slug);
+  await page.waitForSelector('article figure img');
+  assert.equal(await page.$eval('article figure img',image=>image.getAttribute('src')),clientPhoto.image);
+  await page.waitForFunction(image=>document.querySelector('meta[property="og:image"]')?.content==='https://buildmycvnow.com'+image,{},clientPhoto.image);
+  assert.equal(await page.$eval('meta[property="og:image:height"]',meta=>meta.content),String(clientPhoto.imageHeight));
   assert.deepEqual(errors,[]);
-  console.log(`PASS: ${slugs.size} existing article routes, static/React parity, search/filter/reset, all-article pagination, grid/list, real images, shared branding, dark theme, responsive 320-1920px, and direct builder entry.`);
+  console.log(`PASS: ${slugs.size} article routes with unique matching card/cover/sharing photographs, static/React parity, search/filter/reset, pagination, grid/list, image loading, shared branding, dark theme, responsive 320-1920px, and direct builder entry.`);
 }catch(error){console.log(JSON.stringify({url:page.url(),errors,image:await page.$eval('.bl-feature > img',img=>({src:img.currentSrc,naturalWidth:img.naturalWidth,complete:img.complete})).catch(()=>null),body:await page.evaluate(()=>document.body.innerText.slice(0,500))}));await page.screenshot({path:path.join(output,'failure.png')});throw error;}finally{await browser.close();}
