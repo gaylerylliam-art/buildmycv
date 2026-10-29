@@ -120,7 +120,7 @@ export default function HomeLanding({ onStart }) {
   const [example, setExample] = useState("hospitality");
   const selected = designs.find((design) => design.id === example);
   return <div className="hm-home" ref={motionRoot}><a className="hm-skip" href="#top">Skip to content</a>
-    <header className="hm-nav"><div className="hm-wrap hm-nav-inner"><a className="hm-logo" href="/" aria-label="BuildMyCVNow home"><BrandLogo /></a><nav aria-label="Main navigation"><a href="#improve">Improve my CV</a><a href="#templates">Templates</a><a href="#free-download">Free download</a><a href="#faq">FAQ</a><a href="/blog">Career tips</a></nav><BuilderLink onStart={onStart} className="hm-button hm-primary hm-nav-start">Build my CV — free <Symbol name="arrow" /></BuilderLink></div></header>
+    <header className="hm-nav"><div className="hm-wrap hm-nav-inner"><a className="hm-logo" href="/" aria-label="BuildMyCVNow home"><BrandLogo /></a><nav aria-label="Main navigation"><a href="#improve">Improve my CV</a><a href="#templates">Templates</a><a href="#free-download">Free download</a><a href="/faq">FAQ</a><a href="/blog">Career tips</a></nav><BuilderLink onStart={onStart} className="hm-button hm-primary hm-nav-start">Build my CV — free <Symbol name="arrow" /></BuilderLink></div></header>
     <main id="top">
       <section className="hm-hero hm-hero-professionals">
         <picture className="hm-hero-photo">

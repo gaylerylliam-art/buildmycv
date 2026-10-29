@@ -9,6 +9,7 @@ import { blogArticles as legacyBlogArticleData } from "../src/data/blogArticles.
 import { getBlogPhotography } from "../src/content/blogPhotography.js";
 import { parseBlogFrontmatter as parseFrontmatter } from "../src/lib/blogFrontmatter.js";
 import { homepageFaqs } from "../src/content/seoFaq.js";
+import { faqPageSchema } from "../src/content/faqContent.js";
 import {
   HOME_META_DESCRIPTION,
   HOME_META_TITLE,
@@ -28,13 +29,15 @@ const appAssets = (appShell.match(/<script\b[^>]*type="module"[^>]*>[\s\S]*?<\/s
 
 // Render the same component used by the app so first-load HTML cannot drift.
 const renderer = await createServer({ root, configFile: false, server: { middlewareMode: true }, optimizeDeps: { noDiscovery: true, entries: [] }, appType: "custom" });
-let homepageMarkup, blogMarkup, brandMarkup, inverseBrandMarkup;
+let homepageMarkup, blogMarkup, faqMarkup, brandMarkup, inverseBrandMarkup;
 try {
   const { default: HomeLanding } = await renderer.ssrLoadModule("/src/components/HomeLanding.jsx");
   const { default: BrandLogo } = await renderer.ssrLoadModule("/src/components/BrandLogo.jsx");
   const { default: BlogLanding } = await renderer.ssrLoadModule("/src/components/BlogLanding.jsx");
+  const { default: FaqLanding } = await renderer.ssrLoadModule("/src/components/FaqLanding.jsx");
   homepageMarkup = renderToString(React.createElement(HomeLanding));
   blogMarkup = renderToString(React.createElement(BlogLanding));
+  faqMarkup = renderToString(React.createElement(FaqLanding));
   brandMarkup = renderToString(React.createElement(BrandLogo));
   inverseBrandMarkup = renderToString(React.createElement(BrandLogo, { tone: "inverse" }));
 } finally {
@@ -434,7 +437,7 @@ writePage("/for-ofw", layout({
 }));
 writePage("/privacy", layout({ title: "Privacy Policy | BuildMyCVNow", description: "Read how BuildMyCVNow handles CV data, analytics, email subscribers, Supabase storage and user deletion requests.", canonical: `${baseUrl}/privacy`, body: `<main class="section"><div class="wrap"><h1>Privacy Policy</h1><p>We collect only the details you enter to create your CV, such as name, email, phone, work history, skills and optional photo. Download-only mode keeps your CV local in your browser.</p><h2>Analytics and email</h2><p>We use privacy-respecting analytics to understand visits and downloads. If you subscribe for the UAE Job Hunt Checklist, your email is stored in Supabase so we can send useful CV and job-search tips. You can request deletion by contacting us.</p><h2>Advertising</h2><p>Google AdSense may use cookies or similar technologies when ads are enabled.</p></div></main>` }));
 writePage("/terms", layout({ title: "Terms of Use | BuildMyCVNow", description: "Read the terms for using BuildMyCVNow, including user responsibilities, CV ownership and employment disclaimer.", canonical: `${baseUrl}/terms`, body: `<main class="section"><div class="wrap"><h1>Terms of Use</h1><p>You own the CV content you enter. You are responsible for ensuring all information is true and accurate.</p><p>BuildMyCVNow helps with formatting and writing support, but it does not guarantee interviews, job offers, visa approval, or employment.</p></div></main>` }));
-writePage("/faq", layout({ title: "FAQ | Free Global CV Builder", description: "Answers to common questions about free CV downloads, ATS-friendly CVs, CV photos, local requirements and mobile CV building.", canonical: `${baseUrl}/faq`, jsonLd: faqSchema, body: `<main><section class="section faq"><div class="wrap"><h1>BuildMyCVNow FAQ</h1><p class="lead">Answers to common questions about free CV downloads, ATS-friendly formatting, optional regional details, mobile use, cover letters, and data privacy.</p>${homepageFaqs.map((faq) => `<details><summary>${escapeHtml(faq.question)}</summary><p>${escapeHtml(faq.answer)}</p></details>`).join("")}</div></section></main>` }));
+writePage("/faq", layout({ title: "CV Builder FAQ – Free Downloads, ATS CVs & More | BuildMyCVNow", description: "Answers about free PDF and Word downloads, CV uploads, ATS formatting, Arabic CVs, AI help, mobile use and privacy.", canonical: `${baseUrl}/faq`, jsonLd: faqPageSchema, interactive: true, body: faqMarkup }));
 
 const launchCombos = [];
 for (const job of seoJobs) {

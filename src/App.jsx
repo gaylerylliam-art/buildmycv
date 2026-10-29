@@ -6,6 +6,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { categories, layouts, themes } from "./data/categories";
 import HomeLanding from "./components/HomeLanding";
 import BrandLogo from "./components/BrandLogo.jsx";
+import FaqLanding from "./components/FaqLanding.jsx";
 import BlogLanding from "./components/BlogLanding.jsx";
 import ExistingCVImporter from "./components/ExistingCVImporter.jsx";
 import { useBuilderMotion } from "./hooks/usePageMotion.js";
@@ -4450,6 +4451,7 @@ export default function App() {
         <Route path="/privacy" element={<PrivacyPage onStart={goToBuilder} />} />
         <Route path="/terms" element={<TermsPage onStart={goToBuilder} />} />
         <Route path="/blog" element={<BlogIndexPage onStart={goToBuilder} />} />
+        <Route path="/faq" element={<FaqLanding />} />
         <Route path="/blog/:slug" element={<BlogArticlePage onStart={goToBuilder} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
