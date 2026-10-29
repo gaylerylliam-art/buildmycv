@@ -91,8 +91,8 @@ try {
   await page.click(".hm-template-use");
   await page.waitForFunction(() => location.pathname === "/builder");
   assert.match(page.url(), /category=finance/);
-  await clickText("Skip and open builder");
   await page.waitForSelector(".builder-layout-v2");
+  assert.equal(await page.$('.builder-setup-card, .builder-onboarding'), null, "Template links must open the actual editor directly");
   await page.click("#workspace-tab-design");
   assert.match(await page.$eval(".workspace-design-templates .template-card-button.selected", (item) => item.textContent), /Finance/);
   assert(await page.evaluate(() => [...document.querySelectorAll(".builder-form-inner button")].some((item) => item.textContent.includes("Classic single-column") && item.className.includes("bg-blue-50"))), "Selected layout was not passed into the builder");

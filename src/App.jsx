@@ -82,16 +82,6 @@ const createReferenceEntry = () => ({
 const defaultReferences = { mode: "on-request", entries: [] };
 const translationLanguageOptions = ["English", "French", "German", "Arabic", "Dutch", "Other language"];
 const isArabicLanguage = (language = "") => /arabic|عربي|العربية/i.test(String(language || ""));
-const onboardingStartOptions = [
-  { id: "upload", title: "Upload existing CV", description: "Import your current CV and let the guided builder fill the sections for you.", badge: "Fastest", icon: "upload" },
-  { id: "scratch", title: "Start from scratch", description: "Build a fresh CV with job-specific prompts, live preview, and AI writing help.", badge: "Beginner-friendly", icon: "file" },
-  { id: "targeted", title: "Build CV for a specific job", description: "Set your target role first and tailor your CV around the job you want.", badge: "Best match", icon: "briefcase" },
-  { id: "translate", title: "Translate or improve my CV", description: "Upload, translate, and professionally rewrite your CV before downloading.", badge: "Global", icon: "globe" },
-];
-const onboardingTrustBadges = ["No sign-up needed", "ATS-friendly", "Free PDF download"];
-const cvStylePreferences = ["Modern", "Classic", "Simple", "Executive"];
-const photoPreferences = ["Photo CV", "No-photo CV", "Decide later"];
-const onboardingExperienceLevels = ["Fresh graduate", "Entry level", "Mid-level", "Experienced", "Manager"];
 const sectionLabels = {
   summary: "Professional Summary",
   experience: "Work Experience",
@@ -361,7 +351,7 @@ const initialCv = {
   cvStylePreference: "Modern",
   photoPreference: "Decide later",
   showCountrySpecificFields: true,
-  onboardingCompleted: false,
+  onboardingCompleted: true,
   jobDescription: "",
   references: defaultReferences,
   sectionOrder: defaultSectionOrder,
@@ -1122,110 +1112,6 @@ function CVLine({ title, text }) {
   );
 }
 
-function BuilderOnboarding({ cv, onChange, onStart }) {
-  return (
-    <section className="builder-onboarding border-b border-slate-200 bg-slate-50 px-5 py-8 sm:py-12">
-      <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-          <span className="inline-flex rounded-full bg-green-50 px-3 py-1 text-xs font-black uppercase tracking-[0.2em] text-green-700">
-            Start your CV
-          </span>
-          <h1 className="mt-4 text-3xl font-black leading-tight text-slate-950 sm:text-5xl">
-            Build an ATS-friendly CV <mark>in minutes.</mark>
-          </h1>
-          <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
-            Free PDF download, no credit card, AI writing help, and layouts that work for global job applications.
-          </p>
-          <div className="mt-5 flex flex-wrap gap-2">
-            {onboardingTrustBadges.map((badge) => (
-              <span key={badge} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700">
-                <Icon name="check" className="h-3.5 w-3.5 text-green-600" />
-                {badge}
-              </span>
-            ))}
-          </div>
-          <div className="mt-6 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm font-bold leading-6 text-blue-950">
-            Tell us what you are building first, and we will guide the builder with the right fields, suggestions, and download flow.
-          </div>
-        </div>
-        <div className="space-y-5">
-          <div className="grid gap-3 sm:grid-cols-2">
-            {onboardingStartOptions.map((option) => {
-              const active = cv.builderStartOption === option.id;
-              return (
-                <button
-                  key={option.id}
-                  type="button"
-                  onClick={() => onChange("builderStartOption", option.id)}
-                  aria-pressed={active}
-                  className={`rounded-3xl border p-5 text-left shadow-sm transition ${active ? "border-green-600 bg-green-50 ring-2 ring-green-100" : "border-slate-200 bg-white hover:border-green-300 hover:shadow-md"}`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <span className={`flex h-11 w-11 items-center justify-center rounded-2xl ${active ? "bg-green-600 text-white" : "bg-slate-100 text-slate-700"}`}>
-                      <Icon name={option.icon} className="h-5 w-5" />
-                    </span>
-                    <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${active ? "bg-white text-green-700" : "bg-slate-100 text-slate-600"}`}>
-                      {option.badge}
-                    </span>
-                  </div>
-                  <h2 className="mt-4 text-lg font-black text-slate-950">{option.title}</h2>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">{option.description}</p>
-                </button>
-              );
-            })}
-          </div>
-          <div className="builder-setup-card rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-            <header><h2>Set up your CV</h2><span>You can change all of this later</span></header>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField label="Target country" value={cv.targetCountry} onChange={(value) => onChange("targetCountry", value)} placeholder="Example: United Arab Emirates or Worldwide" />
-              <FormField label="Target job title or industry" value={cv.targetJobTitle} onChange={(value) => onChange("targetJobTitle", value)} placeholder="Example: Hotel Receptionist" />
-              <label className="block">
-                <span className="form-label">Experience level</span>
-                <select value={cv.experienceLevel || "Entry level"} onChange={(event) => onChange("experienceLevel", event.target.value)} className="form-field">
-                  {onboardingExperienceLevels.map((level) => <option key={level}>{level}</option>)}
-                </select>
-              </label>
-              <label className="block">
-                <span className="form-label">CV style preference</span>
-                <select value={cv.cvStylePreference || "Modern"} onChange={(event) => onChange("cvStylePreference", event.target.value)} className="form-field">
-                  {cvStylePreferences.map((item) => <option key={item}>{item}</option>)}
-                </select>
-              </label>
-              <label className="block">
-                <span className="form-label">Photo preference</span>
-                <select value={cv.photoPreference || "Decide later"} onChange={(event) => onChange("photoPreference", event.target.value)} className="form-field">
-                  {photoPreferences.map((item) => <option key={item}>{item}</option>)}
-                </select>
-              </label>
-              <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <input
-                  type="checkbox"
-                  checked={Boolean(cv.showCountrySpecificFields)}
-                  onChange={(event) => onChange("showCountrySpecificFields", event.target.checked)}
-                  className="mt-1 h-4 w-4 rounded border-slate-300 text-green-600"
-                />
-                <span>
-                  <span className="block text-sm font-black text-slate-950">Show country-specific fields</span>
-                  <span className="mt-1 block text-xs font-bold leading-5 text-slate-500">
-                    Include fields like nationality, visa status, driving license, and other global hiring details.
-                  </span>
-                </span>
-              </label>
-            </div>
-            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-              <button type="button" onClick={onStart} className="rounded-2xl bg-green-600 px-6 py-4 text-sm font-black text-white shadow-sm hover:bg-green-700">
-                Continue to the builder
-              </button>
-              <button type="button" onClick={onStart} className="rounded-2xl border border-slate-300 px-6 py-4 text-sm font-black text-slate-700 hover:bg-slate-50">
-                Skip and open builder
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
 
 function CategorySelector({ selected, onSelect }) {
   return (
@@ -1846,6 +1732,10 @@ function CVBuilderForm({ cv, onChange, activeSection }) {
             <FormField label="LinkedIn headline (optional)" value={cv.linkedInHeadline || ""} onChange={(value) => onChange("linkedInHeadline", value)} placeholder="Example: Front Office Receptionist | Guest Relations" />
           )}
         </div>
+        <label className="tips-toggle">
+          <input type="checkbox" checked={Boolean(cv.showCountrySpecificFields)} onChange={(event) => onChange("showCountrySpecificFields", event.target.checked)} />
+          <span>Show country-specific fields</span>
+        </label>
         {cv.showCountrySpecificFields && (
           <div className="field-pair">
             <FormField label="Visa status" value={cv.visaStatus} onChange={(value) => onChange("visaStatus", value)} placeholder="Visit visa / Own visa / Employment visa" />
@@ -3776,8 +3666,7 @@ function CVBuilderApp({ onHome }) {
   const user = session?.user || null;
   const cloudSavingEnabled = Boolean(user && userMode === "registered");
   const noCloudMode = userMode === "urgent-local";
-  const builderStarted = Boolean(cv.onboardingCompleted);
-  const builderMotionRoot = useBuilderMotion(currentStep, builderStarted);
+  const builderMotionRoot = useBuilderMotion(currentStep, activeBuilder === "cv");
   const completedSteps = useMemo(() => getBuilderStepState(cv), [cv]);
   const recordCvEvent = (eventName, metadata = {}) => {
     trackEvent(eventName, metadata);
@@ -3867,13 +3756,12 @@ function CVBuilderApp({ onHome }) {
     logEvent("seo_page_to_builder", { role, city: city || "" });
   }, []);
   useEffect(() => {
-    if (!builderStarted) return;
     recordCvEvent("builder_started", { start_option: cv.builderStartOption || "scratch" });
     if (!sessionStorage.getItem("bmcv_draft_created")) {
       sessionStorage.setItem("bmcv_draft_created", "1");
       recordCvEvent("cv_draft_created", { mode: cloudSavingEnabled ? "registered" : "local" });
     }
-  }, [builderStarted]);
+  }, []);
   useEffect(() => {
     initAnalytics();
     if (!supabase) return;
@@ -4062,26 +3950,6 @@ function CVBuilderApp({ onHome }) {
   const updateCvField = (key, value) => {
     if (key === "tipsEnabled") localStorage.setItem("bmcv_tips_enabled", String(Boolean(value)));
     setCv((current) => ({ ...current, [key]: value }));
-  };
-  const startBuilderFlow = () => {
-    setWorkspaceMode("content");
-    setCurrentStep(/upload|translate/i.test(cv.builderStartOption) ? "import" : "personal");
-    setCv((current) => ({
-      ...current,
-      onboardingCompleted: true,
-      country: current.targetCountry && current.country === initialCv.country ? current.targetCountry : current.country,
-      jobTitle: current.targetJobTitle && current.jobTitle === initialCv.jobTitle ? current.targetJobTitle : current.jobTitle,
-      profilePhoto: current.photoPreference === "No-photo CV" ? "" : current.profilePhoto,
-    }));
-    if (cv.cvStylePreference === "Classic") setLayoutId("classic");
-    if (cv.cvStylePreference === "Simple") setLayoutId("compact");
-    if (cv.cvStylePreference === "Executive") setLayoutId("header");
-    recordCvEvent("onboarding_completed", {
-      start_option: cv.builderStartOption,
-      experience_level: cv.experienceLevel,
-      style_preference: cv.cvStylePreference,
-      photo_preference: cv.photoPreference,
-    });
   };
   const applyAtsSuggestion = (action, insights = {}) => {
     if (!cv.jobDescription?.trim()) return;
@@ -4290,7 +4158,7 @@ function CVBuilderApp({ onHome }) {
   };
   const nextWorkspaceLabel = workspaceMode === "ai" ? "Download CV" : workspaceMode === "design" ? "Review with AI" : currentStep === "import" ? "Review personal details" : sectionIndex === builderSteps.length - 1 ? "Choose design" : `Next: ${builderSteps[Math.max(0, sectionIndex + 1)].label}`;
   return (
-    <main className={`builder-app-shell ${activeBuilder === "cv" && builderStarted ? "builder-workspace" : ""}`}>
+    <main className={`builder-app-shell ${activeBuilder === "cv" ? "builder-workspace" : ""}`}>
       <BuilderTopBar
         onHome={onHome}
         saveStatus={saveStatus}
@@ -4299,14 +4167,14 @@ function CVBuilderApp({ onHome }) {
         userEmail={user?.email || session?.user?.email || ""}
         onAccess={() => setAuthOpen(true)}
         onSignOut={signOut}
-        workspaceMode={activeBuilder === "cv" && builderStarted ? workspaceMode : null}
+        workspaceMode={activeBuilder === "cv" ? workspaceMode : null}
         onWorkspaceMode={setWorkspaceMode}
         onTranslate={() => jumpToStep("import")}
         activeBuilder={activeBuilder}
         onSwitchBuilder={switchBuilder}
       />
       <div className="builder-tabbar">
-        {activeBuilder === "cv" && builderStarted && <BuilderStageTabs currentStep={currentStep} completedSteps={completedSteps} onStep={jumpToStep} />}
+        {activeBuilder === "cv" && <BuilderStageTabs currentStep={currentStep} completedSteps={completedSteps} onStep={jumpToStep} />}
         <p className="builder-session-status">{cloudSavingEnabled ? "Saved online" : "Download-only mode"} · <button type="button" onClick={() => setAuthOpen(true)}>{cloudSavingEnabled ? "Manage account" : "Sign in to save online"}</button></p>
       </div>
       {noCloudMode && (
@@ -4318,10 +4186,6 @@ function CVBuilderApp({ onHome }) {
       )}
       {activeBuilder === "cv" ? (
         <>
-        {!builderStarted && (
-          <BuilderOnboarding cv={cv} onChange={updateCvField} onStart={startBuilderFlow} />
-        )}
-        {builderStarted && (
         <div className="builder-layout-v2" ref={builderMotionRoot}>
           <BuilderSidebar
             currentStep={currentStep}
@@ -4414,9 +4278,6 @@ function CVBuilderApp({ onHome }) {
           </div>
           <CompletionBar completion={completion} onNextStep={handleNextStep} onDownload={requestCvDownload} />
         </div>
-        )}
-        {builderStarted && (
-          <>
         <button type="button" onClick={() => setMobileCvView("preview")} className="btn-preview-float">
           <Icon name="eye" className="h-4 w-4" /> Preview CV
         </button>
@@ -4463,8 +4324,6 @@ function CVBuilderApp({ onHome }) {
               />
             </div>
           </div>
-        )}
-          </>
         )}
         {downloaded && (
           <div className="download-success-stack">

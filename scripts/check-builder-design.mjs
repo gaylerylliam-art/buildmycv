@@ -21,11 +21,19 @@ const click = async text => assert(await page.evaluate(text => {
   button?.click(); return Boolean(button);
 }, text), 'Missing visible button ' + text);
 try {
+  for (const width of [1440,390]) {
+    await page.setViewport({ width, height: 1000 });
+    for (const route of ['/builder', '/builder/']) {
+      await page.goto(base + route, { waitUntil: 'networkidle0' });
+      await page.waitForSelector('.builder-workspace');
+      assert.equal(await page.$('.builder-setup-card, .builder-onboarding'), null);
+      assert.equal(await page.$eval('#builder-editor-heading', item => item.textContent), 'Personal information');
+      assert(await page.$eval('input[placeholder="Example: Juan Dela Cruz"]', input=>Boolean(input.getClientRects().length)));
+      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+    }
+    await page.screenshot({ path: path.join(output, `direct-editor-${width}.png`) });
+  }
   await page.setViewport({ width: 1440, height: 1000 });
-  await page.goto(base + '/builder', { waitUntil: 'networkidle0' });
-  assert(await page.$('.builder-setup-card'));
-  await page.screenshot({ path: path.join(output, 'start-desktop.png'), fullPage: true });
-  await click('Skip and open builder');
   await page.waitForSelector('.builder-workspace');
   assert.equal(await page.$eval('#builder-editor-heading', item => item.textContent), 'Personal information');
   await page.$eval('input[placeholder="Example: Juan Dela Cruz"]', input => {
@@ -40,6 +48,10 @@ try {
   }
   await click('Personal details');
   assert.equal(await page.$eval('input[placeholder="Example: Juan Dela Cruz"]', item => item.value), 'Design Review Person');
+  await page.evaluate(()=>[...document.querySelectorAll('.tips-toggle')].find(label=>label.textContent.includes('Show country-specific fields')).querySelector('input').click());
+  assert.equal(await page.$('input[placeholder="Filipino"]'),null);
+  await page.evaluate(()=>[...document.querySelectorAll('.tips-toggle')].find(label=>label.textContent.includes('Show country-specific fields')).querySelector('input').click());
+  assert(await page.$('input[placeholder="Filipino"]'));
   await click('Upload & translate'); await click('Upload CV');
   await click('Work history'); await click('Upload & translate');
   assert.equal(await page.$eval('#cv-import-content', item => item.hidden), false, 'Import review stays mounted between sections');
@@ -50,5 +62,5 @@ try {
   await click('CV Builder'); await page.waitForSelector('.builder-workspace');
   assert.equal(await page.$eval('input[placeholder="Example: Juan Dela Cruz"]', item => item.value), 'Design Review Person');
   assert.deepEqual(errors, []);
-  console.log('PASS: onboarding, six focused sections, retained edits, extras, persistent upload review, and CV/cover-letter navigation.');
+  console.log('PASS: both builder URLs open the editor directly on desktop/mobile; six sections, editable country-field preference, retained edits, extras, persistent upload review, and CV/cover-letter navigation.');
 } finally { await browser.close(); }
