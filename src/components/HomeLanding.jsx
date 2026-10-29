@@ -4,6 +4,7 @@ import { homepageFaqs } from "../content/seoFaq.js";
 import { HOME_SUBHEAD, HOME_HOW_IT_WORKS_STEPS, HOME_VIDEO } from "../content/homepage.js";
 import "./homeLanding.css";
 import { useHomeMotion } from "../hooks/usePageMotion.js";
+import BrandLogo from "./BrandLogo.jsx";
 
 
 
@@ -113,7 +114,7 @@ export default function HomeLanding({ onStart }) {
   const [example, setExample] = useState("hospitality");
   const selected = designs.find((design) => design.id === example);
   return <div className="hm-home" ref={motionRoot}><a className="hm-skip" href="#top">Skip to content</a>
-    <header className="hm-nav"><div className="hm-wrap hm-nav-inner"><a className="hm-logo" href="/" aria-label="BuildMyCVNow home"><span><Symbol name="file" /></span>BuildMyCV<span className="hm-logo-now">Now</span></a><nav aria-label="Main navigation"><a href="#improve">Improve my CV</a><a href="#templates">Templates</a><a href="#free-download">Free download</a><a href="#faq">FAQ</a><a href="/blog">Career tips</a></nav><BuilderLink onStart={onStart} className="hm-button hm-primary hm-nav-start">Build my CV — free <Symbol name="arrow" /></BuilderLink></div></header>
+    <header className="hm-nav"><div className="hm-wrap hm-nav-inner"><a className="hm-logo" href="/" aria-label="BuildMyCVNow home"><BrandLogo /></a><nav aria-label="Main navigation"><a href="#improve">Improve my CV</a><a href="#templates">Templates</a><a href="#free-download">Free download</a><a href="#faq">FAQ</a><a href="/blog">Career tips</a></nav><BuilderLink onStart={onStart} className="hm-button hm-primary hm-nav-start">Build my CV — free <Symbol name="arrow" /></BuilderLink></div></header>
     <main id="top">
       <section className="hm-hero"><div className="hm-wrap hm-hero-grid">
         <div className="hm-hero-copy"><span className="hm-eyebrow"><Symbol name="globe" /> 100% free · No account needed · PDF & Word</span><h1 aria-label="Make your CV job-ready today."><span className="hm-headline-line" aria-hidden="true">{["Make", "your", "CV"].map(word => <React.Fragment key={word}><span className="hm-word-mask"><span className="hm-word-inner">{word}</span></span>{" "}</React.Fragment>)}</span><span className="hm-rotating-line" aria-hidden="true"><mark><span className="hm-rotating-word">job-ready</span></mark></span>{" "}<span className="hm-word-mask" aria-hidden="true"><span className="hm-word-inner">today.</span></span></h1><p>{HOME_SUBHEAD}</p>
@@ -134,6 +135,6 @@ export default function HomeLanding({ onStart }) {
       <section className="hm-section hm-faq" id="faq"><div className="hm-wrap hm-faq-grid"><div><span className="hm-eyebrow">Good to know</span><h2>Quick answers.</h2><p>More questions? <a href="/faq">See all questions</a> or <a href="/contact">get in touch</a>.</p></div><div>{homepageFaqs.slice(0, 10).map((faq) => <details key={faq.question}><summary>{faq.question}</summary><p>{faq.answer}</p></details>)}</div></div></section>
       <div className="hm-big-band" aria-hidden="true"><div className="hm-big-line">Free CV builder • Free templates • Free download</div><div className="hm-big-line hm-outline">Upload • Improve • Download</div></div><section className="hm-final"><div className="hm-wrap"><div><span className="hm-eyebrow">Ready when you are</span><h2>Your next job starts with a better CV.</h2><p>Free templates. AI help you control. Free PDF & Word download.</p></div><div className="hm-final-actions"><BuilderLink onStart={onStart} query="start=upload" className="hm-button hm-primary">Improve my existing CV <Symbol name="arrow" /></BuilderLink><a href="#templates" className="hm-button hm-secondary">Browse templates</a></div></div></section>
     </main>
-    <footer className="hm-footer"><div className="hm-wrap"><div><a className="hm-logo" href="/">BuildMyCV<span className="hm-logo-now">Now</span></a><p>Free CV builder for job seekers worldwide.</p><a href="mailto:info@buildmycvnow.com">info@buildmycvnow.com</a></div><nav aria-label="Footer navigation">{[["/about", "About"], ["/contact", "Contact"], ["/privacy", "Privacy"], ["/terms", "Terms"], ["/faq", "FAQ"], ["/blog", "Career tips"]].map(([href, label]) => <a key={href} href={href}>{label}</a>)}</nav><p className="hm-copyright">Copyright {new Date().getFullYear()} BuildMyCVNow. All rights reserved.</p></div></footer>
+    <footer className="hm-footer"><div className="hm-wrap"><div><a className="hm-logo" href="/" aria-label="BuildMyCVNow home"><BrandLogo tone="inverse" /></a><p>Free CV builder for job seekers worldwide.</p><a href="mailto:info@buildmycvnow.com">info@buildmycvnow.com</a></div><nav aria-label="Footer navigation">{[["/about", "About"], ["/contact", "Contact"], ["/privacy", "Privacy"], ["/terms", "Terms"], ["/faq", "FAQ"], ["/blog", "Career tips"]].map(([href, label]) => <a key={href} href={href}>{label}</a>)}</nav><p className="hm-copyright">Copyright {new Date().getFullYear()} BuildMyCVNow. All rights reserved.</p></div></footer>
   </div>;
 }

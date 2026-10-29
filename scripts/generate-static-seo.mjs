@@ -24,10 +24,13 @@ const appAssets = (appShell.match(/<script\b[^>]*type="module"[^>]*>[\s\S]*?<\/s
 
 // Render the same component used by the app so first-load HTML cannot drift.
 const renderer = await createServer({ root, configFile: false, server: { middlewareMode: true }, optimizeDeps: { noDiscovery: true, entries: [] }, appType: "custom" });
-let homepageMarkup;
+let homepageMarkup, brandMarkup, inverseBrandMarkup;
 try {
   const { default: HomeLanding } = await renderer.ssrLoadModule("/src/components/HomeLanding.jsx");
+  const { default: BrandLogo } = await renderer.ssrLoadModule("/src/components/BrandLogo.jsx");
   homepageMarkup = renderToString(React.createElement(HomeLanding));
+  brandMarkup = renderToString(React.createElement(BrandLogo));
+  inverseBrandMarkup = renderToString(React.createElement(BrandLogo, { tone: "inverse" }));
 } finally {
   await renderer.close();
 }
@@ -138,7 +141,7 @@ function layout({ title, description, canonical, body, jsonLd = [], type = "webs
   <script defer data-domain="buildmycvnow.com" src="https://plausible.io/js/script.js"></script>
   <script>window.plausible=window.plausible||function(){(window.plausible.q=window.plausible.q||[]).push(arguments)}</script>
   <style>${criticalCss()}</style>
-  ${interactive ? appAssets : ""}
+  ${interactive ? appAssets : '<link rel="stylesheet" href="/assets/brand.css" />'}
   ${schemas.filter(Boolean).map((schema) => `<script type="application/ld+json">${JSON.stringify(schema)}</script>`).join("\n")}
 </head>
 <body>
@@ -316,11 +319,11 @@ function criticalCss() {
 }
 
 function header() {
-  return `<nav class="nav"><div class="nav-inner"><a class="brand" href="/">BuildMyCV<span>Now</span></a><div class="nav-links"><a href="/#templates">Templates</a><a href="/#how-it-works">How it works</a><a href="/blog">Blog</a><a href="/faq">FAQ</a><a class="cta" href="/builder">Build my CV - it's free</a></div></div></nav>`;
+  return `<nav class="nav"><div class="nav-inner"><a class="brand" href="/" aria-label="BuildMyCVNow home">${brandMarkup}</a><div class="nav-links"><a href="/#templates">Templates</a><a href="/#how-it-works">How it works</a><a href="/blog">Blog</a><a href="/faq">FAQ</a><a class="cta" href="/builder">Build my CV - it's free</a></div></div></nav>`;
 }
 
 function footer() {
-  return `<footer class="footer"><div class="wrap"><p><strong>BuildMyCVNow</strong> - Free CV Builder for Job Seekers Worldwide</p><p><a href="/about">About</a> · <a href="/contact">Contact</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/faq">FAQ</a> · <a href="/blog">Blog</a></p><p>© 2026 BuildMyCVNow. All rights reserved.</p></div></footer>`;
+  return `<footer class="footer"><div class="wrap"><a href="/" aria-label="BuildMyCVNow home">${inverseBrandMarkup}</a><p>Free CV Builder for Job Seekers Worldwide</p><p><a href="/about">About</a> · <a href="/contact">Contact</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/faq">FAQ</a> · <a href="/blog">Blog</a></p><p>© 2026 BuildMyCVNow. All rights reserved.</p></div></footer>`;
 }
 
 function ctaCard(text = "Build your free CV") {

@@ -5,6 +5,7 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, v
 import { CSS } from "@dnd-kit/utilities";
 import { categories, layouts, themes } from "./data/categories";
 import HomeLanding from "./components/HomeLanding";
+import BrandLogo from "./components/BrandLogo.jsx";
 import ExistingCVImporter from "./components/ExistingCVImporter.jsx";
 import { useBuilderMotion } from "./hooks/usePageMotion.js";
 import PhotoUploadCrop from "./components/PhotoUploadCrop";
@@ -656,10 +657,7 @@ function Header({ onStart }) {
   return (
     <header className={`landing-nav ${scrolled ? "scrolled" : ""}`}>
       <Link to="/" className="nav-logo" aria-label="BuildMyCVNow home">
-        <span className="nav-logo-mark">
-            <Icon name="file" className="h-5 w-5" />
-          </span>
-        <span>BuildMyCV<span>Now</span></span>
+        <BrandLogo />
         </Link>
       <div className="nav-right">
         <nav className="nav-links" aria-label="Landing page navigation">
@@ -1050,10 +1048,7 @@ function BlogArticlePage({ onStart }) {
 function SiteFooter({ onStart }) {
   return (
     <footer className="landing-footer">
-      <div className="footer-logo">
-        <span className="footer-logo-mark"><Icon name="file" className="h-4 w-4" /></span>
-        BuildMyCVNow
-      </div>
+      <Link to="/" className="footer-logo" aria-label="BuildMyCVNow home"><BrandLogo /></Link>
       <nav className="footer-links" aria-label="Footer navigation">
           <Link to="/about">About</Link>
           <Link to="/contact">Contact</Link>
@@ -1076,12 +1071,7 @@ function IPhonePortraitDisplay({ onStart }) {
       <div className="mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
         <div className="landing-video-card">
           <div className="landing-video-topbar">
-            <span className="flex items-center gap-2 text-sm font-black text-slate-950">
-              <span className="flex h-8 w-8 items-center justify-center rounded bg-green-600 text-white">
-                <Icon name="file" className="h-4 w-4" />
-              </span>
-              BuildMyCV<span className="text-green-600">Now</span>
-            </span>
+            <BrandLogo />
             <span className="rounded bg-green-50 px-3 py-2 text-xs font-black text-green-700">
               Watch below
             </span>
@@ -3299,10 +3289,7 @@ function BuilderTopBar({ onHome, onDownload, saveStatus, cloudSavingEnabled, use
   const isSaving = /saving/i.test(saveStatus);
   return (
     <header className="builder-topbar">
-      <button onClick={onHome} className="builder-logo">
-        <span className="builder-logo-icon"><Icon name="file" className="h-5 w-5" /></span>
-        BuildMyCV<span>Now</span>
-      </button>
+      <button type="button" onClick={onHome} className="builder-logo" aria-label="BuildMyCVNow home"><BrandLogo /></button>
       {workspaceMode ? <WorkspaceTabs mode={workspaceMode} onChange={onWorkspaceMode} /> : <nav className="builder-type-switch" aria-label="Builder type">
         {[["cv", "CV Builder"], ["cover", "Cover Letter Builder"]].map(([id, label]) => <button key={id} type="button" aria-pressed={activeBuilder === id} onClick={() => onSwitchBuilder(id)}>{label}</button>)}
       </nav>}

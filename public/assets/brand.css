@@ -1,0 +1,32 @@
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/assets/plus-jakarta-sans.woff2") format("woff2");
+  font-weight: 400 800;
+  font-style: normal;
+  font-display: swap;
+}
+.brand-logo {
+  display: inline-flex; align-items: center; flex-shrink: 0; gap: 8px;
+  color: #0f1e3d; font: normal 800 20px/1 "Plus Jakarta Sans", Arial, sans-serif;
+  letter-spacing: 0; text-transform: none; text-decoration: none; white-space: nowrap;
+}
+.brand-logo .brand-logo-mark {
+  display: grid; place-items: center; flex: none; width: 36px; height: 36px;
+  background: #137d54; color: #fff; border-radius: 6px;
+}
+.brand-logo .brand-logo-mark svg { display: block; width: 20px; height: 20px; }
+strong.brand-logo > .brand-logo-word { color: #0f1e3d; }
+.brand-logo .brand-logo-word .brand-logo-now { color: #137d54; background: transparent; margin: 0; padding: 0; }
+.brand-logo[data-tone="inverse"] .brand-logo-word,
+.dark .builder-app-shell .brand-logo .brand-logo-word { color: #f1f3fa; }
+.brand-logo[data-tone="inverse"] .brand-logo-now,
+.dark .builder-app-shell .brand-logo .brand-logo-now { color: #52d3a2; }
+@media (max-width: 600px) {
+  .brand-logo { font-size: 17px; }
+  .brand-logo .brand-logo-mark { width: 28px; height: 28px; }
+  .brand-logo .brand-logo-mark svg { width: 18px; height: 18px; }
+}
+@media (max-width: 360px) {
+  .brand-logo { gap: 5px; font-size: 14px; }
+  .brand-logo .brand-logo-mark { width: 24px; height: 26px; }
+}

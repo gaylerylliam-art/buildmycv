@@ -3595,10 +3595,6 @@ summary {
   color: var(--text-primary);
 }
 
-.builder-logo span:last-child {
-  color: #16a34a;
-}
-
 .builder-logo-icon {
   display: grid;
   height: 2.1rem;
