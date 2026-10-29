@@ -81,6 +81,38 @@
 .workspace-editor-heading > span { display: block; color: var(--bw-muted); font-size: 10px; font-weight: 600; text-transform: uppercase; margin-bottom: 10px; }
 .workspace-editor-heading h1 { margin: 0; font-size: 24px; font-weight: 650; line-height: 1.3; color: var(--bw-text); }
 .builder-workspace .workspace-focused-section { border: 0; border-radius: 0; padding: 0; box-shadow: none; background: transparent; }
+.workspace-photo-tools { margin-bottom: 26px; border: 1px solid var(--bw-line); border-radius: 6px; background: var(--bw-input); }
+.workspace-photo-tools > summary { display: flex; align-items: center; gap: 9px; min-height: 48px; padding: 12px; cursor: pointer; font-size: 12px; color: var(--bw-text); font-weight: 600; list-style: none; }
+.workspace-photo-tools > summary::-webkit-details-marker { display: none; }
+.workspace-photo-tools > summary > svg:first-child { color: var(--bw-accent); flex: none; }
+.workspace-photo-tools > summary > svg:last-child { margin-left: auto; flex: none; }
+.workspace-photo-tools small { margin-left: auto; color: var(--bw-muted); font-size: 10px; font-weight: 500; }
+.workspace-photo-tools[open] > summary { border-bottom: 1px solid var(--bw-line); }
+.builder-workspace .photo-crop-card { border: 0; border-radius: 0; background: transparent; padding: 16px; }
+.builder-workspace .photo-crop-header h3 { color: var(--bw-text); font-size: 13px; font-weight: 650; }
+.builder-workspace :is(.photo-crop-header p,.photo-crop-message,.photo-crop-controls label span,.photo-crop-controls label em,.photo-dropzone span) { color: var(--bw-muted); font-size: 11px; }
+.builder-workspace .photo-dropzone { min-width: 0; border-color: var(--bw-line); border-radius: 6px; padding: 20px 12px; }
+.builder-workspace .photo-dropzone:hover, .builder-workspace .photo-dropzone.over { background: var(--bw-selected); border-color: var(--bw-accent); }
+.builder-workspace .photo-dropzone strong { color: var(--bw-text); font-size: 13px; }
+.builder-workspace :is(.photo-crop-primary,.photo-crop-secondary,.photo-shape-row button) { min-height: 40px; padding: 9px 10px; border-radius: 5px; font-size: 11px; font-weight: 600; }
+.builder-workspace .photo-crop-primary { background: #6555d7; color: #fff; border-color: transparent; }
+.builder-workspace .photo-crop-secondary, .builder-workspace .photo-shape-row button { background: var(--bw-input); color: var(--bw-text); border-color: var(--bw-line); }
+.builder-workspace .photo-shape-row button.selected { background: var(--bw-selected); color: var(--bw-accent); border-color: var(--bw-accent); }
+.photo-frame-options { border: 0; padding: 0; margin: 16px 0 0; min-width: 0; }
+.photo-frame-options legend { font-size: 11px; font-weight: 600; color: var(--bw-muted); padding: 0 0 8px; }
+.photo-frame-options .photo-shape-row { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 5px; }
+.photo-frame-options button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; }
+.photo-frame-symbol { display: block; width: 24px; height: 24px; border: 1.5px solid currentColor; }
+.photo-frame-symbol.circle { border-radius: 50%; } .photo-frame-symbol.rounded { border-radius: 6px; }
+.builder-workspace .photo-crop-ring { width: min(220px,100%); height: auto; aspect-ratio: 1; border: 2px solid var(--bw-accent); }
+.builder-workspace .photo-crop-ring canvas { width: 100%; height: 100%; }
+.builder-workspace .photo-crop-controls label { grid-template-columns: 65px minmax(0,1fr) 34px; gap: 6px; }
+.photo-pan-controls { display: flex; justify-content: center; gap: 6px; }
+.photo-pan-controls button { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--bw-line); border-radius: 4px; color: var(--bw-text); background: var(--bw-input); }
+.photo-saved-passport { width: 132px; height: 170px; object-fit: contain; border: 1px solid var(--bw-line); background: var(--bw-panel); }
+.builder-workspace .photo-saved-badge { font-size: 10px; border-radius: 4px; background: var(--bw-selected); color: var(--bw-accent); }
+.builder-workspace .photo-action-row { width: 100%; flex-wrap: wrap; }
+@container (max-width: 300px) { .workspace-photo-tools > summary { flex-wrap: wrap; gap: 6px; } .workspace-photo-tools small { margin-left: 0; font-size: 9px; } .builder-workspace .photo-crop-card { padding: 12px; } }
 .workspace-focused-section > .form-section-head { display: none; }
 .builder-workspace .workspace-focused-section > .form-section-body { padding: 0; }
 .builder-workspace .form-label { margin-bottom: 8px; color: var(--bw-muted); font-weight: 600; font-size: 11px; line-height: 1.6; }

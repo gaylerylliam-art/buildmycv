@@ -1,6 +1,7 @@
 import QRCode from "qrcode";
 import { normalizeQrUrl } from "../lib/validateQrUrl.js";
 import { sanitizeQrSvg } from "../hooks/useQrSvg.js";
+import { PASSPORT_PHOTO, getPassportPhotoStyles, normalizePhotoShape } from "../lib/profilePhoto.js";
 
 const escapeHtml = (value = "") =>
   String(value)
@@ -475,12 +476,12 @@ export const buildCvDocxBlob = async (cv, theme = { color: "#0f66d0", dark: "#0f
   const photoParagraph = photo
     ? new Paragraph({
         alignment: AlignmentType.CENTER,
-        spacing: { after: 120 },
+        spacing: cv.photoFrameFormat === PASSPORT_PHOTO.format ? { after: 120 } : { before: 283, after: 403 },
         children: [
           new ImageRun({
             data: photo.data,
             type: photo.type,
-            transformation: { width: 96, height: 96 },
+            transformation: { width: PASSPORT_PHOTO.widthMm / 25.4 * 96, height: (cv.photoFrameFormat === PASSPORT_PHOTO.format ? PASSPORT_PHOTO.heightMm : PASSPORT_PHOTO.widthMm) / 25.4 * 96 },
             altText: {
               title: "Profile photo",
               description: `${cv.fullName || "Applicant"} profile photo`,
@@ -559,6 +560,12 @@ export const buildCvDocxBlob = async (cv, theme = { color: "#0f66d0", dark: "#0f
 
 const downloadCvDocx = async (cv, filename, theme, layout) => saveBlob(await buildCvDocxBlob(cv, theme, layout), filename);
 
+const passportPhotoHtml = (cv) => {
+  const styles = getPassportPhotoStyles(cv);
+  const css = (style) => Object.entries(style).map(([key,value]) => `${key.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`)}:${value}`).join(";");
+  return `<span class="cv-passport-frame" data-photo-shape="${normalizePhotoShape(cv.photoShape)}" style="${css(styles.frame)}"><img class="cv-passport-image" src="${escapeHtml(cv.profilePhoto)}" alt="Profile photo" style="${css(styles.image)}" /></span>`;
+};
+
 export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a" }, layout = "classic") => {
   const isRtl = cv.languageDirection === "rtl" || isArabicLanguage(cv.outputLanguage);
   const pageBorder = getCvPageBorderConfig(cv);
@@ -628,7 +635,7 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
         <aside class="sidebar">
           <div class="sidebar-header">
             <div class="photo-container">
-              ${cv.profilePhoto ? `<img class="profile-photo ${exportPhotoShapeClass(cv.photoShape)}" src="${cv.profilePhoto}" alt="Profile photo" />` : `<div class="profile-photo placeholder ${exportPhotoShapeClass(cv.photoShape)}">${escapeHtml(initialsForPdf(cv.fullName))}</div>`}
+              ${cv.profilePhoto ? passportPhotoHtml(cv) : `<div class="profile-photo placeholder ${exportPhotoShapeClass(cv.photoShape)}">${escapeHtml(initialsForPdf(cv.fullName))}</div>`}
             </div>
             <div class="name-block">
               <h1 class="sidebar-name">${escapeHtml(cv.fullName)}</h1>
@@ -646,7 +653,7 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
         </main>
       </div>` : `
       <div class="header">
-        ${cv.profilePhoto ? `<img class="photo ${exportPhotoShapeClass(cv.photoShape)}" src="${cv.profilePhoto}" alt="Profile photo" />` : ""}
+        ${cv.profilePhoto ? passportPhotoHtml(cv) : ""}
         <div class="header-main">
           <h1>${escapeHtml(cv.fullName)}</h1>
           <p class="title">${escapeHtml(cv.jobTitle)}</p>

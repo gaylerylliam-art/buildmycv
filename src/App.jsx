@@ -10,6 +10,7 @@ import BlogLanding from "./components/BlogLanding.jsx";
 import ExistingCVImporter from "./components/ExistingCVImporter.jsx";
 import { useBuilderMotion } from "./hooks/usePageMotion.js";
 import PhotoUploadCrop from "./components/PhotoUploadCrop";
+import { getPassportPhotoStyles, normalizePhotoShape } from "./lib/profilePhoto.js";
 import ATSPanel from "./components/ATSPanel";
 import { industryOptions, getTips } from "./content/cvTips";
 import { seoJobs } from "./content/programmaticSeo";
@@ -250,12 +251,6 @@ const normalizeWorkExperiences = (cv) => {
   ];
 };
 
-const photoShapeClass = (shape = "circle", roundedClass = "rounded-xl") => {
-  if (shape === "circle" || shape === "round") return "rounded-full";
-  if (shape === "rounded") return roundedClass;
-  return "rounded-none";
-};
-
 const getCvPageBorderConfig = (cv = {}) => {
   const preset = pageBorderPresets.some((option) => option.id === cv.pageBorderPreset) ? cv.pageBorderPreset : "1cm";
   if (preset === "1cm") return { preset, unit: "cm", value: 1, inches: 1 / 2.54, millimeters: 10 };
@@ -358,6 +353,8 @@ const initialCv = {
   sectionOrder: defaultSectionOrder,
   hiddenSections: [],
   profilePhoto: "",
+  photoCropSource: "",
+  photoFrameFormat: "",
   photoShape: "circle",
 };
 
@@ -400,6 +397,7 @@ const sanitizeCvTextForCoverLetter = (value = "") =>
 
 const sanitizeCvForCoverLetter = (cv = {}) => ({
   ...cv,
+  photoCropSource: undefined,
   summary: sanitizeCvTextForCoverLetter(cv.summary),
   skills: sanitizeCvTextForCoverLetter(cv.skills),
   experience: sanitizeCvTextForCoverLetter(cv.experience),
@@ -1093,7 +1091,7 @@ function CategorySelector({ selected, onSelect }) {
       {categories.map((category, index) => {
         const selectedCard = selected === category.id;
         const styleLabel = index % 3 === 0 ? "Modern" : index % 3 === 1 ? "Classic" : "Simple";
-        const photoLabel = index % 2 === 0 ? "Photo layout" : "No-photo ready";
+        const photoLabel = "Photo optional";
         return (
           <button
             type="button"
@@ -1121,15 +1119,22 @@ function CategorySelector({ selected, onSelect }) {
 
 function ProfilePhotoUploader({ cv, onChange }) {
   return (
+    <details className="workspace-photo-tools">
+    <summary><Icon name="camera" className="h-4 w-4" /><span>Profile photo</span><small>Optional / 35 x 45 mm</small><Icon name="chevron" className="h-4 w-4" /></summary>
     <PhotoUploadCrop
       value={cv.profilePhoto}
+      cropSource={cv.photoCropSource || ""}
       shape={cv.photoShape === "round" ? "circle" : cv.photoShape}
-      onPhotoSaved={(dataUrl, shape) => {
+      onShapeChanged={(shape) => onChange("photoShape", shape)}
+      onPhotoSaved={({ dataUrl, cropSource, shape, format }) => {
         onChange("photoShape", shape);
+        onChange("photoCropSource", cropSource);
+        onChange("photoFrameFormat", format);
         onChange("profilePhoto", dataUrl);
       }}
-      onPhotoRemoved={() => onChange("profilePhoto", "")}
+      onPhotoRemoved={() => {onChange("profilePhoto", "");onChange("photoCropSource", "");onChange("photoFrameFormat", "");}}
     />
+    </details>
   );
 }
 
@@ -1994,9 +1999,10 @@ function LiveCVPreview({ cv, theme, layout }) {
     Languages: "globe",
     References: "user",
   };
-  const photo = (size = "h-16 w-16") =>
+  const photoStyles = getPassportPhotoStyles(cv);
+  const photo = () =>
     cv.profilePhoto ? (
-      <img src={cv.profilePhoto} alt={`${cv.fullName} profile`} className={`${size} object-cover ${photoShapeClass(cv.photoShape, "rounded-xl")}`} />
+      <span className="cv-passport-frame" data-photo-shape={normalizePhotoShape(cv.photoShape)} style={photoStyles.frame}><img src={cv.profilePhoto} alt={`${cv.fullName} profile`} className="cv-passport-image" style={photoStyles.image} /></span>
     ) : null;
   const renderSectionHeading = (title) => (
     <div className="cv-section-heading">
@@ -2101,7 +2107,8 @@ function LiveCVPreview({ cv, theme, layout }) {
   const pages = previewBlocks.reduce((acc, block) => {
     const current = acc[acc.length - 1];
     const currentWeight = current.reduce((sum, item) => sum + item.weight, 0);
-    if (current.length && currentWeight + block.weight > pageLimit) acc.push([block]);
+    const limit = acc.length === 1 && cv.profilePhoto && layout !== "sidebar" ? pageLimit - 1.75 : pageLimit;
+    if (current.length && currentWeight + block.weight > limit) acc.push([block]);
     else current.push(block);
     return acc;
   }, [[]]).filter(Boolean);
@@ -2120,7 +2127,7 @@ function LiveCVPreview({ cv, theme, layout }) {
       <div className="sidebar-header">
         <div className="photo-container">
           {cv.profilePhoto ? (
-            <img src={cv.profilePhoto} alt={`${cv.fullName} profile`} className={`profile-photo ${cv.photoShape === "circle" || cv.photoShape === "round" ? "round" : cv.photoShape === "rounded" ? "rounded" : "square"}`} />
+            photo()
           ) : (
             <div className={`profile-photo placeholder ${cv.photoShape === "circle" || cv.photoShape === "round" ? "round" : cv.photoShape === "rounded" ? "rounded" : "square"}`}>{initials(cv.fullName)}</div>
           )}
@@ -2142,7 +2149,7 @@ function LiveCVPreview({ cv, theme, layout }) {
   );
   const renderHeader = () => (
     <header className={`relative flex items-center gap-4 ${layout === "header" ? "rounded p-5 pr-24 text-white" : "border-b border-slate-200 pb-5 pr-24"}`} style={layout === "header" ? { background: theme.dark } : {}}>
-      {photo("h-20 w-20")}
+      {photo()}
       <div>
         <h2 className="text-2xl font-black leading-tight">{cv.fullName}</h2>
         <p className={`mt-1 text-sm font-bold ${layout === "header" ? "text-white/90" : "text-blue-700"}`} style={layout === "header" ? {} : { color: theme.color }}>{cv.jobTitle}</p>
@@ -3622,6 +3629,7 @@ function CVBuilderApp({ onHome }) {
   const [currentStep, setCurrentStep] = useState(entryOptions.upload ? "import" : "personal");
   const [workspaceMode, setWorkspaceMode] = useState("content");
   const appliedImportIdsRef = useRef(new Set());
+  const photoUploadRevision = useRef(0);
   const [session, setSession] = useState(null);
   const [authOpen, setAuthOpen] = useState(entryOptions.saveOnline);
   const [pendingTemplateId, setPendingTemplateId] = useState(null);
@@ -3999,21 +4007,23 @@ function CVBuilderApp({ onHome }) {
     return true;
   };
   const handleProfilePhotoChange = async (key, value) => {
-    if (key !== "profilePhoto" || !value || !cloudSavingEnabled) {
-      setCv((current) => ({ ...current, [key]: value }));
-      return;
-    }
+    setCv((current) => ({ ...current, [key]: value }));
+    if (key !== "profilePhoto") return;
+    const revision = ++photoUploadRevision.current;
+    if (!value || !cloudSavingEnabled) return;
     try {
       setStorageMessage("Uploading photo to Supabase Storage...");
       const uploaded = await uploadProfilePhoto(user.id, value);
+      if (revision !== photoUploadRevision.current) return;
       setCv((current) => ({ ...current, profilePhoto: uploaded.publicUrl }));
       setStorageMessage("Photo uploaded to Supabase Storage.");
     } catch (error) {
-      setCv((current) => ({ ...current, profilePhoto: value }));
+      if (revision !== photoUploadRevision.current) return;
       setStorageMessage(`Photo kept locally: ${error.message}`);
     }
   };
   const loadSavedCv = (item) => {
+    photoUploadRevision.current++;
     const nextCv = item.cv_data || initialCv;
     setCv(nextCv);
     setCurrentCvId(item.id || null);
@@ -4075,7 +4085,7 @@ function CVBuilderApp({ onHome }) {
       const response = await fetch("/.netlify/functions/emailCv", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: toEmail, cv }),
+        body: JSON.stringify({ email: toEmail, cv: { ...cv, photoCropSource: undefined } }),
       });
       const result = await readJsonResponseSafely(response, "Could not email your CV.");
       if (!response.ok || !result.ok) throw new Error(result.message || "Could not email your CV.");
@@ -4182,10 +4192,10 @@ function CVBuilderApp({ onHome }) {
               <div hidden={workspaceMode !== "content" || currentStep !== "import"}><ExistingCVImporter onImport={handleImport} currentCv={cv} onRestore={(previous) => { setCv(previous); appliedImportIdsRef.current.clear(); }} /></div>
               {storageMessage && cloudSavingEnabled && <p className="rounded bg-slate-50 p-3 text-xs font-bold leading-5 text-slate-600">{storageMessage}</p>}
               <div hidden={workspaceMode !== "ai"} className="workspace-ai-panel"><ATSPanel cv={cv} jobDescription={cv.jobDescription || ""} onJobDescriptionChange={(value) => updateCvField("jobDescription", value)} onApplySuggestion={applyAtsSuggestion} onTrackEvent={recordCvEvent} /></div>
+              <div hidden={workspaceMode !== "content" || currentStep !== "personal"}><ProfilePhotoUploader cv={cv} onChange={handleProfilePhotoChange} /></div>
               <div hidden={workspaceMode === "design" || (workspaceMode === "content" && currentStep === "import")}>
                 <CVBuilderForm cv={cv} onChange={updateCvField} activeSection={editorSection} />
               </div>
-              <div hidden={workspaceMode !== "content" || currentStep !== "personal"}><ProfilePhotoUploader cv={cv} onChange={handleProfilePhotoChange} /></div>
               <section hidden={workspaceMode !== "design"} className="workspace-design-settings rounded border border-slate-200 bg-white p-4">
                 <h3 className="panel-title">Save and layout</h3>
                 <div className="workspace-settings-grid mt-4 grid gap-4 lg:grid-cols-2">
