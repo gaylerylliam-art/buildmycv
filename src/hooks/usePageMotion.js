@@ -30,11 +30,8 @@ export function useHomeMotion(paused = false) {
           hero.from(q('.hm-nav a'), { y: -14, opacity: 0, stagger: .035 })
             .from(q('.hm-hero-copy h1 .hm-word-inner'), { yPercent: 115, stagger: .08 }, '-=.3')
             .from(q('.hm-hero-copy mark'), { scaleX: 0, transformOrigin: 'left center' }, '-=.4')
-            .from(q('.hm-hero-copy > p, .hm-intent-card, .hm-download-explainer'), { y: 18, opacity: 0, stagger: .1 }, '-=.35')
-            .from(q('.hm-illustration-cv'), { y: 35, rotation: -3, opacity: 0 }, .35)
-            .from(q('.hm-ai-chip, .hm-strength-chip'), { scale: .65, opacity: 0, stagger: .15, ease: 'back.out(1.5)' }, '-=.25')
-            .from(q('.hm-strength-chip .hm-strength-track span'), { width: 0 }, '-=.2');
-          gsap.to(q('.hm-hero-illustration'), { yPercent: -10, ease: 'none', scrollTrigger: { trigger: host.querySelector('.hm-hero'), start: 'top top', end: 'bottom top', scrub: true } });
+            .from(q('.hm-hero-copy > p, .hm-hero-actions .hm-button, .hm-download-explainer'), { y: 18, opacity: 0, stagger: .1 }, '-=.35')
+            .from(q('.hm-hero-photo img'), { opacity: 0, duration: .8 }, .2);
           const words = ['job-ready', 'interview-ready', 'recruiter-ready', 'stand out'];
           let index = 0;
           if (word) {

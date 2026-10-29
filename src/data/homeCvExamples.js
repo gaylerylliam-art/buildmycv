@@ -1,4 +1,5 @@
 import { categories, layouts } from "./categories.js";
+import { homeIndustryPhotography } from "./homeIndustryPhotography.js";
 
 // Examples use only selectable builder layouts; PNGs come from LiveCVPreview.
 export const homeCvExamples = [
@@ -17,4 +18,5 @@ export const homeCvExamples = [
   category: categories.find((category) => category.id === id).name,
   name: layouts.find((item) => item.id === layout).name,
   image: `/assets/cv-examples/${id}-${layout}-v2.png`,
+  industryPhoto: homeIndustryPhotography[id],
 }));
