@@ -342,7 +342,6 @@ if (fs.existsSync(originalIndex)) {
 
 const webAppSchema = { "@context": "https://schema.org", "@type": "WebApplication", name: "BuildMyCVNow", applicationCategory: "BusinessApplication", operatingSystem: "Web", offers: { "@type": "Offer", price: "0", priceCurrency: "USD" }, url: baseUrl };
 const orgSchema = { "@context": "https://schema.org", "@type": "Organization", name: "BuildMyCVNow", url: baseUrl, logo: `${baseUrl}/assets/og-image.jpg`, sameAs: ["https://www.facebook.com/", "https://www.linkedin.com/"] };
-const faqSchema = { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: homepageFaqs.map((faq) => ({ "@type": "Question", name: faq.question, acceptedAnswer: { "@type": "Answer", text: faq.answer } })) };
 const videoSchema = {
   "@context": "https://schema.org",
   "@type": "VideoObject",
@@ -358,7 +357,7 @@ writePage("/", layout({
   title: HOME_META_TITLE,
   description: HOME_META_DESCRIPTION,
   canonical: baseUrl,
-  jsonLd: [webAppSchema, faqSchema, orgSchema, videoSchema],
+  jsonLd: [webAppSchema, orgSchema, videoSchema],
   body: homepageMarkup,
   interactive: true,
 }));

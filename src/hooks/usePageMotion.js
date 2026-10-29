@@ -54,7 +54,7 @@ export function useHomeMotion(paused = false) {
           // Run after context assignment, so callback-created tweens belong to this React mount.
           contextSetup = () => {
             reveal(q('.hm-section h2 .hm-word-inner'));
-            reveal(q('.hm-improve-card, .hm-quick-steps .hm-wrap > div, .hm-faq details, .hm-final-actions a'));
+            reveal(q('.hm-improve-card, .hm-quick-steps .hm-wrap > div, .hm-final-actions a'));
             reveal(q('.hm-global-languages li'), { scale: .65 });
             q('.hm-access-grid article').forEach((item, i) => reveal([item], { x: i ? 45 : -45, y: 0 }));
             reveal(q('.hm-template'));

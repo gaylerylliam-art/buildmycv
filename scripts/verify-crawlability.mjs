@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { HOME_H1, HOME_VIDEO } from "../src/content/homepage.js";
-import { homepageFaqs } from "../src/content/seoFaq.js";
+import { faqQuestions } from "../src/content/faqContent.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
@@ -73,8 +73,11 @@ if (!homeHtml.includes(HOME_VIDEO.url)) failures.push("/: missing homepage HeyGe
 for (const href of ["/about", "/contact", "/privacy", "/terms", "/faq", "/blog"]) {
   if (!homeHtml.includes(`href="${href}"`)) failures.push(`/: missing footer link ${href}`);
 }
-for (const faq of homepageFaqs.slice(0, 10)) {
-  if (!homeText.includes(faq.question)) failures.push(`/: missing FAQ question "${faq.question}"`);
+if (homeHtml.includes('id="faq"')) failures.push("/: FAQ section should live only on /faq");
+if (homeHtml.includes('"@type":"FAQPage"')) failures.push("/: should not advertise a removed FAQ section in structured data");
+const faqText = stripTags(readBuiltHtml("/faq"));
+for (const item of faqQuestions) {
+  if (!faqText.includes(item.question)) failures.push(`/faq: missing question "${item.question}"`);
 }
 for (const match of homeHtml.matchAll(/\b(?:src|href)=["']\/assets\/([^"']+)["']/g)) {
   const assetPath = path.join(dist, "assets", match[1]);

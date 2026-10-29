@@ -50,10 +50,8 @@ const checkOfficeSections = async (label) => {
   assert(await page.$('#how-it-works video[controls]'));
   assert.equal(await page.$eval('#how-it-works video source', source => source.src), HOME_VIDEO.url);
   assert(await page.$('#how-it-works a[href="/builder"]'));
-  await page.click('#faq details:first-child summary');
-  assert(await page.$eval('#faq details:first-child', details => details.open));
-  await page.click('#faq details:first-child summary');
-  assert.equal(await page.$eval('#faq details:first-child', details => details.open), false);
+  assert.equal(await page.$("#faq"), null);
+  assert.equal(await page.$eval('.hm-nav a[href="/faq"]', link => link.textContent), "FAQ");
   await page.evaluate(scroll => window.scrollTo({ ...scroll, behavior: 'instant' }), scroll);
 };
 const checkHeroPhoto = async () => {
