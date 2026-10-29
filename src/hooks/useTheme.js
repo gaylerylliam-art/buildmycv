@@ -18,10 +18,10 @@ const setThemeColorMeta = (theme) => {
   meta.setAttribute("content", theme === "dark" ? "#0B1120" : "#FFFFFF");
 };
 
-export function useTheme() {
+export function useTheme(defaultMode = "system") {
   const [mode, setModeState] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
-    return options.includes(saved) ? saved : "system";
+    return options.includes(saved) ? saved : options.includes(defaultMode) ? defaultMode : "system";
   });
   const [resolved, setResolved] = useState(() => resolvedTheme(mode));
 

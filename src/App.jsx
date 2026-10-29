@@ -1578,22 +1578,18 @@ function WorkExperienceEditor({ cv, onChange }) {
   );
 }
 
-const BuilderSectionContext = React.createContext(null);
-function CollapsibleFormSection({ id, title, icon = "file", defaultOpen = false, badge, children }) {
-  const activeSection = React.useContext(BuilderSectionContext);
-  const group = id === "references" ? "education" : id === "qr" ? "summary" : id;
+function CollapsibleFormSection({ id, title, icon = "file", defaultOpen = false, badge, children, focused = false, hidden = false }) {
   const [open, setOpen] = useState(defaultOpen);
-  const visible = !activeSection || group === activeSection;
-  const Heading = activeSection ? "div" : "button";
+  const expanded = focused || open;
   return (
-    <section hidden={!visible} id={`builder-section-${id}`} className={`form-section-card ${open || activeSection ? "open" : ""}`}>
-      <Heading type={activeSection ? undefined : "button"} className="form-section-head" aria-expanded={activeSection ? undefined : open} onClick={activeSection ? undefined : () => setOpen(!open)}>
+    <section id={`builder-section-${id}`} hidden={hidden} className={`form-section-card ${expanded ? "open" : ""} ${focused ? "workspace-focused-section" : ""}`}>
+      <button type="button" className="form-section-head" onClick={() => setOpen(!open)} aria-expanded={expanded}>
         <Icon name={icon} className="h-4 w-4 text-blue-700" />
         <span className="form-section-title">{title}</span>
         {badge && <span className="entry-current-badge">{badge}</span>}
-        <Icon name="chevron" className={`h-4 w-4 text-slate-400 transition ${open ? "rotate-180" : ""}`} />
-      </Heading>
-      {(open || activeSection) && <div className="form-section-body">{children}</div>}
+        <Icon name="chevron" className={`h-4 w-4 text-slate-400 transition ${expanded ? "rotate-180" : ""}`} />
+      </button>
+      {expanded && <div className="form-section-body">{children}</div>}
     </section>
   );
 }
@@ -1811,7 +1807,7 @@ function ReferencesSection({ cv, onChange }) {
   );
 }
 
-function CVBuilderForm({ cv, onChange }) {
+function CVBuilderForm({ cv, onChange, activeSection }) {
   const [smartTips, setSmartTips] = useState({});
   const tipsEnabled = cv.tipsEnabled !== false;
   const handleBlurTip = (field, value) => {
@@ -1835,25 +1831,7 @@ function CVBuilderForm({ cv, onChange }) {
   };
   return (
     <div className="space-y-3">
-      <CollapsibleFormSection id="personal" title="Personal info" icon="file" defaultOpen badge={cv.fullName ? "Done" : ""}>
-        <TipSection industry={cv.industry} field="contact" tipsEnabled={tipsEnabled}>
-          <div className="field-pair">
-            <label>
-              <span className="form-label">Which industry are you applying in?</span>
-              <select value={cv.industry || "general"} onChange={(event) => onChange("industry", event.target.value)} className="form-field">
-                {industryOptions.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
-              </select>
-            </label>
-            <label className="tips-toggle">
-              <input type="checkbox" checked={tipsEnabled} onChange={(event) => onChange("tipsEnabled", event.target.checked)} />
-              <span>Show writing tips</span>
-            </label>
-          </div>
-          <div className="field-pair">
-            <FormField label="Target country" value={cv.targetCountry} onChange={(value) => onChange("targetCountry", value)} placeholder="Worldwide, UAE, Canada, Germany..." />
-            <FormField label="Target job" value={cv.targetJobTitle} onChange={(value) => onChange("targetJobTitle", value)} placeholder="Hotel Receptionist, Accountant, Mechanical Engineer..." />
-          </div>
-        </TipSection>
+      <CollapsibleFormSection id="personal" title="Personal info" icon="file" defaultOpen badge={cv.fullName ? "Done" : ""} focused={activeSection === "personal"} hidden={Boolean(activeSection && activeSection !== "personal")}>
         <div className="field-pair">
           <FormField label="Full name" value={cv.fullName} onChange={(value) => onChange("fullName", value)} placeholder="Example: Juan Dela Cruz" />
           <FormField label="Job title" value={cv.jobTitle} onChange={(value) => onChange("jobTitle", value)} placeholder="Example: Logistics Assistant" />
@@ -1906,14 +1884,32 @@ function CVBuilderForm({ cv, onChange }) {
             <input value={cv.expectedSalary || ""} onChange={(event) => onChange("expectedSalary", event.target.value)} className="form-field" placeholder="Example: AED 2,500 per month, negotiable" />
           </label>
         )}
+        <TipSection industry={cv.industry} field="contact" tipsEnabled={tipsEnabled}>
+          <div className="field-pair">
+            <label>
+              <span className="form-label">Which industry are you applying in?</span>
+              <select value={cv.industry || "general"} onChange={(event) => onChange("industry", event.target.value)} className="form-field">
+                {industryOptions.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+              </select>
+            </label>
+            <label className="tips-toggle">
+              <input type="checkbox" checked={tipsEnabled} onChange={(event) => onChange("tipsEnabled", event.target.checked)} />
+              <span>Show writing tips</span>
+            </label>
+          </div>
+          <div className="field-pair">
+            <FormField label="Target country" value={cv.targetCountry} onChange={(value) => onChange("targetCountry", value)} placeholder="Worldwide, UAE, Canada, Germany..." />
+            <FormField label="Target job" value={cv.targetJobTitle} onChange={(value) => onChange("targetJobTitle", value)} placeholder="Hotel Receptionist, Accountant, Mechanical Engineer..." />
+          </div>
+        </TipSection>
       </CollapsibleFormSection>
 
-      <CollapsibleFormSection id="experience" title="Work experience" icon="briefcase" defaultOpen badge={normalizeWorkExperiences(cv).some((entry) => entry.employer) ? "Done" : ""}>
+      <CollapsibleFormSection id="experience" title="Work experience" icon="briefcase" defaultOpen badge={normalizeWorkExperiences(cv).some((entry) => entry.employer) ? "Done" : ""} focused={activeSection === "experience"} hidden={Boolean(activeSection && activeSection !== "experience")}>
         <InlineTip industry={cv.industry} field="experience" enabled={tipsEnabled} />
         <WorkExperienceEditor cv={cv} onChange={onChange} />
       </CollapsibleFormSection>
 
-      <CollapsibleFormSection id="education" title="Education and certifications" icon="file" badge={cv.education ? "Done" : ""}>
+      <CollapsibleFormSection id="education" title="Education and certifications" icon="file" badge={cv.education ? "Done" : ""} focused={activeSection === "education"} hidden={Boolean(activeSection && activeSection !== "education")}>
         <FormField label="Education" type="textarea" rows={4} value={cv.education} onChange={(value) => onChange("education", value)} placeholder="Example: High School Diploma, Manila High School, 2018" />
         <FormField label="Projects (optional)" type="textarea" rows={4} value={cv.projects} onChange={(value) => onChange("projects", value)} placeholder="Example: Website redesign, inventory tracking project, school capstone, or work improvement project" />
         <FormField label="Awards" type="textarea" rows={3} value={cv.awards || ""} onChange={(value) => onChange("awards", value)} />
@@ -1923,9 +1919,9 @@ function CVBuilderForm({ cv, onChange }) {
         <FormField label="Certifications & licenses" type="textarea" rows={3} value={cv.certifications} onChange={(value) => onChange("certifications", value)} placeholder="Example: Basic Food Safety Certificate, TESDA NC II, UAE driving license" />
       </CollapsibleFormSection>
 
-      <ReferencesSection cv={cv} onChange={onChange} />
+      <div hidden={Boolean(activeSection && activeSection !== "extras")}><ReferencesSection cv={cv} onChange={onChange} /></div>
 
-      <CollapsibleFormSection id="skills" title="Skills and languages" icon="check" badge={cv.skills ? "Done" : ""}>
+      <CollapsibleFormSection id="skills" title="Skills and languages" icon="check" badge={cv.skills ? "Done" : ""} focused={activeSection === "skills"} hidden={Boolean(activeSection && activeSection !== "skills")}>
         <InlineTip industry={cv.industry} field="skills" enabled={tipsEnabled} />
         <label className="block">
           <span className="form-label">Skills</span>
@@ -1939,9 +1935,9 @@ function CVBuilderForm({ cv, onChange }) {
         <FormField label="Languages spoken" type="textarea" rows={3} value={cv.languages} onChange={(value) => onChange("languages", value)} placeholder="Example: English - Good, Filipino - Native, Arabic - Basic" />
       </CollapsibleFormSection>
 
-      <QrCodeSection cv={cv} onChange={onChange} />
+      <div hidden={Boolean(activeSection && activeSection !== "extras")}><QrCodeSection cv={cv} onChange={onChange} /></div>
 
-      <CollapsibleFormSection id="summary" title="Professional summary" icon="file" badge={cv.summary?.length > 40 ? "Done" : ""}>
+      <CollapsibleFormSection id="summary" title="Professional summary" icon="file" badge={cv.summary?.length > 40 ? "Done" : ""} focused={activeSection === "summary"} hidden={Boolean(activeSection && activeSection !== "summary")}>
         <InlineTip industry={cv.industry} field="summary" enabled={tipsEnabled} />
         <label className="block">
           <span className="form-label">Professional summary / objective</span>
@@ -2407,7 +2403,7 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
             <h2 className="text-2xl font-black text-slate-950">{title}</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
           </div>
-          <button onClick={onClose} className="text-2xl leading-none text-slate-500">Ã—</button>
+          <button type="button" onClick={onClose} className="text-slate-500" aria-label="Close download dialog" title="Close"><Icon name="plus" className="h-5 w-5 rotate-45" /></button>
         </div>
         <form onSubmit={sendOtp} className="mt-5 grid gap-3 sm:grid-cols-2">
           {[
@@ -2627,7 +2623,7 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
             <h2 className="text-2xl font-black text-slate-950">{mode === "signin" ? "Login" : "Create account"}</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">Choose quick download-only mode or sign in to save CVs online.</p>
           </div>
-          <button onClick={onClose} className="text-2xl leading-none text-slate-500">x</button>
+          <button type="button" onClick={onClose} className="text-slate-500" aria-label="Close sign-in dialog" title="Close"><Icon name="plus" className="h-5 w-5 rotate-45" /></button>
         </div>
         <div className="mt-5 grid gap-2">
           <button onClick={startUrgentMode} className="rounded bg-green-600 px-4 py-3 text-sm font-black text-white hover:bg-green-700">
@@ -3254,12 +3250,30 @@ function SectionReorderPanel({ cv, onChange, onClose }) {
 }
 
 const builderSteps = [
-  { id: "personal", label: "Personal info" },
-  { id: "experience", label: "Experience" },
-  { id: "education", label: "Education" },
-  { id: "skills", label: "Skills" },
-  { id: "summary", label: "Summary" },
+  { id: "personal", label: "Personal details", icon: "user" },
+  { id: "experience", label: "Work history", icon: "briefcase" },
+  { id: "education", label: "Education", icon: "graduation" },
+  { id: "skills", label: "Skills & languages", icon: "sparkle" },
+  { id: "summary", label: "Summary", icon: "file" },
+  { id: "extras", label: "References & extras", icon: "folder" },
 ];
+
+const workspaceModes = [
+  { id: "content", label: "Content Builder", short: "Content" },
+  { id: "design", label: "Choose Design", short: "Design" },
+  { id: "ai", label: "AI Optimizer", short: "AI" },
+];
+
+function WorkspaceTabs({ mode, onChange }) {
+  return <nav className="workspace-tabs" role="tablist" aria-label="Builder workspace">
+    {workspaceModes.map((item, index) => <button key={item.id} id={`workspace-tab-${item.id}`} type="button" role="tab" aria-selected={mode === item.id} aria-controls={`workspace-panel-${item.id}`} tabIndex={mode === item.id ? 0 : -1} onClick={() => onChange(item.id)} onKeyDown={(event) => {
+      const next = event.key === "ArrowRight" ? (index + 1) % workspaceModes.length : event.key === "ArrowLeft" ? (index + workspaceModes.length - 1) % workspaceModes.length : event.key === "Home" ? 0 : event.key === "End" ? workspaceModes.length - 1 : null;
+      if (next === null) return;
+      event.preventDefault(); onChange(workspaceModes[next].id);
+      document.getElementById(`workspace-tab-${workspaceModes[next].id}`)?.focus();
+    }}><span className="workspace-tab-number">{index + 1}</span><span className="workspace-tab-label">{item.label}</span><span className="workspace-tab-short">{item.short}</span></button>)}
+  </nav>;
+}
 
 const cvBuildGuideSteps = [
   { step: "Step 1", title: "Choose a template" },
@@ -3280,8 +3294,8 @@ function getBuilderStepState(cv) {
   };
 }
 
-function BuilderTopBar({ onHome, onDownload, saveStatus, cloudSavingEnabled, userEmail, onAccess, onSignOut, activeBuilder, onSwitchBuilder }) {
-  const { mode, setMode, cycleMode } = useTheme();
+function BuilderTopBar({ onHome, onDownload, saveStatus, cloudSavingEnabled, userEmail, onAccess, onSignOut, workspaceMode, onWorkspaceMode, onTranslate, activeBuilder, onSwitchBuilder }) {
+  const { mode, setMode, cycleMode } = useTheme("dark");
   const isSaving = /saving/i.test(saveStatus);
   return (
     <header className="builder-topbar">
@@ -3289,10 +3303,12 @@ function BuilderTopBar({ onHome, onDownload, saveStatus, cloudSavingEnabled, use
         <span className="builder-logo-icon"><Icon name="file" className="h-5 w-5" /></span>
         BuildMyCV<span>Now</span>
       </button>
-      <nav className="builder-type-switch" aria-label="Builder type">
+      {workspaceMode ? <WorkspaceTabs mode={workspaceMode} onChange={onWorkspaceMode} /> : <nav className="builder-type-switch" aria-label="Builder type">
         {[["cv", "CV Builder"], ["cover", "Cover Letter Builder"]].map(([id, label]) => <button key={id} type="button" aria-pressed={activeBuilder === id} onClick={() => onSwitchBuilder(id)}>{label}</button>)}
-      </nav>
+      </nav>}
       <div className="builder-topbar-actions">
+        {workspaceMode && <button type="button" className="workspace-translate" onClick={onTranslate} title="Upload or translate your CV"><Icon name="globe" className="h-4 w-4" /><span>Translate CV</span></button>}
+        {workspaceMode && <details className="workspace-account-menu"><summary aria-label="Account options" title="Account options"><Icon name="user" className="h-4 w-4" /></summary><div><p>{cloudSavingEnabled ? userEmail : "Save your CV online"}</p><button type="button" onClick={(event) => { event.currentTarget.closest("details").open = false; if (cloudSavingEnabled) onSignOut(); else onAccess(); }}>{cloudSavingEnabled ? "Sign out" : "Sign in to save online"}</button></div></details>}
         {cloudSavingEnabled ? (
           <div className="builder-account-pill signed-in">
             <span className="builder-account-pill-label">Saved online</span>
@@ -3477,90 +3493,31 @@ function EmailCapture({ source = "download", roleInterest = "" }) {
   );
 }
 
-function BuilderSidebar({
-  currentStep,
-  onStep,
-  completedSteps,
-  categoryId,
-  onCategory,
-  themeId,
-  onTheme,
-  completion,
-  cloudSavingEnabled,
-  userEmail,
-  onAccess,
-}) {
-  const prominent = ["hospitality", "it", "supply-chain-logistics", "finance", "engineering", "domestic", "skilled", "education"];
-  const sortedCategories = [...categories].sort((a, b) => prominent.indexOf(a.id) - prominent.indexOf(b.id));
-  const progressStyle = { background: `conic-gradient(var(--brand) ${completion.percent}%, var(--border) 0)` };
-  const completedCount = Array.isArray(completion.milestones) ? completion.milestones.length : 0;
-  const totalCount = 16;
-  return (
-    <aside className="builder-sidebar-v2">
-      <div className="builder-sidebar-summary">
-        <div className="builder-sidebar-progress" style={progressStyle}>
-          <div>
-            <strong>{completion.percent}%</strong>
-            <span>done</span>
-          </div>
-        </div>
-        <div className="builder-sidebar-summary-copy">
-          <p>CV progress</p>
-          <h3>{completedCount} of {totalCount} checks complete</h3>
-          <span>{completion.nextStep || "Keep filling your CV details."}</span>
-        </div>
-      </div>
-      <button type="button" className="builder-next-card" onClick={() => onStep(completion.nextSection === "download" ? "summary" : completion.nextSection || "summary")}><span>Next step</span><strong>{completion.nextStep || "Review your CV"}</strong><span aria-hidden="true">→</span></button>
-      {cloudSavingEnabled ? (
-        <div className="builder-sidebar-account signed-in">
-          <span>Saving online</span>
-          <strong>{userEmail}</strong>
-        </div>
-      ) : (
-        <button type="button" onClick={onAccess} className="builder-sidebar-account">
-          <span>Save online</span>
-          <strong>Free account access</strong>
-        </button>
-      )}
-      <p className="sidebar-label-v2">Sections</p>
-      <nav className="builder-step-list">
-        {builderSteps.map((step, index) => {
-          const done = completedSteps[step.id];
-          const active = currentStep === step.id;
-          return (
-            <React.Fragment key={step.id}>
-              <button type="button" onClick={() => onStep(step.id)} className={`builder-step ${active ? "active" : ""} ${done ? "done" : ""}`}>
-                <span className="builder-step-dot">{done ? <Icon name="check" className="h-3 w-3" /> : index + 1}</span>
-                <span>{step.label}</span>
-              </button>
-              {index < builderSteps.length - 1 && <span className="builder-step-connector" />}
-            </React.Fragment>
-          );
-        })}
-      </nav>
-      <div className="builder-design-card">
-      <div className="builder-design-heading"><p className="sidebar-label-v2">Template</p><span>10 job categories</span></div>
-      <CategorySelector selected={categoryId} onSelect={onCategory} />
-      <p className="sidebar-label-v2 mt-4">Accent colour</p>
-      <div className="sidebar-swatch-row">
-        {themes.slice(0, 8).map((theme) => (
-          <button
-            key={theme.id}
-            type="button"
-            title={theme.name}
-            aria-label={`Set accent to ${theme.name}`}
-            onClick={() => onTheme(theme.id)}
-            className={`sidebar-swatch ${themeId === theme.id ? "selected" : ""}`}
-            style={{ background: theme.color }}
-          />
-        ))}
-      </div>
-      {sortedCategories.length > 0 && (
-        <p className="builder-sidebar-note">Switch templates any time. Your CV details stay in place while the design changes.</p>
-      )}
-      </div>
-    </aside>
-  );
+function BuilderSidebar({ currentStep, onStep, completedSteps, completion, workspaceMode, onWorkspaceMode, onCoverLetter, onAccess, cloudSavingEnabled, userEmail }) {
+  return <aside className="builder-sidebar-v2 workspace-sidebar" aria-label="Builder navigation">
+    <div className="workspace-documents" aria-label="Document type">
+      <button type="button" className="active" aria-pressed="true" title="CV Builder"><Icon name="file" className="h-4 w-4" /><span>CV Builder</span></button>
+      <button type="button" onClick={onCoverLetter} title="Cover Letter Builder"><Icon name="file" className="h-4 w-4" /><span>Cover letter</span></button>
+    </div>
+    <p className="workspace-sidebar-caption">CV sections</p>
+    <nav className="workspace-sections" aria-label="CV sections">
+      {builderSteps.map((step) => <button key={step.id} type="button" onClick={() => onStep(step.id)} aria-current={workspaceMode === "content" && currentStep === step.id ? "step" : undefined} title={step.label}>
+        <Icon name={step.icon} className="h-4 w-4" /><span>{step.label}</span>{completedSteps[step.id] && <Icon name="check" className="workspace-section-done h-3 w-3" />}
+      </button>)}
+    </nav>
+    <div className="workspace-sidebar-tools">
+      <button type="button" onClick={() => onStep("import")} aria-current={workspaceMode === "content" && currentStep === "import" ? "step" : undefined} title="Upload & Translate CV"><Icon name="upload" className="h-4 w-4" /><span>Upload & translate</span></button>
+      <button type="button" onClick={() => onWorkspaceMode("design")} title="Choose template and layout"><Icon name="file" className="h-4 w-4" /><span>Templates & layout</span></button>
+    </div>
+    <div className="workspace-sidebar-bottom">
+      <section className="workspace-progress" aria-label="CV completion">
+        <div><span>CV completeness</span><strong>{completion.percent}%</strong></div>
+        <progress max="100" value={completion.percent}>{completion.percent}%</progress>
+        <p>{completion.nextStep}</p>
+      </section>
+      {cloudSavingEnabled ? <div className="workspace-account"><Icon name="check" className="h-4 w-4" /><span title={userEmail}>{userEmail}</span></div> : <button className="workspace-account" type="button" onClick={onAccess} title="Sign in to save online"><Icon name="user" className="h-4 w-4" /><span>Save online</span><Icon name="arrow" className="h-4 w-4" /></button>}
+    </div>
+  </aside>;
 }
 
 function BuilderTemplateDock({ categoryId, onCategory, themeId, onTheme }) {
@@ -3596,10 +3553,23 @@ function BuilderTemplateDock({ categoryId, onCategory, themeId, onTheme }) {
 
 function BuilderPreviewPanel({ cv, theme, layout, onDownload }) {
   const [message, setMessage] = useState("");
-  const [previewZoom, setPreviewZoom] = useState(60);
+  const [previewZoom, setPreviewZoom] = useState(null);
+  const [fitZoom, setFitZoom] = useState(56);
+  const sheetRef = useRef(null);
+  useEffect(() => {
+    const sheet = sheetRef.current;
+    if (!sheet) return undefined;
+    const observer = new ResizeObserver(() => {
+      const style = getComputedStyle(sheet);
+      const available = sheet.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      setFitZoom(Math.max(20, Math.min(100, Math.floor(available / 794 * 100))));
+    });
+    observer.observe(sheet);
+    return () => observer.disconnect();
+  }, []);
   const completeness = getCompleteness(cv);
   const shareUrl = "https://buildmycvnow.com/builder";
-  const changeZoom = (delta) => setPreviewZoom((value) => Math.min(100, Math.max(42, value + delta)));
+  const changeZoom = (delta) => setPreviewZoom((value) => Math.min(120, Math.max(20, (value ?? fitZoom) + delta)));
   const copyShare = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
@@ -3628,14 +3598,14 @@ function BuilderPreviewPanel({ cv, theme, layout, onDownload }) {
           <span>A4 preview</span>
           <div className="preview-zoom-controls">
             <button type="button" onClick={() => changeZoom(-6)} aria-label="Zoom out">-</button>
-            <strong>{previewZoom}%</strong>
+            <strong>{previewZoom ?? fitZoom}%</strong>
             <button type="button" onClick={() => changeZoom(6)} aria-label="Zoom in">+</button>
-            <button type="button" onClick={() => setPreviewZoom(56)}>Fit</button>
+            <button type="button" onClick={() => setPreviewZoom(null)}>Fit</button>
           </div>
         </div>
         {message && <p className="mt-2 text-xs font-bold text-blue-700">{message}</p>}
       </div>
-      <div className="preview-sheet-scroll" style={{ "--preview-zoom": previewZoom / 100 }}>
+      <div ref={sheetRef} className="preview-sheet-scroll" style={{ "--preview-zoom": (previewZoom ?? fitZoom) / 100 }}>
         <LiveCVPreview cv={cv} theme={theme} layout={layout} />
         <button type="button" onClick={onDownload} className="mt-4 flex w-full items-center justify-center gap-2 rounded bg-green-600 px-4 py-3 text-sm font-black text-white hover:bg-green-700">
           <Icon name="download" className="h-4 w-4" /> Download Free PDF
@@ -3798,7 +3768,8 @@ function CVBuilderApp({ onHome }) {
   const [saveStatus, setSaveStatus] = useState("Auto-save ready");
   const [draftStatus, setDraftStatus] = useState("Cloud draft sync is ready.");
   const [mobileCvView, setMobileCvView] = useState("edit");
-  const [currentStep, setCurrentStep] = useState("personal");
+  const [currentStep, setCurrentStep] = useState(entryOptions.upload ? "import" : "personal");
+  const [workspaceMode, setWorkspaceMode] = useState("content");
   const appliedImportIdsRef = useRef(new Set());
   const [session, setSession] = useState(null);
   const [authOpen, setAuthOpen] = useState(entryOptions.saveOnline);
@@ -3838,14 +3809,19 @@ function CVBuilderApp({ onHome }) {
     });
   };
   const jumpToStep = (id) => {
-    const step = id === "references" ? "education" : id === "qr" ? "summary" : id;
-    if (!builderSteps.some(item => item.id === step)) return;
+    const step = id === "references" || id === "qr" ? "extras" : id;
+    if (step !== "import" && !builderSteps.some(item => item.id === step)) return;
+    setWorkspaceMode("content");
     setCurrentStep(step);
+    setMobileCvView("edit");
     requestAnimationFrame(() => {
       document.getElementById("builder-editor-heading")?.focus({ preventScroll: true });
       document.querySelector(".builder-form-panel-v2")?.scrollTo({ top: 0, behavior: "auto" });
     });
   };
+  useEffect(() => {
+    document.querySelector(".builder-workspace .builder-form-panel-v2")?.scrollTo({ top: 0 });
+  }, [workspaceMode, currentStep]);
   const requestCvDownload = () => {
     if (completion.percent < 40) {
       logEvent("export_below_threshold", { percent: completion.percent });
@@ -4101,6 +4077,8 @@ function CVBuilderApp({ onHome }) {
     setCv((current) => ({ ...current, [key]: value }));
   };
   const startBuilderFlow = () => {
+    setWorkspaceMode("content");
+    setCurrentStep(/upload|translate/i.test(cv.builderStartOption) ? "import" : "personal");
     setCv((current) => ({
       ...current,
       onboardingCompleted: true,
@@ -4306,8 +4284,26 @@ function CVBuilderApp({ onHome }) {
   const startRegisteredMode = () => {
     setUserMode("registered");
   };
+  const editorSection = workspaceMode === "ai" ? "summary" : currentStep;
+  const sectionIndex = builderSteps.findIndex((step) => step.id === currentStep);
+  const editorTitle = workspaceMode === "design" ? "Choose your design" : workspaceMode === "ai" ? "AI Optimizer" : {
+    personal: "Personal information", experience: "Work history", education: "Education & certifications", skills: "Skills & languages", summary: "Professional summary", extras: "References & extras", import: "Upload & translate your CV",
+  }[currentStep];
+  const nextWorkspaceStep = () => {
+    if (workspaceMode === "ai") requestCvDownload();
+    else if (workspaceMode === "design") setWorkspaceMode("ai");
+    else if (currentStep === "import") jumpToStep("personal");
+    else if (sectionIndex < builderSteps.length - 1) jumpToStep(builderSteps[sectionIndex + 1].id);
+    else setWorkspaceMode("design");
+  };
+  const previousWorkspaceStep = () => {
+    if (workspaceMode === "ai") setWorkspaceMode("design");
+    else if (workspaceMode === "design") setWorkspaceMode("content");
+    else jumpToStep(builderSteps[Math.max(0, sectionIndex - 1)].id);
+  };
+  const nextWorkspaceLabel = workspaceMode === "ai" ? "Download CV" : workspaceMode === "design" ? "Review with AI" : currentStep === "import" ? "Review personal details" : sectionIndex === builderSteps.length - 1 ? "Choose design" : `Next: ${builderSteps[Math.max(0, sectionIndex + 1)].label}`;
   return (
-    <main className="builder-app-shell">
+    <main className={`builder-app-shell ${activeBuilder === "cv" && builderStarted ? "builder-workspace" : ""}`}>
       <BuilderTopBar
         onHome={onHome}
         saveStatus={saveStatus}
@@ -4316,6 +4312,9 @@ function CVBuilderApp({ onHome }) {
         userEmail={user?.email || session?.user?.email || ""}
         onAccess={() => setAuthOpen(true)}
         onSignOut={signOut}
+        workspaceMode={activeBuilder === "cv" && builderStarted ? workspaceMode : null}
+        onWorkspaceMode={setWorkspaceMode}
+        onTranslate={() => jumpToStep("import")}
         activeBuilder={activeBuilder}
         onSwitchBuilder={switchBuilder}
       />
@@ -4324,7 +4323,7 @@ function CVBuilderApp({ onHome }) {
         <p className="builder-session-status">{cloudSavingEnabled ? "Saved online" : "Download-only mode"} · <button type="button" onClick={() => setAuthOpen(true)}>{cloudSavingEnabled ? "Manage account" : "Sign in to save online"}</button></p>
       </div>
       {noCloudMode && (
-        <section className="border-b border-amber-200 bg-amber-50 px-5 py-3">
+        <section className="workspace-storage-notice border-b border-amber-200 bg-amber-50 px-5 py-3">
           <div className="mx-auto max-w-7xl text-sm font-bold leading-6 text-amber-950">
             Your CV will not be saved online. Download your file before closing the browser.
           </div>
@@ -4341,32 +4340,30 @@ function CVBuilderApp({ onHome }) {
             currentStep={currentStep}
             onStep={jumpToStep}
             completedSteps={completedSteps}
-            categoryId={categoryId}
-            onCategory={handleCategory}
-            themeId={themeId}
-            onTheme={setThemeId}
+            workspaceMode={workspaceMode}
+            onWorkspaceMode={setWorkspaceMode}
+            onCoverLetter={() => switchBuilder("cover")}
             completion={completion}
             cloudSavingEnabled={cloudSavingEnabled}
             userEmail={user?.email || session?.user?.email || ""}
             onAccess={() => setAuthOpen(true)}
           />
-          <section className="builder-form-panel-v2">
+          <section className="builder-form-panel-v2" id={`workspace-panel-${workspaceMode}`} role="tabpanel" aria-labelledby={`workspace-tab-${workspaceMode}`} tabIndex={0}>
             <div className="builder-form-inner">
-              <div className="builder-template-dock-mobile">
-                <details className="builder-mobile-design"><summary>Template and colour · {categories.find(item => item.id === categoryId)?.name}<span aria-hidden="true">⌄</span></summary><BuilderTemplateDock categoryId={categoryId} onCategory={handleCategory} themeId={themeId} onTheme={setThemeId} /></details>
+              <div className="workspace-editor-heading"><span>{workspaceMode === "content" ? "Content" : workspaceMode === "design" ? "Appearance" : "Review & refine"}</span><h1 id="builder-editor-heading" tabIndex={-1}>{editorTitle}</h1></div>
+              <div hidden={workspaceMode !== "design"} className="workspace-design-templates">
+                <BuilderTemplateDock categoryId={categoryId} onCategory={handleCategory} themeId={themeId} onTheme={setThemeId} />
               </div>
-              <ExistingCVImporter onImport={handleImport} currentCv={cv} onRestore={(previous) => { setCv(previous); appliedImportIdsRef.current.clear(); }} />
+              <div hidden={workspaceMode !== "content" || currentStep !== "import"}><ExistingCVImporter onImport={handleImport} currentCv={cv} onRestore={(previous) => { setCv(previous); appliedImportIdsRef.current.clear(); }} /></div>
               {storageMessage && cloudSavingEnabled && <p className="rounded bg-slate-50 p-3 text-xs font-bold leading-5 text-slate-600">{storageMessage}</p>}
-              <section className="builder-editor-card" aria-labelledby="builder-editor-heading">
-                <header className="builder-editor-heading"><div><p>SECTION {builderSteps.findIndex(step => step.id === currentStep) + 1} OF 5</p><h1 id="builder-editor-heading" tabIndex={-1}>{currentStep === "summary" ? "Summary and extras" : builderSteps.find(step => step.id === currentStep)?.label}</h1></div><label className="builder-writing-toggle"><input type="checkbox" checked={cv.tipsEnabled !== false} onChange={event => updateCvField("tipsEnabled", event.target.checked)} /> Writing tips</label></header>
-                {cv.tipsEnabled !== false && <p className="builder-section-tip">{({personal: "Use an email and phone number employers can reach. Add country-specific details only when relevant.", experience: "Describe your actual responsibilities and achievements. Keep employers, dates, and numbers accurate.", education: "List qualifications, institutions, and dates. Include relevant certifications and projects.", skills: "Choose skills and language levels you can demonstrate in an interview.", summary: "Introduce your experience and strengths in a few clear sentences, using your own words."})[currentStep]}</p>}
-                <details hidden={currentStep !== "personal"} className="builder-photo-details"><summary><span aria-hidden="true">+</span><span>Profile photo <small>(optional)</small><small>JPG, PNG or WEBP up to 2 MB · crop and position after upload</small></span></summary><ProfilePhotoUploader cv={cv} onChange={handleProfilePhotoChange} /></details>
-                <BuilderSectionContext.Provider value={currentStep}><CVBuilderForm cv={cv} onChange={updateCvField} /></BuilderSectionContext.Provider>
-                <footer className="builder-editor-navigation"><button type="button" disabled={currentStep === "personal"} onClick={() => jumpToStep(builderSteps[Math.max(0, builderSteps.findIndex(step => step.id === currentStep) - 1)].id)}>← Back</button><span>Your changes update the preview</span><button type="button" onClick={() => currentStep === "summary" ? requestCvDownload() : jumpToStep(builderSteps[builderSteps.findIndex(step => step.id === currentStep) + 1].id)}>{currentStep === "summary" ? "Review and download" : "Next section →"}</button></footer>
-              </section>
-              <section hidden={currentStep !== "summary"} className="builder-save-layout rounded border border-slate-200 bg-white p-4">
+              <div hidden={workspaceMode !== "ai"} className="workspace-ai-panel"><ATSPanel cv={cv} jobDescription={cv.jobDescription || ""} onJobDescriptionChange={(value) => updateCvField("jobDescription", value)} onApplySuggestion={applyAtsSuggestion} onTrackEvent={recordCvEvent} /></div>
+              <div hidden={workspaceMode === "design" || (workspaceMode === "content" && currentStep === "import")}>
+                <CVBuilderForm cv={cv} onChange={updateCvField} activeSection={editorSection} />
+              </div>
+              <div hidden={workspaceMode !== "content" || currentStep !== "personal"}><ProfilePhotoUploader cv={cv} onChange={handleProfilePhotoChange} /></div>
+              <section hidden={workspaceMode !== "design"} className="workspace-design-settings rounded border border-slate-200 bg-white p-4">
                 <h3 className="panel-title">Save and layout</h3>
-                <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                <div className="workspace-settings-grid mt-4 grid gap-4 lg:grid-cols-2">
                   <div className="grid gap-4">
                     <LayoutSelector selected={layoutId} onSelect={setLayoutId} />
                     <PageBorderSelector cv={cv} onChange={updateCvField} />
@@ -4423,16 +4420,10 @@ function CVBuilderApp({ onHome }) {
               </section>
               {BUILDER_ADS_ENABLED && <AdBanner compact label="Google AdSense form ad" slot="1010101010" />}
             </div>
+            <footer className="workspace-editor-footer"><button type="button" onClick={previousWorkspaceStep} disabled={workspaceMode === "content" && currentStep === "personal"}><Icon name="arrow" className="workspace-back-icon h-4 w-4" />Back</button><button type="button" onClick={nextWorkspaceStep} className="workspace-next">{nextWorkspaceLabel}<Icon name={workspaceMode === "ai" ? "download" : "arrow"} className="h-4 w-4" /></button></footer>
           </section>
           <div className="builder-right-stack">
             <BuilderPreviewPanel cv={cv} theme={theme} layout={layoutId} onDownload={requestCvDownload} />
-            <ATSPanel
-              cv={cv}
-              jobDescription={cv.jobDescription || ""}
-              onJobDescriptionChange={(value) => updateCvField("jobDescription", value)}
-              onApplySuggestion={applyAtsSuggestion}
-              onTrackEvent={recordCvEvent}
-            />
           </div>
           <CompletionBar completion={completion} onNextStep={handleNextStep} onDownload={requestCvDownload} />
         </div>
@@ -4464,7 +4455,7 @@ function CVBuilderApp({ onHome }) {
                 <span className="preview-live-label"><span className="live-dot" /> Live preview</span>
                 <button type="button" onClick={() => setMobileCvView("edit")} className="rounded border border-slate-300 px-3 py-2 text-xs font-black text-slate-700">Close</button>
               </div>
-              <LiveCVPreview cv={cv} theme={theme} layout={layoutId} />
+              <BuilderPreviewPanel cv={cv} theme={theme} layout={layoutId} onDownload={requestCvDownload} />
             </div>
           </div>
         )}

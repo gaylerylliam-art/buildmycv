@@ -53,7 +53,7 @@ try {
   await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'no-preference'}]);
   await page.goto(`${base}/builder?start=upload`,{waitUntil:'networkidle0'});
   await page.waitForSelector('.builder-layout-v2'); await delay(1200);
-  await page.click('.builder-step-list button:nth-of-type(2)'); await delay(700);
+  await page.click('.workspace-sections button:nth-of-type(2)'); await delay(700);
   assert.equal(await page.$eval('.builder-form-inner',e=>getComputedStyle(e).opacity),'1');
   await page.goto(base,{waitUntil:'networkidle0'}); await delay(1200);
   blockMotion = true;

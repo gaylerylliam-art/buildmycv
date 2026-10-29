@@ -22,7 +22,8 @@ try {
     await page.setViewport({ width, height });
     await page.goto(`${baseUrl}/builder?start=upload&category=finance`, { waitUntil: "networkidle0" });
     await page.waitForSelector(".builder-layout-v2");
-    const selector = width > 900 ? ".builder-sidebar-v2" : ".builder-template-dock-mobile";
+    await page.click("#workspace-tab-design");
+    const selector = ".workspace-design-templates";
     const result = await page.$eval(selector, (panel) => {
       const panelRect = panel.getBoundingClientRect();
       const cards = [...panel.querySelectorAll(".template-card-button")];
@@ -35,19 +36,19 @@ try {
     assert.equal(result.count, 10, `${width}px: missing categories`);
     assert.deepEqual(result.overflowing, [], `${width}px: category labels or options extend outside panel`);
     assert(result.scrollWidth <= result.clientWidth + 1, `${width}px: panel needs horizontal scrolling`);
-    if (width > 900) {
+    if (width > 1100) {
       assert(await page.$eval(".builder-right-stack", (item) => item.getBoundingClientRect().right <= innerWidth + 1), `${width}px: preview off screen`);
-      await page.$eval(selector, (panel) => { panel.scrollTop = panel.querySelector(".template-card-grid").offsetTop - panel.offsetTop; });
     }
     await page.screenshot({ path: path.join(output, `builder-${width}.png`) });
   }
   await page.setViewport({ width: 1440, height: 1000 });
   await page.goto(`${baseUrl}/builder?start=upload&category=finance`, { waitUntil: "networkidle0" });
-  await page.click('.builder-sidebar-v2 button[value="engineering"]');
+  await page.click("#workspace-tab-design");
+  await page.click('.workspace-design-templates button[value="engineering"]');
   await page.evaluate(() => [...document.querySelectorAll("button")].find((item) => /keep my data/i.test(item.textContent))?.click());
-  await page.waitForSelector('.builder-sidebar-v2 button[value="engineering"][aria-pressed="true"]');
-  await page.click('.builder-sidebar-v2 button[title="Green"]');
-  await page.waitForSelector('.builder-sidebar-v2 button[title="Green"].selected');
+  await page.waitForSelector('.workspace-design-templates button[value="engineering"][aria-pressed="true"]');
+  await page.click('.workspace-design-templates button[title="Green"]');
+  await page.waitForSelector('.workspace-design-templates button[title="Green"].selected');
   assert.deepEqual(errors, []);
   console.log("PASS: all 10 categories and colour options fit at 320/390/1024/1440/1920px; desktop preview stays on screen; category and colour selection work.");
 } finally {
