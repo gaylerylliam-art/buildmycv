@@ -195,7 +195,7 @@
 .hm-home { --hm-green:#0b5fa5; --hm-ink:#0f1e3d; --hm-muted:#3d4a60; --hm-line:#dce2e9; font-family:'Plus Jakarta Sans',Arial,sans-serif; }
 .hm-wrap { width:min(1200px,calc(100% - 48px)); }
 .hm-home h1,.hm-home h2,.hm-home h3 { letter-spacing:-.035em; }
-.hm-nav-inner { min-height:84px; }
+.hm-nav-inner { min-height:84px; padding-block:6px; }
 .hm-nav nav { gap:24px; }
 .hm-button { border-radius:12px; min-height:52px; font-size:15px; }
 .hm-logo { letter-spacing:-1px; }

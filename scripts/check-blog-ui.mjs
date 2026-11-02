@@ -73,7 +73,8 @@ try {
   await page.setViewport({width:1440,height:1000});await page.goto(base+'/blog',{waitUntil:'networkidle0'});
   await page.click('[aria-label="Switch to dark mode"]');
   assert(await page.$eval('html',element=>element.classList.contains('dark')));
-  assert.equal(await page.$eval('.bl-header .brand-logo-word',word=>getComputedStyle(word).color),'rgb(241, 243, 250)');
+  assert.equal(await page.$eval('.bl-header .brand-logo img',image=>image.getAttribute('src')),'/assets/buildmycvnow-logo.webp');
+  assert.equal(await page.$eval('.bl-header .brand-logo img',image=>getComputedStyle(image).filter),'none');
   await page.screenshot({path:path.join(output,'dark-desktop.png')});
   const targets=[...slugs].filter(slug=>slug!=='visa-status-on-cv-uae').concat('visa-status-on-cv-uae');
   for(const slug of targets){

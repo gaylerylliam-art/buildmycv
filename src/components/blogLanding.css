@@ -14,7 +14,7 @@
 .bl-utility span,.bl-utility a { display:inline-flex; align-items:center; gap:8px; }
 .bl-utility svg { width:14px; height:14px; }
 .bl-header { position:sticky; top:0; z-index:30; background:var(--bl-surface); border-bottom:1px solid var(--bl-line); }
-.bl-header-inner { display:flex; align-items:center; gap:28px; min-height:84px; }
+.bl-header-inner { display:flex; align-items:center; gap:28px; min-height:84px; padding-block:6px; }
 .bl-logo-link { flex:none; }
 .bl-header nav { display:flex; align-items:center; gap:26px; margin-left:auto; font-size:12px; font-weight:600; }
 .bl-header nav a { color:var(--bl-muted); padding:29px 0; border-bottom:2px solid transparent; }

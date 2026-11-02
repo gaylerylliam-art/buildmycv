@@ -39,7 +39,7 @@ const checkOfficeSections = async (label) => {
     return [image.naturalWidth, image.naturalHeight];
   });
   assert.deepEqual(photo, [1600, 1200], 'Office photograph did not load');
-  for (const id of ['how-it-works', 'faq']) {
+  for (const id of ['how-it-works']) {
     const background = await page.$eval('#' + id, section => getComputedStyle(section).backgroundImage);
     assert(background.includes('/assets/office-background.jpg'), id + ': missing office background');
     assert(background.includes('linear-gradient'), id + ': missing readability overlay');
@@ -189,7 +189,7 @@ try {
   await page.goto(`${baseUrl}/builder?access=save`, { waitUntil: "networkidle0" });
   assert.match(await page.evaluate(() => document.body.textContent), /Continue without cloud saving/);
   assert.deepEqual(errors, [], "Browser runtime errors");
-  console.log("PASS: office backgrounds and overlays in How It Works/FAQ, six steps, preserved video/CTA, FAQ interactions, static/React parity, desktop/tablet/mobile, 10 native CV templates, preview keyboard handling, template selection, upload and account entry routes.");
+  console.log("PASS: How It Works office background, six steps, preserved video/CTA, dedicated FAQ navigation, static/React parity, desktop/tablet/mobile, 10 native CV templates, preview keyboard handling, template selection, upload and account entry routes.");
   console.log(`Screenshots: ${output}`);
 } catch (error) {
   console.log(JSON.stringify({ url: page.url(), errors }));

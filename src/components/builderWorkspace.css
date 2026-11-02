@@ -20,7 +20,7 @@
 .builder-workspace :is(button,input,textarea,select,summary):focus-visible { outline: 2px solid var(--bw-accent); outline-offset: 3px; }
 .builder-workspace button:disabled { cursor: not-allowed; opacity: .45; }
 .builder-workspace > .builder-tabbar, .builder-workspace > .builder-guide-strip { display: none; }
-.builder-workspace .builder-topbar { position: relative; top: auto; flex: 0 0 auto; min-height: 68px; padding: 0 22px; gap: 20px; border-bottom: 1px solid var(--bw-line); background: var(--bw-rail); box-shadow: none; }
+.builder-workspace .builder-topbar { position: relative; top: auto; flex: 0 0 auto; min-height: 68px; height: auto; padding: 6px 22px; gap: 20px; border-bottom: 1px solid var(--bw-line); background: var(--bw-rail); box-shadow: none; }
 .builder-workspace .builder-logo { flex-shrink: 0; color: var(--bw-text); font-size: 19px; letter-spacing: 0; }
 .builder-workspace .builder-logo-icon { background: #167855; border-radius: 6px; }
 .builder-workspace .builder-logo > span:last-child { color: #31bb8e; background: transparent; padding: 0; }
