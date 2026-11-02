@@ -4,7 +4,7 @@ import { HOME_SUBHEAD, HOME_HOW_IT_WORKS_STEPS, HOME_VIDEO } from "../content/ho
 import "./homeLanding.css";
 import { useHomeMotion } from "../hooks/usePageMotion.js";
 import BrandLogo from "./BrandLogo.jsx";
-import Mascot, { cardMascotPositions } from "./Mascot.jsx";
+import Mascot, { cardMascotPositions, cardMascotImages } from "./Mascot.jsx";
 
 
 
@@ -93,7 +93,7 @@ function TemplatesGallery({ onStart }) {
           return <article className="hm-template" key={design.id} data-template-id={design.id} data-mascot-position={cardMascotPositions[index % cardMascotPositions.length]}>
           <button type="button" className="hm-template-preview" aria-label={`Preview ${design.category} CV`} onClick={(event) => { openerRef.current = event.currentTarget; setPreview(design); }}><MiniCv design={design} /><span className="hm-preview-label">Preview template <Symbol name="arrow" /></span></button>
           <div className="hm-template-info"><div className="hm-template-caption"><div><span className="hm-industry">{design.category}</span><h3>{design.name}</h3><p>{design.role}</p></div><img className="hm-industry-photo" src={design.industryPhoto.src} alt={design.industryPhoto.alt} width="400" height="300" loading="lazy" decoding="async" /></div></div>
-          <Mascot mood="welcoming" size="compact" placement="template-card" image="/assets/mascots/peekaboo-static.webp" sprite="/assets/mascots/peekaboo-wave.webp" spriteDelay={-(index % 5) * 1.3} />
+          <Mascot mood="welcoming" size="compact" placement="template-card" image={cardMascotImages[index % cardMascotImages.length]} />
           <BuilderLink onStart={onStart} query={`category=${design.id}&theme=${design.theme}&layout=${design.layout}`} className="hm-template-use">Use this template <Symbol name="arrow" /></BuilderLink>
         </article>;
         })}

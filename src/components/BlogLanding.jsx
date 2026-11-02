@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import BrandLogo from "./BrandLogo.jsx";
-import Mascot, { cardMascotPositions } from "./Mascot.jsx";
+import Mascot, { cardMascotPositions, cardMascotImages } from "./Mascot.jsx";
 import { Symbol } from "./HomeLanding.jsx";
 import { blogCatalog, blogTopics, formatBlogDate } from "../content/blogCatalog.js";
 import { useTheme } from "../hooks/useTheme.js";
@@ -13,7 +13,7 @@ function ArticleCard({ article, index }) {
     <a className="bl-article-image" href={`/blog/${article.slug}`} tabIndex={-1} aria-hidden="true"><img src={article.media.src} alt="" width="900" height="600" loading="lazy" /><span>{article.label}</span></a>
     <div className="bl-article-copy"><div className="bl-meta"><time dateTime={article.date}>{formatBlogDate(article.date)}</time><span>{article.readTime}</span></div>
       <h3><a href={`/blog/${article.slug}`}>{article.title}</a></h3><p>{article.excerpt}</p>
-      <Mascot mood="welcoming" size="compact" placement="topic-card" image="/assets/mascots/peekaboo-static.webp" sprite="/assets/mascots/peekaboo-wave.webp" spriteDelay={-(index % 5) * 1.3} />
+      <Mascot mood="welcoming" size="compact" placement="topic-card" image={cardMascotImages[index % cardMascotImages.length]} />
       <a className="bl-read" href={`/blog/${article.slug}`} aria-label={`Read ${article.title}`}>Read the guide <Symbol name="arrow" /></a>
     </div>
   </article>;

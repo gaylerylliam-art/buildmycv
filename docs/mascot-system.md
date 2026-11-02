@@ -72,3 +72,13 @@ Set `PREVIEW_URL=http://127.0.0.1:5186` and run
 The workflow test stubs contact and OTP services, and renders the PDF response
 locally with Chromium. It verifies actual PDF and DOCX files, not live email
 delivery, cloud persistence, or production backend availability. No emails are sent.
+
+## Uploaded card artwork (November 2026)
+
+Template and career-journal cards cycle through four user-supplied PNG designs,
+optimized as transparent 512px WebP assets: `card-top`, `card-side`, `card-bottom`,
+and `card-wave`. Their index mapping stays stable during filtering. The uploaded
+artwork uses the existing reveal, gentle tilt, and hover motion wrappers rather
+than the former wave/blink sprite, which would replace it with the old artwork.
+Offscreen/hidden-tab pausing, the homepage pause button, reduced-motion fallback,
+and print/export exclusion continue to use the shared mascot controller.
