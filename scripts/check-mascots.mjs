@@ -88,6 +88,9 @@ const geometry = async route => {
     for (const mascot of document.querySelectorAll('[data-mascot]')) {
       const r = mascot.getBoundingClientRect();
       if (!r.width || !r.height) continue;
+      const sizes = innerWidth <= 600 ? { badge: 44, compact: 72, small: 112, medium: 144, large: 176 } : { badge: 56, compact: 88, small: 152, medium: 208, large: 248 };
+      const size = Object.keys(sizes).find(name => mascot.classList.contains(`mascot-size-${name}`)) || 'medium';
+      if (parseFloat(getComputedStyle(mascot).getPropertyValue('--mascot-size')) !== sizes[size]) failures.push(`Incorrect ${size} mascot size`);
       if (mascot.getAttribute('aria-hidden') !== 'true' || mascot.querySelector('img').alt !== '') failures.push('Decorative semantics');
       if (r.left < -1 || r.right > innerWidth + 1 || Math.abs(r.width - r.height) > 1) failures.push('Mascot bounds');
       for (const control of document.querySelectorAll('a,button,input,textarea,select,summary')) {

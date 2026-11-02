@@ -7,10 +7,10 @@ import { useTheme } from "../hooks/useTheme.js";
 import "./blogLanding.css";
 
 const PAGE_SIZE = 9;
-function ArticleCard({ article }) {
+function ArticleCard({ article, index }) {
   return <article className="bl-article">
     <a className="bl-article-image" href={`/blog/${article.slug}`} tabIndex={-1} aria-hidden="true"><img src={article.media.src} alt="" width="900" height="600" loading="lazy" /><span>{article.label}</span></a>
-    <div className="bl-article-copy"><div className="bl-meta"><time dateTime={article.date}>{formatBlogDate(article.date)}</time><span>{article.readTime}</span></div>
+    <div className="bl-article-copy"><div className="bl-article-topline"><div className="bl-meta"><time dateTime={article.date}>{formatBlogDate(article.date)}</time><span>{article.readTime}</span></div><Mascot mood="welcoming" size="compact" placement="topic-card" image="/assets/mascots/peekaboo-static.webp" sprite="/assets/mascots/peekaboo-wave.webp" spriteDelay={-(index % 5) * 1.3} /></div>
       <h3><a href={`/blog/${article.slug}`}>{article.title}</a></h3><p>{article.excerpt}</p>
       <a className="bl-read" href={`/blog/${article.slug}`} aria-label={`Read ${article.title}`}>Read the guide <Symbol name="arrow" /></a>
     </div>
@@ -48,7 +48,7 @@ export default function BlogLanding() {
         <div className="bl-guides-heading"><div><p className="bl-eyebrow">MAKE YOUR NEXT MOVE</p><h2 id="bl-guides-title">Find your next good read</h2></div><div className="bl-view" role="group" aria-label="Article view"><button type="button" className="bl-icon" aria-label="Grid view" title="Grid view" aria-pressed={view === "grid"} onClick={() => setView("grid")}><Symbol name="grid" /></button><button type="button" className="bl-icon" aria-label="List view" title="List view" aria-pressed={view === "list"} onClick={() => setView("list")}><Symbol name="list" /></button></div></div>
         <div className="bl-toolbar"><nav className="bl-topics" aria-label="Filter articles by topic">{blogTopics.map(item => <button key={item.id} type="button" aria-pressed={item.id === topic} onClick={() => changeTopic(item.id)}>{item.label}</button>)}</nav><label className="bl-search"><Symbol name="search" /><span className="bl-sr-only">Search career guides</span><input type="search" placeholder="Search the journal" value={query} onChange={event => { setQuery(event.target.value); setLimit(PAGE_SIZE); }} /></label></div>
         <p className="bl-results" role="status" aria-live="polite">{filtered.length} {filtered.length === 1 ? "guide" : "guides"}{topic !== "all" ? ` in ${blogTopics.find(item => item.id === topic).label}` : " for your career"}{query.trim() ? ` matching "${query.trim()}"` : ""}</p>
-        {filtered.length ? <div className={`bl-articles bl-${view}`}>{filtered.slice(0, limit).map(article => <ArticleCard key={article.slug} article={article} />)}</div> : <div className="bl-empty"><Symbol name="search" /><h3>No guides found</h3><p>Try a different topic or search term.</p><button type="button" onClick={reset}>Clear filters</button></div>}
+        {filtered.length ? <div className={`bl-articles bl-${view}`}>{filtered.slice(0, limit).map((article, index) => <ArticleCard key={article.slug} article={article} index={index} />)}</div> : <div className="bl-empty"><Symbol name="search" /><h3>No guides found</h3><p>Try a different topic or search term.</p><button type="button" onClick={reset}>Clear filters</button></div>}
         {filtered.length > limit && <div className="bl-load"><span>Showing {Math.min(limit, filtered.length)} of {filtered.length} guides</span><button type="button" onClick={() => setLimit(value => value + PAGE_SIZE)}>More career guides <Symbol name="plus" /></button></div>}
         <noscript><div className="bl-all-links"><h3>All career guides</h3><ul>{blogCatalog.map(article => <li key={article.slug}><a href={`/blog/${article.slug}`}>{article.title}</a></li>)}</ul></div></noscript>
       </section>

@@ -1,0 +1,112 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import puppeteer from 'puppeteer-core';
+import { loadImage } from '@napi-rs/canvas';
+
+const base = process.env.PREVIEW_URL || 'http://127.0.0.1:5186';
+const output = path.resolve('artifacts/peekaboo-review');
+fs.mkdirSync(output, { recursive: true });
+const sprite = await loadImage('public/assets/mascots/peekaboo-wave.webp');
+const still = await loadImage('public/assets/mascots/peekaboo-static.webp');
+assert.deepEqual([sprite.width, sprite.height, still.width, still.height], [1024, 256, 256, 256]);
+const browser = await puppeteer.launch({ executablePath: process.env.BROWSER_PATH || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', headless: true, userDataDir: fs.mkdtempSync(path.join(output, 'browser-')) });
+const page = await browser.newPage(), errors = [];
+let blockSprite = false;
+page.on('pageerror', error => errors.push(error.message));
+await page.setRequestInterception(true);
+page.on('request', request => {
+  if (request.url().includes('/.netlify/scripts/rum')) return request.abort();
+  if (blockSprite && request.url().endsWith('/peekaboo-wave.webp')) return request.abort();
+  return (request.url().startsWith(base) && !request.url().includes('/.netlify/functions/')) || request.url().startsWith('data:') ? request.continue() : request.abort();
+});
+await page.evaluateOnNewDocument(() => localStorage.setItem('cvforall:cookie-notice', 'accepted'));
+const mascot = '.bl-article .mascot-placement-topic-card';
+const animation = `${mascot} .mascot-sprite`;
+const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
+const checkCards = async () => {
+  const problems = await page.$$eval('.bl-article', cards => cards.flatMap(card => {
+    const errors = [], mascot = card.querySelector('[data-mascot]');
+    if (!mascot || card.querySelectorAll('[data-mascot]').length !== 1) return ['Missing or duplicate mascot'];
+    if (mascot.getAttribute('aria-hidden') !== 'true' || [...mascot.querySelectorAll('img')].some(image => image.alt !== '')) errors.push('Decorative semantics');
+    const r = mascot.getBoundingClientRect();
+    if (r.width <= 0 || Math.abs(r.width - r.height) > 1 || r.left < 0 || r.right > innerWidth) errors.push('Unreserved/clipped mascot');
+    for (const node of card.querySelectorAll('a,h3,.bl-meta')) {
+      const c = node.getBoundingClientRect();
+      if (Math.min(r.right, c.right) - Math.max(r.left, c.left) > 1 && Math.min(r.bottom, c.bottom) - Math.max(r.top, c.top) > 1) errors.push('Text/link overlap');
+    }
+    return errors;
+  }));
+  assert.deepEqual(problems, []);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+};
+try {
+  await page.setViewport({ width: 1440, height: 1000 });
+  await page.setJavaScriptEnabled(false);
+  await page.goto(base + '/blog/', { waitUntil: 'networkidle0' });
+  assert.equal(await page.$$eval(mascot, items => items.length), 9);
+  assert.equal(await page.$eval(`${mascot} .mascot-image-current`, image => getComputedStyle(image).opacity), '1');
+  assert.equal(await page.$eval(animation, image => getComputedStyle(image).opacity), '0');
+  await checkCards();
+  await page.setJavaScriptEnabled(true);
+  await page.reload({ waitUntil: 'networkidle0' });
+  while (await page.$('.bl-load button')) await page.click('.bl-load button');
+  assert.equal(await page.$$eval(mascot, items => items.length), await page.$$eval('.bl-article', items => items.length));
+  await checkCards();
+  await page.$eval(mascot, node => node.scrollIntoView({ block: 'center' }));
+  await page.waitForFunction(selector => document.querySelector(selector)?.dataset.mascotActive === 'true' && document.querySelector(selector)?.dataset.mascotSpriteReady === 'true', {}, mascot);
+  assert.equal(await page.$eval(animation, image => getComputedStyle(image).animationPlayState), 'running');
+  const frames = await page.$eval(animation, async image => {
+    const animation = image.getAnimations()[0], frames = [];
+    animation.pause();
+    for (const time of [0, 6350, 6650, 8300]) {
+      animation.currentTime = time;
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      frames.push(getComputedStyle(image).transform);
+    }
+    animation.play();
+    return frames;
+  });
+  assert.equal(new Set(frames).size, 4, 'Wave and blink frames must differ');
+  await page.screenshot({ path: path.join(output, 'cards-desktop.png') });
+  await page.evaluate(() => scrollTo(0, 0));
+  await page.waitForFunction(selector => document.querySelector(selector)?.dataset.mascotActive === 'false', {}, mascot);
+  assert.equal(await page.$eval(animation, image => getComputedStyle(image).animationPlayState), 'paused');
+  await page.$eval(mascot, node => node.scrollIntoView({ block: 'center' }));
+  const other = await browser.newPage(); await other.bringToFront(); await pause(250);
+  assert.equal(await page.$eval(animation, image => getComputedStyle(image).animationPlayState), 'paused');
+  await other.close(); await page.bringToFront();
+  await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
+  await page.waitForFunction(selector => document.querySelector(selector)?.dataset.mascotReduced === 'true', {}, mascot);
+  assert.equal(await page.$eval(animation, image => getComputedStyle(image).animationName), 'none');
+  assert.equal(await page.$eval(animation, image => getComputedStyle(image).opacity), '0');
+  assert.equal(await page.$eval(`${mascot} .mascot-image-current`, image => getComputedStyle(image).opacity), '1');
+  for (const width of [1440, 768, 390, 320]) {
+    await page.setViewport({ width, height: 900 });
+    await page.goto(base + '/blog/', { waitUntil: 'networkidle0' });
+    await page.$eval('#guides', node => node.scrollIntoView({ block: 'start' }));
+    for (const view of ['Grid', 'List']) {
+      await page.click(`[aria-label="${view} view"]`);
+      await checkCards();
+      await page.screenshot({ path: path.join(output, `cards-${view.toLowerCase()}-${width}.png`) });
+    }
+  }
+  await page.click('[aria-label="Switch to dark mode"]');
+  await checkCards();
+  assert.equal(await page.$eval('.bl-header .brand-logo img', image => image.getAttribute('src')), '/assets/buildmycvnow-logo.webp');
+  await page.emulateMediaType('print');
+  assert.equal(await page.$eval(mascot, node => getComputedStyle(node).display), 'none');
+  await page.emulateMediaType('screen');
+  await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }]);
+  await page.setCacheEnabled(false); blockSprite = true;
+  await page.goto(base + '/blog/', { waitUntil: 'networkidle0' });
+  await page.$eval(mascot, node => node.scrollIntoView({ block: 'center' }));
+  await page.waitForFunction(selector => document.querySelector(selector)?.complete && !document.querySelector(selector)?.naturalWidth, {}, animation);
+  assert.equal(await page.$eval(animation, image => getComputedStyle(image).opacity), '0');
+  assert.equal(await page.$eval(`${mascot} .mascot-image-current`, image => getComputedStyle(image).opacity), '1');
+  assert.deepEqual(errors, []);
+  console.log('PASS: per-card wave/blink frames, static fallback, grid/list, pagination, responsive 320-1440px, hidden-tab/offscreen pause, reduced motion, dark theme, print exclusion and unchanged menu logo.');
+} catch (error) {
+  await page.screenshot({ path: path.join(output, 'failure.png') });
+  throw error;
+} finally { await browser.close(); }
