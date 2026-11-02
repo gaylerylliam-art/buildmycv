@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import BrandLogo from "./BrandLogo.jsx";
+import Mascot from "./Mascot.jsx";
 import { Symbol } from "./HomeLanding.jsx";
 import { faqGroups, faqQuestions } from "../content/faqContent.js";
 import "./faqLanding.css";
@@ -20,7 +21,7 @@ export default function FaqLanding() {
     <section className="fq-hero"><div className="fq-wrap">
       <nav className="fq-crumbs" aria-label="Breadcrumb"><a href="/">Home</a><span aria-hidden="true">/</span><span>FAQ</span></nav>
       <div className="fq-hero-grid"><div>
-      <span className="fq-eyebrow">Help centre</span><h1>Frequently asked questions</h1>
+      <span className="fq-eyebrow">Help centre</span><div className="mascot-heading"><h1>Frequently asked questions</h1><Mascot mood="thoughtful" size="small" placement="questions" eager /></div>
       <p className="fq-lead">Everything you need to know about building, improving and downloading your CV for free — for jobs in the UAE, the GCC and around the world.</p>
       <label className="fq-search"><Symbol name="search" /><span className="fq-sr-only">Search the FAQ</span><input type="search" placeholder="Search questions, e.g. photo, Arabic, Word" value={query} onChange={event => setQuery(event.target.value)} /></label>
       <div className="fq-chips"><span>✦ Free PDF &amp; Word</span><span>✦ No account needed</span><span>✦ AI help you control</span></div>
@@ -41,7 +42,7 @@ export default function FaqLanding() {
         <article className="fq-guide"><a className="fq-guide-image" href="/blog/how-to-write-a-cv-for-uae-jobs-in-2025" aria-hidden="true" tabIndex={-1}><img src="/assets/blog/cv-writing.jpg" alt="" width="1200" height="800" loading="lazy" decoding="async" /></a><div><span>CV writing</span><h3><a href="/blog/how-to-write-a-cv-for-uae-jobs-in-2025">Make every section of your CV count.</a></h3><p>A practical guide to your details, experience, skills and qualifications.</p><a className="fq-guide-link" href="/blog/how-to-write-a-cv-for-uae-jobs-in-2025">Read the CV writing guide <Symbol name="arrow" /></a><small><a href="https://www.pexels.com/photo/two-white-printer-papers-near-macbook-on-brown-surface-590016/" target="_blank" rel="noopener noreferrer">Lukas Blazek / Pexels</a></small></div></article>
         <article className="fq-guide"><a className="fq-guide-image" href="/blog/first-interview-tips-for-uae-job-seekers" aria-hidden="true" tabIndex={-1}><img src="/assets/blog/job-interview.jpg" alt="" width="1200" height="800" loading="lazy" decoding="async" /></a><div><span>Interview preparation</span><h3><a href="/blog/first-interview-tips-for-uae-job-seekers">Feel more prepared for the conversation.</a></h3><p>Plan your introduction, organise your documents, and prepare your questions.</p><a className="fq-guide-link" href="/blog/first-interview-tips-for-uae-job-seekers">Read the interview guide <Symbol name="arrow" /></a><small><a href="https://www.pexels.com/photo/candidate-having-an-interview-5439143/" target="_blank" rel="noopener noreferrer">Tima Miroshnichenko / Pexels</a></small></div></article>
       </div></section>
-      <section className="fq-bottom"><div><span className="fq-eyebrow">Ready for your next step?</span><h2>Your next application starts here.</h2><p>Choose a template, add your experience, and download your CV for free.</p></div><div><a className="fq-button fq-white" href="/builder">Build my CV — free <Symbol name="arrow" /></a><a className="fq-button fq-outline" href="/contact">Still have a question?</a></div></section>
+      <section className="fq-bottom"><div><span className="fq-eyebrow">Ready for your next step?</span><h2>Your next application starts here.</h2><p>Choose a template, add your experience, and download your CV for free.</p></div><Mascot mood="reassuring" size="small" placement="support" /><div><a className="fq-button fq-white" href="/builder">Build my CV — free <Symbol name="arrow" /></a><a className="fq-button fq-outline" href="/contact">Still have a question?</a></div></section>
     </main>
     <footer className="fq-footer"><div className="fq-wrap"><div className="fq-footer-top"><div><a href="/" aria-label="BuildMyCVNow home"><BrandLogo tone="inverse" /></a><p>Free CV builder for job seekers worldwide.</p><a href="mailto:info@buildmycvnow.com">info@buildmycvnow.com</a></div><nav aria-label="Footer navigation">{[["/about", "About"], ["/contact", "Contact"], ["/privacy", "Privacy"], ["/terms", "Terms"], ["/faq", "FAQ"], ["/blog", "Career tips"]].map(([href, label]) => <a key={href} href={href}>{label}</a>)}</nav></div><p className="fq-copyright">© {new Date().getFullYear()} BuildMyCVNow. All rights reserved.</p></div></footer>
   </div>;

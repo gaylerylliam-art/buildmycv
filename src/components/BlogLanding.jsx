@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import BrandLogo from "./BrandLogo.jsx";
+import Mascot from "./Mascot.jsx";
 import { Symbol } from "./HomeLanding.jsx";
 import { blogCatalog, blogTopics, formatBlogDate } from "../content/blogCatalog.js";
 import { useTheme } from "../hooks/useTheme.js";
@@ -33,7 +34,7 @@ export default function BlogLanding() {
       <div className="bl-header-actions"><button type="button" className="bl-icon" onClick={() => setMode(resolved === "dark" ? "light" : "dark")} aria-label={`Switch to ${resolved === "dark" ? "light" : "dark"} mode`} title={`Switch to ${resolved === "dark" ? "light" : "dark"} mode`}><Symbol name={resolved === "dark" ? "sun" : "moon"} /></button><a className="bl-button" href="/builder"><span className="bl-cta-long">Build my CV</span><span className="bl-cta-short">Build CV</span><Symbol name="arrow" /></a></div>
     </div></header>
     <main id="blog-content" className="bl-wrap">
-      <section className="bl-heading"><div><p className="bl-eyebrow">THE CAREER JOURNAL</p><h1>CV writing &amp; career tips</h1><p>Clear advice. Stronger applications. Your next chapter starts here.</p></div><a href="#guides">Explore the guides <Symbol name="arrow" /></a></section>
+      <section className="bl-heading"><div className="mascot-heading"><div><p className="bl-eyebrow">THE CAREER JOURNAL</p><h1>CV writing &amp; career tips</h1><p>Clear advice. Stronger applications. Your next chapter starts here.</p></div><Mascot mood="thoughtful" size="small" placement="advice" eager /></div><a href="#guides">Explore the guides <Symbol name="arrow" /></a></section>
       <div className="bl-feature-grid">
         <section className="bl-feature" aria-labelledby="bl-feature-title">
           <img src={featured.media.src} alt={featured.media.alt} width="1400" height="900" fetchPriority="high" />
@@ -51,7 +52,7 @@ export default function BlogLanding() {
         {filtered.length > limit && <div className="bl-load"><span>Showing {Math.min(limit, filtered.length)} of {filtered.length} guides</span><button type="button" onClick={() => setLimit(value => value + PAGE_SIZE)}>More career guides <Symbol name="plus" /></button></div>}
         <noscript><div className="bl-all-links"><h3>All career guides</h3><ul>{blogCatalog.map(article => <li key={article.slug}><a href={`/blog/${article.slug}`}>{article.title}</a></li>)}</ul></div></noscript>
       </section>
-      <section className="bl-bottom"><div><p className="bl-eyebrow">FROM READING TO READY</p><h2>Give your next application a head start.</h2><p>Choose a template, add your experience, and download your CV for free.</p></div><a className="bl-button" href="/builder">Build my CV <Symbol name="arrow" /></a></section>
+      <section className="bl-bottom"><div><p className="bl-eyebrow">FROM READING TO READY</p><h2>Give your next application a head start.</h2><p>Choose a template, add your experience, and download your CV for free.</p></div><Mascot mood="excited" size="small" placement="finale" /><a className="bl-button" href="/builder">Build my CV <Symbol name="arrow" /></a></section>
     </main>
     <footer className="bl-footer"><div className="bl-wrap"><div><a href="/" aria-label="BuildMyCVNow home"><BrandLogo tone="inverse" /></a><p>Free CV tools. More confident next steps.</p></div><nav aria-label="Footer navigation">{[["/about","About"],["/contact","Contact"],["/privacy","Privacy"],["/terms","Terms"],["/faq","FAQ"]].map(([href,label])=><a key={href} href={href}>{label}</a>)}<a href="/blog/rss.xml">RSS feed</a></nav></div></footer>
   </div>;

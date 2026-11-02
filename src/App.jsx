@@ -6,6 +6,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { categories, layouts, themes } from "./data/categories";
 import HomeLanding from "./components/HomeLanding";
 import BrandLogo from "./components/BrandLogo.jsx";
+import Mascot from "./components/Mascot.jsx";
 import { cvTextLines } from "./lib/cvText.js";
 import FaqLanding from "./components/FaqLanding.jsx";
 import BlogLanding from "./components/BlogLanding.jsx";
@@ -853,12 +854,14 @@ function PageShell({ children, onStart }) {
   );
 }
 
-function StaticHero({ title, description }) {
+function StaticHero({ title, description, mood = 'welcoming' }) {
   return (
     <section className="border-b border-slate-200 bg-slate-50 px-5 py-14">
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto max-w-7xl mascot-heading mascot-page-heading">
+        <div>
         <h1 className="max-w-3xl text-4xl font-black leading-tight text-slate-950 sm:text-5xl">{title}</h1>
         <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-600">{description}</p>
+        </div><Mascot mood={mood} placement="page-entrance" eager />
       </div>
     </section>
   );
@@ -908,7 +911,7 @@ function ContactPage({ onStart }) {
         title="Contact"
         description="Contact BuildMyCVNow with questions, feedback, and support requests through a Supabase-powered contact form."
       />
-      <StaticHero title="Contact BuildMyCVNow" description="Send us your questions, feedback, or partnership message. We keep the form simple and mobile friendly." />
+      <StaticHero mood="reassuring" title="Contact BuildMyCVNow" description="Send us your questions, feedback, or partnership message. We keep the form simple and mobile friendly." />
       <ContactSection />
     </PageShell>
   );
@@ -921,7 +924,7 @@ function PrivacyPage({ onStart }) {
         title="Privacy Policy"
         description="BuildMyCVNow privacy policy covering CV content, Supabase storage, Google AdSense cookies, and user rights."
       />
-      <StaticHero title="Privacy Policy" description="This policy explains what BuildMyCVNow may collect and how user CV data should be handled." />
+      <StaticHero mood="reassuring" title="Privacy Policy" description="This policy explains what BuildMyCVNow may collect and how user CV data should be handled." />
       <section className="mx-auto max-w-4xl px-5 py-14">
         <PolicyCard title="Privacy Policy">
           <p><strong>Last updated:</strong> June 13, 2026.</p>
@@ -946,7 +949,7 @@ function TermsPage({ onStart }) {
         title="Terms of Use"
         description="BuildMyCVNow terms covering user responsibilities, CV ownership, and employment guarantee disclaimers."
       />
-      <StaticHero title="Terms of Use" description="Please use BuildMyCVNow honestly and review your CV carefully before sending it to employers." />
+      <StaticHero mood="reassuring" title="Terms of Use" description="Please use BuildMyCVNow honestly and review your CV carefully before sending it to employers." />
       <section className="mx-auto max-w-4xl px-5 py-14">
         <PolicyCard title="Terms of Use">
           <p><strong>Last updated:</strong> June 13, 2026.</p>
@@ -987,7 +990,7 @@ function BlogArticlePage({ onStart }) {
           <span>-</span>
           <span>{new Date(article.date).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}</span>
         </p>
-        <h1 className="mt-3 text-4xl font-black leading-tight text-slate-950 sm:text-5xl">{article.title}</h1>
+        <div className="mascot-heading"><h1 className="mt-3 text-4xl font-black leading-tight text-slate-950 sm:text-5xl">{article.title}</h1><Mascot mood="thoughtful" size="small" placement="advice" eager /></div>
         {photography.image && <figure className="my-6">
           <img className="block h-auto w-full rounded-lg" src={photography.image} alt={photography.imageAlt} width={photography.imageWidth} height={photography.imageHeight} fetchPriority="high" />
           <figcaption className="mt-2 text-xs text-slate-600">Photo: <a href={photography.imageSource} target="_blank" rel="noopener noreferrer" className="underline">{photography.imageCredit}</a></figcaption>
@@ -998,6 +1001,7 @@ function BlogArticlePage({ onStart }) {
           <AdBanner compact label="Google AdSense blog article ad" slot="5555555555" />
           {article.content.slice(splitIndex).map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
         </div>
+        <Mascot mood="confident" size="small" placement="article-milestone" />
         {related.length > 0 && (
           <section className="mt-12 border-t border-slate-200 pt-8">
             <h2 className="text-2xl font-black text-slate-950">Related career tips</h2>
@@ -2266,10 +2270,10 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
   };
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4">
-      <div className="w-full max-w-lg rounded bg-white p-6 shadow-soft">
+      <div className="mascot-dialog w-full max-w-lg rounded bg-white p-6 shadow-soft">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-black text-slate-950">{title}</h2>
+            <div className="mascot-heading"><h2 className="text-2xl font-black text-slate-950">{title}</h2><Mascot mood={verified ? 'confident' : 'reassuring'} size="badge" placement="download-guidance" /></div>
             <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
           </div>
           <button type="button" onClick={onClose} className="text-slate-500" aria-label="Close download dialog" title="Close"><Icon name="plus" className="h-5 w-5 rotate-45" /></button>
@@ -2486,10 +2490,10 @@ function AuthModal({ onClose, onUrgentMode, onRegisteredMode }) {
   };
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4">
-      <div className="w-full max-w-md rounded bg-white p-6 shadow-soft">
+      <div className="mascot-dialog w-full max-w-md rounded bg-white p-6 shadow-soft">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-black text-slate-950">{mode === "signin" ? "Login" : "Create account"}</h2>
+            <div className="mascot-heading"><h2 className="text-2xl font-black text-slate-950">{mode === "signin" ? "Login" : "Create account"}</h2><Mascot mood="reassuring" size="badge" placement="account" animation="none" /></div>
             <p className="mt-2 text-sm leading-6 text-slate-600">Choose quick download-only mode or sign in to save CVs online.</p>
           </div>
           <button type="button" onClick={onClose} className="text-slate-500" aria-label="Close sign-in dialog" title="Close"><Icon name="plus" className="h-5 w-5 rotate-45" /></button>
@@ -3524,7 +3528,7 @@ function CoverLetterBuilder({
     <div className={`builder-shell mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)] gap-5 px-5 py-6 lg:grid-cols-[0.9fr_1.1fr_0.65fr] ${mode === "dark" ? "text-white" : ""}`}>
       <aside className="builder-panel min-w-0 space-y-5 rounded bg-white p-5 shadow-sm ring-1 ring-slate-200">
         <div className="rounded border border-green-200 bg-green-50 p-4">
-          <h2 className="font-black text-green-900">Create Cover Letter</h2>
+          <div className="mascot-heading"><h2 className="font-black text-green-900">Create Cover Letter</h2><Mascot mood="focused" size="compact" placement="cover-editor" /></div>
           <p className="mt-2 text-sm leading-6 text-green-900">
             This letter matches your selected CV category and uses your CV details. You can edit every paragraph before downloading for free.
           </p>
@@ -3593,7 +3597,7 @@ function CoverLetterBuilder({
         )}
         {BUILDER_ADS_ENABLED && <AdBanner compact label="Google AdSense cover letter builder ad" slot="6666666666" />}
         {downloaded && (
-          <div className="rounded border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-900">Cover letter download confirmed. You can also download your CV for free.</div>
+          <div className="mascot-success rounded border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-900"><Mascot mood="excited" size="badge" placement="download-success" /><span>Cover letter download confirmed. You can also download your CV for free.</span></div>
         )}
       </aside>
     </div>
@@ -4193,7 +4197,7 @@ function CVBuilderApp({ onHome }) {
           />
           <section className="builder-form-panel-v2" id={`workspace-panel-${workspaceMode}`} role="tabpanel" aria-labelledby={`workspace-tab-${workspaceMode}`} tabIndex={0}>
             <div className="builder-form-inner">
-              <div className="workspace-editor-heading"><span>{workspaceMode === "content" ? "Content" : workspaceMode === "design" ? "Appearance" : "Review & refine"}</span><h1 id="builder-editor-heading" tabIndex={-1}>{editorTitle}</h1></div>
+              <div className="workspace-editor-heading mascot-workspace-heading"><span>{workspaceMode === "content" ? "Content" : workspaceMode === "design" ? "Appearance" : "Review & refine"}</span><h1 id="builder-editor-heading" tabIndex={-1}>{editorTitle}</h1><Mascot mood={workspaceMode === 'design' ? 'thoughtful' : workspaceMode === 'ai' && completion.percent >= 80 ? 'confident' : 'focused'} size="compact" placement="editor" /></div>
               <div hidden={workspaceMode !== "design"} className="workspace-design-templates">
                 <BuilderTemplateDock categoryId={categoryId} onCategory={handleCategory} themeId={themeId} onTheme={setThemeId} />
               </div>
@@ -4319,7 +4323,7 @@ function CVBuilderApp({ onHome }) {
         )}
         {downloaded && (
           <div className="download-success-stack">
-            <div className="rounded border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-900 shadow-lg">Download confirmed. Your CV file is ready.</div>
+            <div className="mascot-success rounded border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-900 shadow-lg"><Mascot mood="excited" size="badge" placement="download-success" /><span>Download confirmed. Your CV file is ready.</span></div>
             {showSharePrompt && (
               <div>
                 <ShareTool moment="post_download" />

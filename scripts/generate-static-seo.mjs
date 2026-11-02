@@ -28,18 +28,20 @@ const appShell = fs.readFileSync(path.join(dist, "index.html"), "utf8");
 const appAssets = (appShell.match(/<script\b[^>]*type="module"[^>]*>[\s\S]*?<\/script>|<link\b[^>]*rel="stylesheet"[^>]*>/g) || []).join("\n");
 
 // Render the same component used by the app so first-load HTML cannot drift.
-const renderer = await createServer({ root, configFile: false, server: { middlewareMode: true }, optimizeDeps: { noDiscovery: true, entries: [] }, appType: "custom" });
-let homepageMarkup, blogMarkup, faqMarkup, brandMarkup, inverseBrandMarkup;
+const renderer = await createServer({ root, configFile: false, server: { middlewareMode: true, watch: null }, optimizeDeps: { noDiscovery: true, entries: [] }, appType: "custom" });
+let homepageMarkup, blogMarkup, faqMarkup, brandMarkup, inverseBrandMarkup, mascotMarkup;
 try {
   const { default: HomeLanding } = await renderer.ssrLoadModule("/src/components/HomeLanding.jsx");
   const { default: BrandLogo } = await renderer.ssrLoadModule("/src/components/BrandLogo.jsx");
   const { default: BlogLanding } = await renderer.ssrLoadModule("/src/components/BlogLanding.jsx");
   const { default: FaqLanding } = await renderer.ssrLoadModule("/src/components/FaqLanding.jsx");
+  const { default: Mascot } = await renderer.ssrLoadModule("/src/components/Mascot.jsx");
   homepageMarkup = renderToString(React.createElement(HomeLanding));
   blogMarkup = renderToString(React.createElement(BlogLanding));
   faqMarkup = renderToString(React.createElement(FaqLanding));
   brandMarkup = renderToString(React.createElement(BrandLogo));
   inverseBrandMarkup = renderToString(React.createElement(BrandLogo, { tone: "inverse" }));
+  mascotMarkup = (mood, placement = 'static-intro', size = 'small') => renderToString(React.createElement(Mascot, { mood, placement, size, eager: placement === 'static-intro' }));
 } finally {
   await renderer.close();
 }
@@ -113,6 +115,24 @@ function writePage(route, html) {
   routes.add(route);
 }
 
+function decorateStaticPage(body, canonical) {
+  const route = new URL(canonical).pathname;
+  const mood = /^\/(contact|privacy|terms|404)(\/|$)/.test(route) ? 'reassuring'
+    : route.startsWith('/cv/') ? 'focused'
+    : /^\/(blog|templates|cv-examples)(\/|$)/.test(route) ? 'thoughtful' : 'welcoming';
+  const intro = mascotMarkup(mood);
+  // These are controlled templates emitted below, not user-supplied HTML.
+  const anchor = body.includes('<article class="article">') ? '<article class="article">' : '<div class="wrap">';
+  let decorated = body.replace(anchor, anchor + intro);
+  if (route.startsWith('/cv/')) {
+    decorated = decorated.replace('<section class="cta-band card">', '<section class="cta-band card">' + mascotMarkup('excited', 'static-cta'));
+  }
+  if (['/templates', '/cv-examples', '/for-ofw'].includes(route)) {
+    decorated = decorated.replace('</main>', `<div class="wrap mascot-static-finale">${mascotMarkup('confident', 'milestone')}</div></main>`);
+  }
+  return decorated;
+}
+
 function layout({ title, description, canonical, body, jsonLd = [], type = "website", image = `${baseUrl}/assets/og-image.jpg`, imageWidth = 1200, imageHeight = 630, interactive = false }) {
   const schemas = Array.isArray(jsonLd) ? jsonLd : [jsonLd];
   return `<!doctype html>
@@ -140,10 +160,12 @@ function layout({ title, description, canonical, body, jsonLd = [], type = "webs
   <script>window.plausible=window.plausible||function(){(window.plausible.q=window.plausible.q||[]).push(arguments)}</script>
   <style>${criticalCss()}</style>
   ${interactive ? appAssets : '<link rel="stylesheet" href="/assets/brand.css" />'}
+  ${interactive ? '' : '<link rel="stylesheet" href="/assets/mascot.css" />'}
+  <script defer src="/assets/mascot-motion.js"></script>
   ${schemas.filter(Boolean).map((schema) => `<script type="application/ld+json">${JSON.stringify(schema)}</script>`).join("\n")}
 </head>
 <body>
-${interactive ? `<div id="root">${body}</div>` : `${header()}${body}${footer()}`}
+${interactive ? `<div id="root">${body}</div>` : `${header()}<div class="mascot-static-content">${decorateStaticPage(body, canonical)}</div>${footer()}`}
 </body>
 </html>`;
 }
@@ -328,8 +350,8 @@ function footer() {
   return `<footer class="footer"><div class="wrap"><a href="/" aria-label="BuildMyCVNow home">${inverseBrandMarkup}</a><p>Free CV Builder for Job Seekers Worldwide</p><p><a href="/about">About</a> · <a href="/contact">Contact</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/faq">FAQ</a> · <a href="/blog">Blog</a></p><p>© 2026 BuildMyCVNow. All rights reserved.</p></div></footer>`;
 }
 
-function ctaCard(text = "Build your free CV") {
-  return `<div class="card" style="background:#ecfdf5;border-color:#bbf7d0"><h3>${text}</h3><p>Create an ATS-friendly CV for local, remote, and international jobs in minutes. No sign-up required.</p><a class="cta" href="/builder">Build My CV Now - Free</a></div>`;
+function ctaCard(text = "Build your free CV", showMascot = true) {
+  return `<div class="card" style="background:#ecfdf5;border-color:#bbf7d0">${showMascot ? mascotMarkup('excited', 'static-cta') : ''}<h3>${text}</h3><p>Create an ATS-friendly CV for local, remote, and international jobs in minutes. No sign-up required.</p><a class="cta" href="/builder">Build My CV Now - Free</a></div>`;
 }
 
 
@@ -473,7 +495,7 @@ function writeCvPage(job, city) {
     canonical: `${baseUrl}${url}`,
     image: `${baseUrl}/assets/og/cv-${job.slug}.jpg`,
     jsonLd: [schema, { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [{ "@type": "ListItem", position: 1, name: "Home", item: baseUrl }, { "@type": "ListItem", position: 2, name: "CV Examples", item: `${baseUrl}/cv-examples` }, { "@type": "ListItem", position: 3, name: `${job.title} CV ${city.name}`, item: `${baseUrl}${url}` }] }],
-    body: `<main class="section"><div class="wrap"><h1>${job.title} CV Example for ${city.name} Jobs (${year} Guide)</h1><p class="lead">${job.intro.replace("Gulf", `${city.name} and Gulf`)}</p>${ctaCard(`Build your ${job.title} CV free in 5 minutes`)}<h2>Example CV summary for a ${job.title}</h2><div class="cv-snippet">${job.sampleSummary}</div><h2>Key skills for ${job.title} jobs in ${city.name}</h2><div class="chips">${job.skills.map((skill) => `<span class="chip">${skill}</span>`).join("")}</div><h2>What to include</h2><ul>${job.duties.map((duty) => `<li>${duty}</li>`).join("")}</ul><h2>Example achievement bullets</h2><ul>${job.sampleBullets.map((bullet) => `<li>${bullet}</li>`).join("")}</ul><h2>${job.title} salary in ${city.name}</h2><p>Typical monthly salary range: <strong>${job.salaryRange}</strong>. Salaries vary by company, experience, language ability, certifications, commission, accommodation, transport, and visa package.</p><h2>CV tips for ${job.title} applications</h2><ul>${job.tips.map((tip) => `<li>${tip}</li>`).join("")}</ul><h2>FAQ</h2>${faqs.map(([q, a]) => `<details><summary>${q}</summary><p>${a}</p></details>`).join("")}<h2>Related roles</h2><p>${related.map((item) => `<a href="/cv/${item.slug}-${city.slug}">${item.title}</a>`).join(" · ")} · <a href="/blog">Career tips blog</a></p><section class="cta-band card"><h2>Build your ${job.title} CV now</h2><a class="cta" href="/builder?role=${job.slug}&city=${city.slug}">Use this free template</a></section></div></main>`,
+    body: `<main class="section"><div class="wrap"><h1>${job.title} CV Example for ${city.name} Jobs (${year} Guide)</h1><p class="lead">${job.intro.replace("Gulf", `${city.name} and Gulf`)}</p>${ctaCard(`Build your ${job.title} CV free in 5 minutes`, false)}<h2>Example CV summary for a ${job.title}</h2><div class="cv-snippet">${job.sampleSummary}</div><h2>Key skills for ${job.title} jobs in ${city.name}</h2><div class="chips">${job.skills.map((skill) => `<span class="chip">${skill}</span>`).join("")}</div><h2>What to include</h2><ul>${job.duties.map((duty) => `<li>${duty}</li>`).join("")}</ul><h2>Example achievement bullets</h2><ul>${job.sampleBullets.map((bullet) => `<li>${bullet}</li>`).join("")}</ul><h2>${job.title} salary in ${city.name}</h2><p>Typical monthly salary range: <strong>${job.salaryRange}</strong>. Salaries vary by company, experience, language ability, certifications, commission, accommodation, transport, and visa package.</p><h2>CV tips for ${job.title} applications</h2><ul>${job.tips.map((tip) => `<li>${tip}</li>`).join("")}</ul><h2>FAQ</h2>${faqs.map(([q, a]) => `<details><summary>${q}</summary><p>${a}</p></details>`).join("")}<h2>Related roles</h2><p>${related.map((item) => `<a href="/cv/${item.slug}-${city.slug}">${item.title}</a>`).join(" · ")} · <a href="/blog">Career tips blog</a></p><section class="cta-band card"><h2>Build your ${job.title} CV now</h2><a class="cta" href="/builder?role=${job.slug}&city=${city.slug}">Use this free template</a></section></div></main>`,
   }));
 }
 

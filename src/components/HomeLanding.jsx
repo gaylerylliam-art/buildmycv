@@ -4,6 +4,7 @@ import { HOME_SUBHEAD, HOME_HOW_IT_WORKS_STEPS, HOME_VIDEO } from "../content/ho
 import "./homeLanding.css";
 import { useHomeMotion } from "../hooks/usePageMotion.js";
 import BrandLogo from "./BrandLogo.jsx";
+import Mascot from "./Mascot.jsx";
 
 
 
@@ -84,7 +85,7 @@ function TemplatesGallery({ onStart }) {
   return <section className="hm-section hm-templates" id="templates" aria-labelledby="hm-templates-title">
     <div className="hm-wrap">
       <div className="hm-section-heading"><div><span className="hm-eyebrow">Free templates</span><MotionHeading id="hm-templates-title">Pick a template made for your job.</MotionHeading><p>Choose your industry, explore the layout, and make it your own.</p></div>
-        <span className="hm-count" aria-live="polite">{matching.length} templates</span>
+        <div className="mascot-heading"><span className="hm-count" aria-live="polite">{matching.length} templates</span><Mascot mood="thoughtful" size="small" placement="templates" /></div>
       </div>
       <div className="hm-category-tabs" role="group" aria-label="Filter templates by job category"><button type="button" aria-pressed={filter === "all"} onClick={() => setFilter("all")}>All</button>{designs.map((design) => <button type="button" key={design.id} aria-pressed={filter === design.id} onClick={() => setFilter(design.id)}>{design.category}</button>)}</div><div className={`hm-template-grid ${showAll || filter !== "all" ? "hm-template-grid-expanded" : ""}`}>
         {visible.map((design) => <article className="hm-template" key={design.id}>
@@ -118,7 +119,7 @@ export default function HomeLanding({ onStart }) {
   const motionRoot = useHomeMotion(motionPaused);
   const [example, setExample] = useState("hospitality");
   const selected = designs.find((design) => design.id === example);
-  return <div className="hm-home" ref={motionRoot}><a className="hm-skip" href="#top">Skip to content</a>
+  return <div className="hm-home" ref={motionRoot} data-mascot-paused={motionPaused ? 'true' : 'false'}><a className="hm-skip" href="#top">Skip to content</a>
     <header className="hm-nav"><div className="hm-wrap hm-nav-inner"><a className="hm-logo" href="/" aria-label="BuildMyCVNow home"><BrandLogo /></a><nav aria-label="Main navigation"><a href="#improve">Improve my CV</a><a href="#templates">Templates</a><a href="#free-download">Free download</a><a href="/faq">FAQ</a><a href="/blog">Career tips</a></nav><BuilderLink onStart={onStart} className="hm-button hm-primary hm-nav-start">Build my CV — free <Symbol name="arrow" /></BuilderLink></div></header>
     <main id="top">
       <section className="hm-hero hm-hero-professionals">
@@ -129,8 +130,8 @@ export default function HomeLanding({ onStart }) {
         <div className="hm-wrap hm-hero-grid">
         <div className="hm-hero-copy"><span className="hm-eyebrow"><Symbol name="globe" /> 100% free · No account needed · PDF & Word</span><h1 aria-label="Make your CV job-ready today."><span className="hm-headline-line" aria-hidden="true">{["Make", "your", "CV"].map(word => <React.Fragment key={word}><span className="hm-word-mask"><span className="hm-word-inner">{word}</span></span>{" "}</React.Fragment>)}</span><span className="hm-rotating-line" aria-hidden="true"><mark><span className="hm-rotating-word">job-ready</span></mark></span>{" "}<span className="hm-word-mask" aria-hidden="true"><span className="hm-word-inner">today.</span></span></h1><p>{HOME_SUBHEAD}</p>
           <div className="hm-actions hm-hero-actions"><BuilderLink onStart={onStart} query="start=upload" className="hm-button hm-primary"><Symbol name="upload"/> Improve my CV</BuilderLink><a href="#templates" className="hm-button hm-secondary">Browse templates <Symbol name="arrow"/></a></div><a className="hm-download-explainer" href="#free-download">How do free downloads work? <Symbol name="arrow"/></a>
-          <div className="hm-trust"><span><Symbol name="check" /> Free PDF & Word</span><span><Symbol name="check" /> No sign-up</span><span><Symbol name="check" /> AI writing help</span></div>
-          <p className="hm-otp-note">Quick email verification unlocks downloads.</p>
+          <div className="mascot-hero-support"><Mascot mood="welcoming" size="compact" placement="introduction" eager /><div><div className="hm-trust"><span><Symbol name="check" /> Free PDF & Word</span><span><Symbol name="check" /> No sign-up</span><span><Symbol name="check" /> AI writing help</span></div>
+          <p className="hm-otp-note">Quick email verification unlocks downloads.</p></div></div>
         </div>
       </div></section>
       <div className="hm-quick-steps"><div className="hm-wrap">{[["Upload or pick a template", "Your old CV or a fresh start"], ["Improve with AI", "Clearer wording, your approval"], ["Download free", "PDF or Word, ready to send"]].map(([title, text], index) => <div key={title}><span className="hm-step-number">{index + 1}</span><span><strong>{title}</strong><small>{text}</small></span></div>)}<a href="#how-it-works"><Symbol name="play"/> Watch the walkthrough</a></div></div>
@@ -141,7 +142,7 @@ export default function HomeLanding({ onStart }) {
         <div className="hm-walkthrough"><div className="hm-video-frame"><video controls playsInline preload="none" poster={HOME_VIDEO.poster.replace("https://buildmycvnow.com", "")} aria-label={HOME_VIDEO.name}><source src={HOME_VIDEO.url} type="video/mp4" />Your browser cannot play this video. <a href={HOME_VIDEO.url}>Watch the walkthrough</a>.</video></div><h3>Watch the walkthrough</h3><p>Choose a template, add your details, improve your CV with AI, and download your PDF.</p><BuilderLink className="hm-button hm-primary" onStart={onStart}>Start my free CV <Symbol name="arrow" /></BuilderLink></div>
         <ol className="hm-timeline">{HOME_HOW_IT_WORKS_STEPS.map((step, index) => <li key={step.title}><span className="hm-step-number">{index + 1}</span><div><h3>{step.title}</h3><p>{step.body}</p></div></li>)}</ol>
       </div></div></section>
-      <div className="hm-big-band" aria-hidden="true"><div className="hm-big-line">Free CV builder • Free templates • Free download</div><div className="hm-big-line hm-outline">Upload • Improve • Download</div></div><section className="hm-final"><div className="hm-wrap"><div><span className="hm-eyebrow">Ready when you are</span><h2>Your next job starts with a better CV.</h2><p>Free templates. AI help you control. Free PDF & Word download.</p></div><div className="hm-final-actions"><BuilderLink onStart={onStart} query="start=upload" className="hm-button hm-primary">Improve my existing CV <Symbol name="arrow" /></BuilderLink><a href="#templates" className="hm-button hm-secondary">Browse templates</a></div></div></section>
+      <div className="hm-big-band" aria-hidden="true"><div className="hm-big-line">Free CV builder • Free templates • Free download</div><div className="hm-big-line hm-outline">Upload • Improve • Download</div></div><section className="hm-final"><div className="hm-wrap"><div><Mascot mood="excited" placement="finale" /><br /><span className="hm-eyebrow">Ready when you are</span><h2>Your next job starts with a better CV.</h2><p>Free templates. AI help you control. Free PDF & Word download.</p></div><div className="hm-final-actions"><BuilderLink onStart={onStart} query="start=upload" className="hm-button hm-primary">Improve my existing CV <Symbol name="arrow" /></BuilderLink><a href="#templates" className="hm-button hm-secondary">Browse templates</a></div></div></section>
     </main>
     <footer className="hm-footer"><div className="hm-wrap"><div><a className="hm-logo" href="/" aria-label="BuildMyCVNow home"><BrandLogo tone="inverse" /></a><p>Free CV builder for job seekers worldwide.</p><a href="mailto:info@buildmycvnow.com">info@buildmycvnow.com</a></div><nav aria-label="Footer navigation">{[["/about", "About"], ["/contact", "Contact"], ["/privacy", "Privacy"], ["/terms", "Terms"], ["/faq", "FAQ"], ["/blog", "Career tips"]].map(([href, label]) => <a key={href} href={href}>{label}</a>)}</nav><p className="hm-copyright">Copyright {new Date().getFullYear()} BuildMyCVNow. All rights reserved.</p></div></footer>
   </div>;
