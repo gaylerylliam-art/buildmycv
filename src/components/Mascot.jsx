@@ -4,7 +4,7 @@ export const mascotMoods = ['welcoming', 'thoughtful', 'focused', 'confident', '
 
 export default function Mascot({ mood = 'welcoming', size = 'medium', placement = 'inline', animation = 'auto', image, eager = false }) {
   const safeMood = mascotMoods.includes(mood) ? mood : 'welcoming';
-  const source = image || `/assets/mascots/${safeMood}.webp`;
+  const source = image || `/assets/mascots/${safeMood}.webp?v=cutout`;
   const [images, setImages] = useState({ active: source, previous: null });
   useEffect(() => {
     if (source === images.active) return;

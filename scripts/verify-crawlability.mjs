@@ -80,7 +80,8 @@ for (const item of faqQuestions) {
   if (!faqText.includes(item.question)) failures.push(`/faq: missing question "${item.question}"`);
 }
 for (const match of homeHtml.matchAll(/\b(?:src|href)=["']\/assets\/([^"']+)["']/g)) {
-  const assetPath = path.join(dist, "assets", match[1]);
+  const assetUrl = new URL(`/assets/${match[1]}`, baseUrl);
+  const assetPath = path.join(dist, decodeURIComponent(assetUrl.pathname).replace(/^\//, ""));
   if (!fs.existsSync(assetPath)) failures.push(`/: referenced asset /assets/${match[1]} is missing`);
 }
 

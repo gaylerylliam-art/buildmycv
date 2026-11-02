@@ -5,12 +5,12 @@ import { createCanvas, loadImage } from '@napi-rs/canvas';
 const folder = process.argv[2];
 if (!folder) throw new Error('Provide the folder containing the six approved PNGs.');
 const sources = {
-  welcoming: 'BuildMyCVNow friendly welcome logo-1.png',
-  thoughtful: 'Thoughtful BuildMyCVNow logo variant-3.png',
-  focused: 'Focused BuildMyCVNow logo-2.png',
-  confident: 'Confident thumbs-up BuildMyCVNow logo-5.png',
-  excited: 'Excited BuildMyCVNow logo with raised fists-4.png',
-  reassuring: 'Reassuring BuildMyCVNow logo with caring pose-6.png',
+  welcoming: 'Transparent boy and BuildMyCVNow cutout-3.png',
+  thoughtful: 'Boy with BuildMyCVNow Nameplate-2.png',
+  focused: 'Isolated boy with BuildMyCVNow nameplate-1.png',
+  confident: 'Boy character with BuildMyCVNow nameplate-4.png',
+  excited: 'Transparent boy cutout with BuildMyCVNow nameplate-5.png',
+  reassuring: 'Transparent boy cutout with BuildMyCVNow-6.png',
 };
 const output = new URL('../public/assets/mascots/', import.meta.url);
 await fs.mkdir(output, { recursive: true });

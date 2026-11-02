@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import puppeteer from 'puppeteer-core';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
 import { buildCvHtml, buildCvDocxBlob } from '../src/utils/downloads.js';
@@ -10,6 +11,7 @@ const base = process.env.PREVIEW_URL || 'http://127.0.0.1:5184';
 const output = path.resolve('artifacts/mascot-review');
 fs.mkdirSync(output, { recursive: true });
 const moods = ['welcoming', 'thoughtful', 'focused', 'confident', 'excited', 'reassuring'];
+assert.equal(createHash('sha256').update(fs.readFileSync('public/assets/buildmycvnow-logo.webp')).digest('hex'), '71f356d206308f6ccb2bae069e383fa50a5eece06797302308d1e89afb17c54a', 'Original globe-backed menu logo changed');
 for (const mood of moods) {
   const image = await loadImage(`public/assets/mascots/${mood}.webp`);
   assert.deepEqual([image.width, image.height], [512, 512]);
@@ -81,6 +83,8 @@ const geometry = async route => {
   await page.$$eval('[data-mascot] img', images => Promise.all(images.map(image => { image.loading = 'eager'; return image.decode(); })));
   const problems = await page.evaluate(() => {
     const failures = [];
+    const menuLogo = document.querySelector('header .brand-logo img,.nav .brand-logo img');
+    if (menuLogo?.getAttribute('src') !== '/assets/buildmycvnow-logo.webp') failures.push('Original menu logo replaced');
     for (const mascot of document.querySelectorAll('[data-mascot]')) {
       const r = mascot.getBoundingClientRect();
       if (!r.width || !r.height) continue;

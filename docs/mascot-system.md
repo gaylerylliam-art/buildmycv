@@ -1,7 +1,8 @@
 # Mascot System
 
-The six supplied images are decorative companions, not part of a CV template.
-The existing header/footer logo remains unchanged.
+The six supplied globe-free cutouts are decorative companions, not part of a CV template.
+The existing globe-backed header/footer logo remains unchanged. In-page image
+URLs use the `v=cutout` revision to refresh previously cached mascot images.
 
 ## Components And Assets
 
