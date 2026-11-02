@@ -23,6 +23,15 @@ poses; `peekaboo-static.webp` remains visible before loading, without JavaScript
 on image failure, and with reduced motion. The existing observer pauses the
 sprite offscreen, when the tab is hidden, or when motion is explicitly disabled.
 Article titles, photos, filters, pagination and grid/list links are unchanged.
+Card placements cycle through top, middle-right, bottom-left and bottom-right
+using the article's original catalog index, so filtering does not move an
+article's mascot. Reserved CSS grid areas prevent text/link overlap. Narrow
+list views give middle-right mascots a separate right-aligned row for legibility.
+The homepage gallery uses the same pattern for every template, including
+expanded and filtered results. Its top mascots sit above the CV preview;
+middle-right mascots sit in a reserved row between preview and caption; bottom
+mascots sit beside the selection link. No mascot overlays the actual CV image,
+industry photograph, caption or preview/selection controls.
 
 The built-in image generation tool derived the frames from the supplied
 `Peekaboo Mascot Behind a Website Card.png`. Generation prompt: preserve the

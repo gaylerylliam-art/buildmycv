@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 export const mascotMoods = ['welcoming', 'thoughtful', 'focused', 'confident', 'excited', 'reassuring'];
+export const cardMascotPositions = ['top', 'middle-right', 'bottom-left', 'bottom-right'];
 
 export default function Mascot({ mood = 'welcoming', size = 'medium', placement = 'inline', animation = 'auto', image, sprite, spriteDelay = 0, eager = false }) {
   const safeMood = mascotMoods.includes(mood) ? mood : 'welcoming';

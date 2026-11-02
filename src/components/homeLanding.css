@@ -77,7 +77,18 @@
 .hm-builder-example { display: block; width: auto; height: 100%; max-width: 100%; aspect-ratio: 794 / 1123; object-fit: contain; box-shadow: 0 3px 10px #1c332515; }
 .hm-dialog-document .hm-builder-example { width: 100%; height: auto; max-width: 794px; margin-inline: auto; }
 .hm-preview-label svg { width: 15px; height: 15px; }
-.hm-template-info { padding: 18px 20px; }
+.hm-template { --hm-card-mascot-size:88px; display:grid; grid-template-columns:minmax(0,1fr) calc(var(--hm-card-mascot-size) + 40px); grid-template-rows:auto auto 1fr auto; grid-template-areas:"mascot mascot" "preview preview" "info info" "use use"; }
+.hm-template > .hm-template-preview { grid-area:preview; min-width:0; }
+.hm-template-info { grid-area:info; min-width:0; padding:18px 20px 0; }
+.hm-template > .site-mascot { grid-area:mascot; justify-self:end; margin:12px 20px 0; }
+.hm-template[data-mascot-position="middle-right"] { grid-template-areas:"preview preview" "mascot mascot" "info info" "use use"; }
+.hm-template[data-mascot-position="bottom-left"] { grid-template-columns:calc(var(--hm-card-mascot-size) + 40px) minmax(0,1fr); grid-template-rows:auto 1fr auto; grid-template-areas:"preview preview" "info info" "mascot use"; }
+.hm-template[data-mascot-position="bottom-right"] { grid-template-rows:auto 1fr auto; grid-template-areas:"preview preview" "info info" "use mascot"; }
+.hm-template:is([data-mascot-position="bottom-left"],[data-mascot-position="bottom-right"]) > .site-mascot { align-self:end; margin-bottom:18px; }
+.hm-template[data-mascot-position="bottom-left"] > .site-mascot { justify-self:start; }
+.hm-template > .hm-template-use { grid-area:use; min-width:0; align-self:end; margin:14px 20px 18px; gap:8px; }
+.hm-template[data-mascot-position="bottom-left"] > .hm-template-use { margin-left:0; }
+.hm-template[data-mascot-position="bottom-right"] > .hm-template-use { margin-right:0; }
 .hm-template-caption { display: grid; grid-template-columns: minmax(0, 1fr) 88px; gap: 12px; align-items: start; min-height: 100px; }
 .hm-template-caption > div { min-width: 0; }
 .hm-template-caption .hm-industry-photo { display: block; width: 88px; height: 88px; object-fit: cover; border-radius: 6px; }
@@ -188,6 +199,7 @@
 @media (max-width: 600px) { .hm-wrap { width: calc(100% - 32px); } .hm-nav-inner { min-height: 64px; gap: 8px; } .hm-logo { font-size: 17px; } .hm-logo > span:first-child:not(.hm-logo-now) { width: 28px; height: 32px; margin-right: 6px; } .hm-nav-start { min-height: 44px; font-size: 12px; padding: 8px 12px; } .hm-nav-start svg { width: 15px; } .hm-hero { padding: 30px 0 24px; } .hm-hero-grid { grid-template-columns: 1fr; gap: 28px; } .hm-hero-copy h1 { font-size: 40px; max-width: 430px; margin-top: 14px; } .hm-hero-copy > p:first-of-type { margin-top: 16px; line-height: 1.6; } .hm-actions { margin-top: 20px; display: grid; grid-template-columns: 1fr; } .hm-trust { gap: 8px 12px; margin-top: 18px; } .hm-hero-example { justify-self: center; width: min(100%, 330px); } .hm-home h2 { font-size: 28px; } .hm-template-grid { grid-template-columns: 1fr; gap: 20px; } .hm-template-preview { height: 350px; padding: 24px 44px 0; } .hm-template-info { padding: 16px 20px; } .hm-how-grid, .hm-tools-grid, .hm-faq-grid, .hm-access-grid { grid-template-columns: 1fr; } .hm-how-grid { gap: 38px; } .hm-benefit-strip span { font-size: 11px; justify-content: start; } .hm-secondary-tools article { gap: 14px; } .hm-final .hm-wrap { flex-direction: column; align-items: start; gap: 22px; } .hm-home .hm-final h2 { font-size: 28px; } .hm-footer nav { gap: 16px; } .hm-modal-backdrop { padding: 12px; } .hm-preview-dialog { max-height: calc(100dvh - 24px); padding: 16px; } .hm-dialog-document { padding: 10px; } .hm-dialog-document .hm-mini-cv { font-size: 9px; } .hm-dialog-document .hm-mini-content { padding: 14px; } .hm-dialog-document .hm-mini-cv header { padding: 14px; } .hm-dialog-document .hm-mini-cv header strong { font-size: 19px; } .hm-dialog-document .hm-mini-cv header span { font-size: 11px; } .hm-dialog-document .hm-mini-cv small { font-size: 8px; } .hm-dialog-document .hm-mini-content h4 { font-size: 9px; } }
 @media (prefers-reduced-motion: reduce) { .hm-home *, .hm-home *::before, .hm-home *::after { transition: none !important; scroll-behavior: auto !important; } }
 @media (max-width: 600px) {
+  .hm-template { --hm-card-mascot-size:72px; }
   .hm-template-grid:not(.hm-template-grid-expanded) > article:nth-child(n+5) { display: none; }
   .hm-template-preview { height: 280px; }
 }
