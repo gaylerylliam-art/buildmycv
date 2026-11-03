@@ -2,14 +2,17 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer-core';
-import { loadImage } from '@napi-rs/canvas';
+import { createCanvas, loadImage } from '@napi-rs/canvas';
 
 const base = process.env.PREVIEW_URL || 'http://127.0.0.1:5186';
 const output = path.resolve('artifacts/peekaboo-review');
 fs.mkdirSync(output, { recursive: true });
-for (const name of ['card-top', 'card-side', 'card-bottom', 'card-wave']) {
+for (const name of ['character-top', 'character-side', 'character-bottom', 'character-wave']) {
   const image = await loadImage(`public/assets/mascots/${name}.webp`);
   assert.deepEqual([image.width, image.height], [512, 512]);
+  const canvas = createCanvas(512, 512), context = canvas.getContext('2d');
+  context.drawImage(image, 0, 0);
+  assert.equal(context.getImageData(0, 0, 1, 1).data[3], 0, `${name}: transparent background missing`);
 }
 const browser = await puppeteer.launch({ executablePath: process.env.BROWSER_PATH || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', headless: true, userDataDir: fs.mkdtempSync(path.join(output, 'browser-')) });
 const page = await browser.newPage(), errors = [];
@@ -85,7 +88,7 @@ try {
   assert.equal(await page.$eval(`${mascot} .mascot-image-current`, image => getComputedStyle(image).opacity), '1');
   assert.equal(await page.$('.bl-article .mascot-sprite'), null);
   await checkCards();
-  assert.deepEqual(await page.$$eval(`${mascot} .mascot-image-current`, images => [...new Set(images.map(image => image.getAttribute('src')))]), ['card-top', 'card-side', 'card-bottom', 'card-wave'].map(name => `/assets/mascots/${name}.webp`));
+  assert.deepEqual(await page.$$eval(`${mascot} .mascot-image-current`, images => [...new Set(images.map(image => image.getAttribute('src')))]), ['character-top', 'character-side', 'character-bottom', 'character-wave'].map(name => `/assets/mascots/${name}.webp`));
   await page.setJavaScriptEnabled(true);
   await page.reload({ waitUntil: 'networkidle0' });
   while (await page.$('.bl-load button')) await page.click('.bl-load button');

@@ -73,12 +73,12 @@ The workflow test stubs contact and OTP services, and renders the PDF response
 locally with Chromium. It verifies actual PDF and DOCX files, not live email
 delivery, cloud persistence, or production backend availability. No emails are sent.
 
-## Uploaded card artwork (November 2026)
+## Character-only card artwork (November 2026)
 
-Template and career-journal cards cycle through four user-supplied PNG designs,
-optimized as transparent 512px WebP assets: `card-top`, `card-side`, `card-bottom`,
-and `card-wave`. Their index mapping stays stable during filtering. The uploaded
-artwork uses the existing reveal, gentle tilt, and hover motion wrappers rather
-than the former wave/blink sprite, which would replace it with the old artwork.
-Offscreen/hidden-tab pausing, the homepage pause button, reduced-motion fallback,
-and print/export exclusion continue to use the shared mascot controller.
+Template and career-journal cards cycle through four transparent 512px WebP
+character cutouts: character-top, character-side, character-bottom and
+character-wave. These are edits of the four supplied peeking mascot references,
+with all browser frames, plaques and lettering removed. The four card positions
+and source mapping stay stable during filtering. Existing reveal, gentle tilt,
+hover movement, offscreen/hidden-tab pausing, homepage pause control, reduced
+motion and print/export exclusion use the shared mascot controller.

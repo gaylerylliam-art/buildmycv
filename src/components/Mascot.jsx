@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 
 export const mascotMoods = ['welcoming', 'thoughtful', 'focused', 'confident', 'excited', 'reassuring'];
 export const cardMascotPositions = ['top', 'middle-right', 'bottom-left', 'bottom-right'];
-export const cardMascotImages = ['card-top', 'card-side', 'card-bottom', 'card-wave'].map(name => `/assets/mascots/${name}.webp`);
+export const cardMascotImages = ['character-top', 'character-side', 'character-bottom', 'character-wave'].map(name => `/assets/mascots/${name}.webp`);
 
 export default function Mascot({ mood = 'welcoming', size = 'medium', placement = 'inline', animation = 'auto', image, sprite, spriteDelay = 0, eager = false }) {
   const safeMood = mascotMoods.includes(mood) ? mood : 'welcoming';
