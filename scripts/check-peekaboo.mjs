@@ -22,7 +22,7 @@ page.on('request', request => {
   if (request.url().includes('/.netlify/scripts/rum')) return request.abort();
   return (request.url().startsWith(base) && !request.url().includes('/.netlify/functions/')) || request.url().startsWith('data:') ? request.continue() : request.abort();
 });
-await page.evaluateOnNewDocument(() => localStorage.setItem('cvforall:cookie-notice', 'accepted'));
+await page.evaluateOnNewDocument(() => localStorage.setItem('bmcv:analytics-consent:v1', 'rejected'));
 const mascot = '.bl-article .mascot-placement-topic-card';
 const animation = `${mascot} .mascot-life`;
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));

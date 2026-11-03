@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { CV_FIELDS, validateUploadFile, validateCvImport, toBuilderImport } from '../lib/cvImportSchema.js';
 import { startImportSession, uploadCv, organizeCv, clearImportSession } from '../lib/cvImportClient.js';
 import './cvImporter.css';
+import { trackEvent } from '../utils/analytics.js';
 const steps = ['Uploading', 'Extracting text', 'Organizing information', 'Ready for review'];
 const longFields = new Set(['summary', 'education', 'skills', 'certifications', 'languages', 'projects', 'awards', 'volunteerExperience', 'references', 'unclassifiedContent', 'professionalLinks']);
 const workFields = {
@@ -169,6 +170,7 @@ export default function ExistingCVImporter({
       });
       if (accepted === false) return;
       importedIds.current.add(source.importId);
+      trackEvent("cv_import_completed", { format: file?.name?.toLowerCase().endsWith(".pdf") ? "pdf" : file?.name?.toLowerCase().endsWith(".docx") ? "docx" : "image" });
       setImported(true);
       setConfirmed(false);
       setError('');

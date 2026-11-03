@@ -17,7 +17,7 @@ await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "reduc
 await page.setRequestInterception(true);
 page.on("request", (request) => request.url().startsWith(baseUrl) || request.url().startsWith("data:") ? request.continue() : request.abort());
 page.on("pageerror", (error) => errors.push(error.message));
-await page.evaluateOnNewDocument(() => localStorage.setItem("cvforall:cookie-notice", "accepted"));
+await page.evaluateOnNewDocument(() => localStorage.setItem('bmcv:analytics-consent:v1', 'rejected'));
 const clickText = async (text) => {
   const found = await page.evaluate((text) => {
     const element = [...document.querySelectorAll("button")].find((item) => item.textContent.trim() === text);

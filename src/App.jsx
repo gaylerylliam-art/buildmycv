@@ -6,6 +6,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { categories, layouts, themes } from "./data/categories";
 import HomeLanding from "./components/HomeLanding";
 import BrandLogo from "./components/BrandLogo.jsx";
+import { privacySections } from "./content/privacyContent.js";
 import Mascot from "./components/Mascot.jsx";
 import { cvTextLines } from "./lib/cvText.js";
 import FaqLanding from "./components/FaqLanding.jsx";
@@ -46,7 +47,7 @@ import {
   HOME_VIDEO,
 } from "./content/homepage";
 import { downloadCoverLetterFile, downloadCvFile } from "./utils/downloads";
-import { initAnalytics, trackEvent } from "./utils/analytics";
+import { initAnalytics, trackEvent, trackEventOnce, trackPageView } from "./utils/analytics";
 import { getRecaptchaToken, isRecaptchaConfigured } from "./utils/recaptcha";
 import {
   deleteUserCv,
@@ -454,7 +455,7 @@ const DRAFT_STORAGE_KEY = "cvforall:draft:v1";
 const AUTH_REDIRECT_URL = import.meta.env.VITE_AUTH_REDIRECT_URL || "https://buildmycvnow.com/#builder";
 const GOOGLE_AUTH_ENABLED = import.meta.env.VITE_ENABLE_GOOGLE_AUTH === "true";
 const ADSENSE_CLIENT_ID = import.meta.env.VITE_ADSENSE_CLIENT_ID || "";
-const ADSENSE_ENABLED = /^ca-pub-\d+$/.test(ADSENSE_CLIENT_ID);
+const ADSENSE_ENABLED = import.meta.env.VITE_ADSENSE_ENABLED === "true" && /^ca-pub-\d+$/.test(ADSENSE_CLIENT_ID);
 const BUILDER_ADS_ENABLED = import.meta.env.VITE_ENABLE_BUILDER_ADS === "true";
 
 const completenessFields = [
@@ -598,6 +599,7 @@ function AdBanner({ label = "Google AdSense ad space", compact = false, slot = "
       // Ad blockers or unapproved AdSense accounts can block this script.
     }
   }, []);
+  if (!ADSENSE_ENABLED) return null;
   return (
     <div className={`mx-auto w-full max-w-6xl rounded border border-dashed border-slate-300 bg-white p-2 text-center text-slate-500 ${compact ? "min-h-20 text-sm" : "min-h-24"}`}>
       <ins
@@ -612,31 +614,7 @@ function AdBanner({ label = "Google AdSense ad space", compact = false, slot = "
   );
 }
 
-function CookieNotice() {
-  const [visible, setVisible] = useState(() => localStorage.getItem("cvforall:cookie-notice") !== "accepted");
-  if (!visible) return null;
-  return (
-    <div className="fixed inset-x-3 bottom-3 z-50 mx-auto max-w-[calc(100vw-1.5rem)] rounded border border-slate-200 bg-white p-4 shadow-2xl md:max-w-4xl">
-      <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
-        <p className="max-w-full break-words text-sm font-semibold leading-6 text-slate-700">
-          BuildMyCVNow uses essential browser storage for drafts and may use Google Analytics, reCAPTCHA, and AdSense cookies when those services are enabled. Read the Privacy Policy for details.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <Link to="/privacy" className="rounded border border-slate-300 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">Privacy</Link>
-          <button
-            onClick={() => {
-              localStorage.setItem("cvforall:cookie-notice", "accepted");
-              setVisible(false);
-            }}
-            className="rounded bg-green-600 px-4 py-2 text-sm font-black text-white hover:bg-green-700"
-          >
-            I understand
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+function CookieNotice() { return null; }
 
 function Header({ onStart }) {
   const [scrolled, setScrolled] = useState(false);
@@ -927,15 +905,8 @@ function PrivacyPage({ onStart }) {
       <StaticHero mood="reassuring" title="Privacy Policy" description="This policy explains what BuildMyCVNow may collect and how user CV data should be handled." />
       <section className="mx-auto max-w-4xl px-5 py-14">
         <PolicyCard title="Privacy Policy">
-          <p><strong>Last updated:</strong> June 13, 2026.</p>
-          <p>BuildMyCVNow may collect the information needed to create, verify, save, and download CVs, including name, email address, phone number, country, nationality, visa status, job history, education, skills, uploaded CV text, profile photos, saved drafts, saved CV versions, and download verification details.</p>
-          <p><strong>Download-only mode:</strong> Users can create and download a CV without creating an account. The CV data stays in browser state or localStorage and is not intentionally saved to Supabase. Before download, the user may verify by email OTP. The email address entered for OTP may be processed by EmailJS only to send or verify the code. Users should download their file before closing the browser because no online copy is kept in this mode.</p>
-          <p><strong>Registered account mode:</strong> Users can sign up or sign in with email/password, passwordless email OTP, or another enabled Supabase Auth provider. Registered users can save and manage up to 10 CVs online. Saved CVs, drafts, and related profile photo data may be stored with Supabase Auth, Supabase Database, and Supabase Storage under the authenticated account.</p>
-          <p><strong>Retention:</strong> Online saved CVs are stored for up to 15 days. After that period, saved CV records are designed to expire and may be automatically deleted. Users are responsible for downloading and keeping their own copies before the storage period ends. Browser-local drafts may also be lost if the user clears browser storage, changes device, or uses private browsing.</p>
-          <p><strong>Service providers:</strong> BuildMyCVNow may use Supabase for authentication, database, and storage; EmailJS for email messages and email OTP; OpenAI or similar AI services for optional writing assistance and CV parsing; Google Analytics for traffic measurement; Google reCAPTCHA for spam protection; and Google AdSense for advertising. These providers may process limited data needed to deliver their service.</p>
-          <p><strong>Advertising and cookies:</strong> Ad areas support the free service. When Google AdSense, Google Analytics, or reCAPTCHA are enabled, Google and its partners may use cookies or similar technologies to measure traffic, protect forms, serve ads, and personalize ads where allowed by law and user settings.</p>
-          <p><strong>User rights:</strong> Users can request access, correction, export, or deletion of stored personal data by using the Contact page. Users should avoid uploading or entering unnecessary sensitive information, passport numbers, national ID numbers, medical details, or private family information unless they intentionally choose to include it in their CV.</p>
-          <p><strong>Security:</strong> BuildMyCVNow uses account-based access controls and Supabase Row Level Security for saved CV records. No online service can guarantee perfect security, so users should keep their login details private and download their own records for safekeeping.</p>
+          {privacySections.map(([title, text]) => <section key={title}><h2 className="mt-5 text-xl font-bold">{title}</h2><p>{text}</p></section>)}
+          <p><Link to="/contact">Contact us about privacy</Link>. <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">Google Privacy Policy</a>.</p>
         </PolicyCard>
       </section>
     </PageShell>
@@ -3296,10 +3267,10 @@ function ShareTool({ moment = "download" }) {
   const [copied, setCopied] = useState(false);
   const shareText = "I made my CV free with this - no sign-up, ATS-friendly, built for job seekers worldwide:";
   const urls = {
-    native: "https://buildmycvnow.com?utm_source=share&utm_medium=native",
-    whatsapp: "https://buildmycvnow.com?utm_source=whatsapp&utm_medium=share",
-    facebook: "https://buildmycvnow.com?utm_source=facebook&utm_medium=share",
-    copylink: "https://buildmycvnow.com?utm_source=copylink&utm_medium=share",
+    native: "https://buildmycvnow.com?utm_source=share&utm_medium=referral",
+    whatsapp: "https://buildmycvnow.com?utm_source=whatsapp&utm_medium=social",
+    facebook: "https://buildmycvnow.com?utm_source=facebook&utm_medium=social",
+    copylink: "https://buildmycvnow.com?utm_source=copylink&utm_medium=referral",
   };
   const shareNative = async () => {
     logEvent("share_clicked", { channel: "native", moment });
@@ -3672,7 +3643,6 @@ function CVBuilderApp({ onHome }) {
       metadata: {
         template_id: categoryId,
         target_country: cv.targetCountry || "",
-        target_job_title: cv.targetJobTitle || "",
         source_page: activeBuilder === "cover" ? "cover-letter-builder" : "cv-builder",
         ...metadata,
       },
@@ -3750,11 +3720,14 @@ function CVBuilderApp({ onHome }) {
     logEvent("seo_page_to_builder", { role, city: city || "" });
   }, []);
   useEffect(() => {
-    recordCvEvent("builder_started", { start_option: cv.builderStartOption || "scratch" });
+    const measureStart = () => trackEventOnce("builder_started", { start_option: cv.builderStartOption || "scratch" });
+    measureStart();
+    window.addEventListener("bmcv-analytics-consent", measureStart);
     if (!sessionStorage.getItem("bmcv_draft_created")) {
       sessionStorage.setItem("bmcv_draft_created", "1");
       recordCvEvent("cv_draft_created", { mode: cloudSavingEnabled ? "registered" : "local" });
     }
+    return () => window.removeEventListener("bmcv-analytics-consent", measureStart);
   }, []);
   useEffect(() => {
     initAnalytics();
@@ -4106,7 +4079,6 @@ function CVBuilderApp({ onHome }) {
     }
     const trackedCvId = await ensureTrackedCvRecord();
     await downloadCvFile(cv, type, theme, layoutId);
-    logEvent("cv_downloaded", { format: type, templateId: categoryId, completionPercent: completion.percent });
     recordCvEvent("download_completed", { format: type, completion_percent: completion.percent, cv_id: trackedCvId });
     if (trackedCvId) await markCvDownloaded(trackedCvId);
     setDownloaded(true);
@@ -4411,7 +4383,8 @@ export default function App() {
 
   useEffect(() => {
     initAnalytics();
-  }, []);
+    trackPageView();
+  }, [location.pathname]);
   useEffect(() => {
     if (!location.hash || isBuilderHash) return;
     const targetId = location.hash.slice(1);

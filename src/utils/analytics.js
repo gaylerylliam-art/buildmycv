@@ -1,21 +1,5 @@
-const measurementId = import.meta.env.VITE_GA_MEASUREMENT_ID;
-
-export function initAnalytics() {
-  if (!measurementId || window.gtag) return;
-  const script = document.createElement("script");
-  script.async = true;
-  script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
-  document.head.appendChild(script);
-
-  window.dataLayer = window.dataLayer || [];
-  window.gtag = function gtag() {
-    window.dataLayer.push(arguments);
-  };
-  window.gtag("js", new Date());
-  window.gtag("config", measurementId, { anonymize_ip: true });
-}
-
-export function trackEvent(action, params = {}) {
-  if (!window.gtag) return;
-  window.gtag("event", action, params);
-}
+// One consent-aware runtime serves the React app and static articles.
+export function initAnalytics() { if (typeof window !== 'undefined') window.BuildMyCVAnalytics?.init(); }
+export function trackEvent(action, params = {}) { return typeof window !== 'undefined' && window.BuildMyCVAnalytics?.track(action, params); }
+export function trackEventOnce(action, params = {}) { return typeof window !== 'undefined' && window.BuildMyCVAnalytics?.trackOnce(action, params); }
+export function trackPageView() { if (typeof window !== 'undefined') window.BuildMyCVAnalytics?.page(); }

@@ -11,7 +11,7 @@ let blockMotion = false;
 page.on('pageerror',e=>errors.push(e.message));
 await page.setRequestInterception(true);
 page.on('request',r=> { if (blockMotion && r.url().includes('ScrollTrigger-')) return r.abort(); return r.url().startsWith(base)||r.url().startsWith('data:') ? r.continue():r.abort(); });
-await page.evaluateOnNewDocument(()=>localStorage.setItem('cvforall:cookie-notice','accepted'));
+await page.evaluateOnNewDocument(()=>localStorage.setItem('bmcv:analytics-consent:v1', 'rejected'));
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
 try {
   await page.setViewport({width:1440,height:1000});

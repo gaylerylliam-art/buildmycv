@@ -19,7 +19,7 @@ for (const tab of [page, snapshot]) {
   await tab.setRequestInterception(true);
   tab.on("request", (request) => request.url().startsWith(baseUrl) || request.url().startsWith("data:") || request.url() === "about:blank" ? request.continue() : request.abort());
 }
-await page.evaluateOnNewDocument(() => localStorage.setItem("cvforall:cookie-notice", "accepted"));
+await page.evaluateOnNewDocument(() => localStorage.setItem('bmcv:analytics-consent:v1', 'rejected'));
 const cssFiles = (await fs.readdir("dist/assets")).filter((file) => file.endsWith(".css"));
 const css = (await Promise.all(cssFiles.map((file) => fs.readFile(path.join("dist/assets", file), "utf8")))).join("\n");
 try {
