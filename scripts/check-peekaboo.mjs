@@ -2,14 +2,20 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer-core';
-import { loadImage } from '@napi-rs/canvas';
+import { createCanvas, loadImage } from '@napi-rs/canvas';
 
 const base = process.env.PREVIEW_URL || 'http://127.0.0.1:5186';
 const output = path.resolve('artifacts/peekaboo-review');
 fs.mkdirSync(output, { recursive: true });
-const sprite = await loadImage('public/assets/mascots/peekaboo-wave.webp');
-const still = await loadImage('public/assets/mascots/peekaboo-static.webp');
-assert.deepEqual([sprite.width, sprite.height, still.width, still.height], [1024, 256, 256, 256]);
+for (const position of ['top', 'middle-right', 'bottom-left', 'bottom-right']) {
+  const sprite = await loadImage(`public/assets/mascots/card-${position}-v2-wave.webp`);
+  const still = await loadImage(`public/assets/mascots/card-${position}-v2-static.webp`);
+  assert.deepEqual([sprite.width, sprite.height, still.width, still.height], [1024, 256, 256, 256]);
+  const canvas = createCanvas(1024, 256), context = canvas.getContext('2d');
+  context.drawImage(sprite, 0, 0);
+  assert.equal(context.getImageData(0, 0, 1, 1).data[3], 0, `${position}: transparency lost`);
+  assert(!Buffer.from(context.getImageData(0, 0, 256, 256).data).equals(Buffer.from(context.getImageData(768, 0, 256, 256).data)), `${position}: blink frame missing`);
+}
 const browser = await puppeteer.launch({ executablePath: process.env.BROWSER_PATH || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', headless: true, userDataDir: fs.mkdtempSync(path.join(output, 'browser-')) });
 const page = await browser.newPage(), errors = [];
 let blockSprite = false;
@@ -17,7 +23,7 @@ page.on('pageerror', error => errors.push(error.message));
 await page.setRequestInterception(true);
 page.on('request', request => {
   if (request.url().includes('/.netlify/scripts/rum')) return request.abort();
-  if (blockSprite && request.url().endsWith('/peekaboo-wave.webp')) return request.abort();
+  if (blockSprite && /\/card-[a-z-]+-v2-wave\.webp$/.test(request.url())) return request.abort();
   return (request.url().startsWith(base) && !request.url().includes('/.netlify/functions/')) || request.url().startsWith('data:') ? request.continue() : request.abort();
 });
 await page.evaluateOnNewDocument(() => localStorage.setItem('cvforall:cookie-notice', 'accepted'));
@@ -36,6 +42,7 @@ const checkCards = async () => {
       if (Math.min(r.right, c.right) - Math.max(r.left, c.left) > 1 && Math.min(r.bottom, c.bottom) - Math.max(r.top, c.top) > 1) errors.push('Text/link overlap');
     }
     const position = card.dataset.mascotPosition;
+    if (mascot.querySelector('.mascot-image-current').getAttribute('src') !== `/assets/mascots/card-${position}-v2-static.webp` || mascot.querySelector('.mascot-sprite').getAttribute('src') !== `/assets/mascots/card-${position}-v2-wave.webp`) errors.push('Wrong article pose artwork');
     const title = card.querySelector('h3').getBoundingClientRect();
     const summary = card.querySelector('.bl-article-copy > p').getBoundingClientRect();
     const link = card.querySelector('.bl-read').getBoundingClientRect();
@@ -62,6 +69,7 @@ const checkTemplates = async () => {
       if (Math.min(r.right, c.right) - Math.max(r.left, c.left) > 1 && Math.min(r.bottom, c.bottom) - Math.max(r.top, c.top) > 1) errors.push('Template content overlap');
     }
     const position = card.dataset.mascotPosition;
+    if (mascot.querySelector('.mascot-image-current').getAttribute('src') !== `/assets/mascots/card-${position}-v2-static.webp` || mascot.querySelector('.mascot-sprite').getAttribute('src') !== `/assets/mascots/card-${position}-v2-wave.webp`) errors.push('Wrong template pose artwork');
     const preview = card.querySelector('.hm-template-preview').getBoundingClientRect();
     const caption = card.querySelector('.hm-template-info').getBoundingClientRect();
     const link = card.querySelector('.hm-template-use').getBoundingClientRect();

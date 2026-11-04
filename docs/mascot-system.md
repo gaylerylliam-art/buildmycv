@@ -19,7 +19,7 @@ The editor grid reserves the compact width; the menu logo has independent sizing
 
 Every article card uses the shared `Mascot` with a four-frame `sprite` and a
 staggered `spriteDelay`. `peekaboo-wave.webp` contains registered wave and blink
-poses; `peekaboo-static.webp` remains visible before loading, without JavaScript,
+poses; a pose-specific static image remains visible before loading, without JavaScript,
 on image failure, and with reduced motion. The existing observer pauses the
 sprite offscreen, when the tab is hidden, or when motion is explicitly disabled.
 Article titles, photos, filters, pagination and grid/list links are unchanged.
@@ -41,6 +41,32 @@ brief closed-eye blink), and clean background fringes. No CSS face distortion.
 The selected source is saved locally at `artifacts/peekaboo-animation-source.png`.
 Run `node scripts/prepare-peekaboo.mjs <source-png>` to create the two optimized
 public WebP files. Run `node scripts/check-peekaboo.mjs` for focused browser checks.
+
+### Updated Attached Poses
+
+The card galleries now use `cardMascotArtwork` in `src/components/Mascot.jsx`.
+Each position has `public/assets/mascots/card-<position>-v2-static.webp` and
+`card-<position>-v2-wave.webp` (a four-frame 1024 x 256 sheet). Versioned names
+avoid stale cached artwork. The original globe-backed menu logo is unchanged.
+
+| Position | User Reference | Movement |
+| --- | --- | --- |
+| top | Peekaboo mascot over browser card-1.png | Gripping hands, tiny head inclination and blink |
+| middle-right | Peeking boy beside a pristine white card-4.png | Right-side wave and blink |
+| bottom-left | BuildMyCVNow mascot peeking below card-3.png | Raised gripping hands, small upward peek and blink |
+| bottom-right | Peekaboo Boy Behind CV Window-2.png | Right-side wave and blink |
+
+Built-in image generation was used for identity-preserving cutouts and animation
+frames. Prompt set: remove the illustrated window, nameplate, lettering and all
+background residue; preserve each reference's boy, hairstyle, clothing and hand
+posture; produce four registered panels (neutral, two slight pose movements,
+closed-eye blink) with transparent alpha. A second cleanup pass removed edge
+haze. CSS swaps complete frames; it does not stretch faces or hands.
+
+Selected source sheets are saved at `artifacts/card-<position>-v2-source.png`.
+Reproduce optimization with `node scripts/prepare-peekaboo.mjs <source-png>
+card-<position>-v2`. All frames share one crop and scale to prevent alignment
+jumps. These are AI-derived mascot-only assets, not the complete attached cards.
 
 ## Placements
 
