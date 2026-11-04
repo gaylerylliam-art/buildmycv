@@ -259,8 +259,10 @@ const workExperienceHtml = (cv) =>
       if (![jobTitle, employer, location, dates, responsibilities].some(Boolean)) return "";
       return `
         <div class="experience-item">
+          <div class="experience-heading">
           ${jobTitle ? `<p><strong>${escapeHtml(jobTitle)}</strong></p>` : ""}
           ${[employer, location, dates].filter(Boolean).length ? `<p>${escapeHtml([employer, location, dates].filter(Boolean).join(" | "))}</p>` : ""}
+          </div>
           ${responsibilities ? `<ul>${joinLines(responsibilities)}</ul>` : ""}
         </div>
       `;
@@ -345,7 +347,7 @@ const downloadPdfFromServer = async (html, filename) => {
   saveBlob(blob, filename);
 };
 
-const downloadPdfFromHtml = async (html, filename) => {
+export const downloadPdfFromHtml = async (html, filename, pageMarginMm = 10) => {
   try {
     await downloadPdfFromServer(html, filename);
     return;
@@ -355,27 +357,50 @@ const downloadPdfFromHtml = async (html, filename) => {
 
   const module = await import("html2pdf.js");
   const html2pdf = module.default || module;
-  const wrapper = document.createElement("div");
-  wrapper.innerHTML = html;
-  wrapper.style.background = "#ffffff";
-  wrapper.style.width = "8.27in";
-  document.body.appendChild(wrapper);
-
+  // Render in an isolated document so export styles never affect the builder.
+  const frame = document.createElement("iframe");
+  frame.setAttribute("aria-hidden", "true");
+  frame.style.cssText = "position:fixed;left:-100000px;top:0;width:794px;height:1123px;border:0";
+  document.body.appendChild(frame);
   try {
-    await html2pdf()
-      .set({
-        filename,
-        margin: 0.35,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
-        jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
-        pagebreak: { mode: ["css", "legacy"] },
-      })
-      .from(wrapper)
-      .save();
-  } finally {
-    wrapper.remove();
-  }
+    const doc = frame.contentDocument;
+    doc.open(); doc.write(html); doc.close();
+    await doc.fonts?.ready;
+    await Promise.all(Array.from(doc.images, image => image.decode().catch(() => {})));
+    const margin = Math.min(76.2, Math.max(0, Number(pageMarginMm) || 0));
+    doc.body.style.width = (210 - margin * 2) + "mm";
+    doc.body.style.minHeight = "0";
+    doc.body.style.padding = "0";
+    doc.body.style.margin = "0";
+    // html2pdf clones the supplied element into the parent document. Carry its
+    // styles with it, scoped to this root so they cannot restyle the application.
+    const root = doc.createElement("div");
+    root.className = `cv-pdf-export-root ${doc.body.className}`;
+    root.dir = doc.body.dir;
+    root.style.cssText = doc.body.style.cssText;
+    const scopedStyle = doc.createElement("style");
+    scopedStyle.textContent = Array.from(doc.styleSheets).flatMap(sheet => Array.from(sheet.cssRules))
+      .filter(rule => rule.type === 1)
+      .map(rule => `${rule.selectorText.split(",").map(selector => {
+        const value = selector.trim();
+        return /^(html|body)(?=[.\s:]|$)/.test(value)
+          ? value.replace(/^(html|body)/, ".cv-pdf-export-root")
+          : `.cv-pdf-export-root ${value}`;
+      }).join(",")} { ${rule.style.cssText} }`).join("\n")
+      + "\n.cv-pdf-export-root .main-content { padding-block: 0; } .cv-pdf-export-root .sidebar-paper { min-height: 0; } .cv-pdf-export-root li { break-inside: avoid; }";
+    root.appendChild(scopedStyle);
+    for (const node of Array.from(doc.body.childNodes)) root.appendChild(node);
+    doc.body.appendChild(root);
+    // html2pdf does not apply @page. Supply the same per-page margins explicitly.
+    await html2pdf().set({
+      filename,
+      margin: [margin, margin, margin, margin],
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      pagebreak: { mode: ["css", "legacy"] },
+    }).from(root).save();
+  } finally { frame.remove(); }
 };
 
 const downloadCoverLetterDocx = async (letter, cv, filename) => {
@@ -581,6 +606,7 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
       <meta charset="UTF-8" />
       <style>
         * { box-sizing: border-box; }
+        @page { size: A4; margin: ${pageBorder.millimeters}mm; }
         html { background: #ffffff; }
         body { width: 210mm; min-height: 297mm; margin: 0 auto; padding: ${pageBorder.millimeters}mm; font-family: Arial, sans-serif; font-size: 11px; color: #111827; line-height: 1.38; background: #ffffff; overflow-wrap: anywhere; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         body.rtl { direction: rtl; text-align: right; }
@@ -602,8 +628,10 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
         .square { border-radius: 5px; }
         .section { break-inside: auto; page-break-inside: auto; }
         .section h2 { break-after: avoid; page-break-after: avoid; }
-        .experience-item { margin-bottom: 9px; break-inside: avoid; page-break-inside: avoid; }
-        .references-block { break-inside: avoid; page-break-inside: avoid; }
+        .experience-item { margin-bottom: 9px; break-inside: auto; page-break-inside: auto; }
+        .experience-heading { break-inside: avoid; page-break-inside: avoid; break-after: avoid; page-break-after: avoid; }
+        p, li { widows: 2; orphans: 2; }
+        .references-block { break-inside: auto; page-break-inside: auto; }
         .references-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
         .reference-card { border: 1px solid #e2e8f0; border-radius: 5px; padding: 8px; font-size: 11px; }
         .muted { color: #64748b; }
@@ -626,6 +654,12 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
         .sidebar-contact p { display: flex; align-items: center; gap: 5px; margin-bottom: 6px; }
         .main-content { padding: 20px; min-width: 0; }
         .credit-footer { margin: 24px 0 0; padding-top: 12px; border-top: 1px solid #e5e7eb; color: #9ca3af; font-size: 7pt; text-align: center; }
+        @media print {
+          html, body { width: auto; min-height: 0; margin: 0; }
+          body { padding: 0; }
+          .main-content { padding-block: 0; }
+          .sidebar-paper { min-height: 0; }
+        }
       </style>
     </head>
     <body class="${isRtl ? "rtl" : ""}" dir="${isRtl ? "rtl" : "ltr"}">
@@ -685,7 +719,7 @@ export const downloadCvFile = async (cv, type, theme, layout = "classic") => {
     return;
   }
   const html = await buildCvHtml(cv, theme, layout);
-  await downloadPdfFromHtml(html, `${baseName}.pdf`);
+  await downloadPdfFromHtml(html, `${baseName}.pdf`, getCvPageBorderConfig(cv).millimeters);
 };
 
 export const buildCoverLetterHtml = (letter, cv, theme = { color: "#0f66d0", dark: "#0f172a" }) => {
@@ -696,6 +730,8 @@ export const buildCoverLetterHtml = (letter, cv, theme = { color: "#0f66d0", dar
       <meta charset="UTF-8" />
       <style>
         * { box-sizing: border-box; }
+        @page { size: A4; margin: 9mm; }
+        @media print { body { padding: 0 !important; } }
         body { margin: 0; padding: 34px; font-family: Arial, sans-serif; color: #111827; line-height: 1.65; background: #ffffff; }
         h1 { color: #0f172a; margin: 0 0 4px; font-size: 28px; }
         p { margin: 0 0 14px; }
@@ -736,5 +772,5 @@ export const downloadCoverLetterFile = async (letter, cv, type, theme) => {
     await downloadCoverLetterDocx(letter, cv, `${baseName}.docx`);
     return;
   }
-  await downloadPdfFromHtml(html, `${baseName}.pdf`);
+  await downloadPdfFromHtml(html, `${baseName}.pdf`, 9);
 };

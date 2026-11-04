@@ -7,7 +7,9 @@
     "test:cv-import": "node --test tests/cv-import/*.test.mjs",
     "dev:cv-import": "node --env-file-if-exists=.env.local scripts/dev-cv-import.mjs",
     "test:cv-import:ui": "node scripts/check-cv-import-ui.mjs",
-    "test:analytics": "node --test tests/analytics.test.mjs"
+    "test:analytics": "node --test tests/analytics.test.mjs",
+    "test:pdf-pagination": "node scripts/check-pdf-pagination.mjs",
+    "test:pdf-fallback": "node scripts/check-pdf-fallback.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
