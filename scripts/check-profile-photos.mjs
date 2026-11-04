@@ -16,7 +16,7 @@ const browser=await puppeteer.launch({executablePath:process.env.BROWSER_PATH||'
 const page=await browser.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));
 await page.setRequestInterception(true);page.on('request',request=>request.url().startsWith(base)&&!request.url().includes('/.netlify/functions/')||/^(data|blob):/.test(request.url())?request.continue():request.abort());
 await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);
-await page.evaluateOnNewDocument(()=>{localStorage.setItem('cvforall:cookie-notice','accepted');localStorage.setItem('bmcv_theme','light');localStorage.setItem('bmcv_milestones','[50,80,100]');});
+await page.evaluateOnNewDocument(()=>{localStorage.setItem('bmcv:analytics-consent:v1', 'rejected');localStorage.setItem('bmcv_theme','light');localStorage.setItem('bmcv_milestones','[50,80,100]');});
 const click=async(text,selector='button')=>assert(await page.evaluate(({text,selector})=>{const button=[...document.querySelectorAll(selector)].find(item=>item.getClientRects().length&&item.textContent.trim()===text);button?.click();return Boolean(button);},{text,selector}),'Missing '+text);
 const input=()=>page.$('input[aria-label="Choose profile photo"]');
 const photoData=()=>page.$eval('.builder-right-stack .cv-passport-image',image=>image.src);

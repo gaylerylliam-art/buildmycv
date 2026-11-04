@@ -26,7 +26,7 @@ page.on('request', request => {
   if (blockSprite && /\/card-[a-z-]+-v2-wave\.webp$/.test(request.url())) return request.abort();
   return (request.url().startsWith(base) && !request.url().includes('/.netlify/functions/')) || request.url().startsWith('data:') ? request.continue() : request.abort();
 });
-await page.evaluateOnNewDocument(() => localStorage.setItem('cvforall:cookie-notice', 'accepted'));
+await page.evaluateOnNewDocument(() => localStorage.setItem('bmcv:analytics-consent:v1', 'rejected'));
 const mascot = '.bl-article .mascot-placement-topic-card';
 const animation = `${mascot} .mascot-sprite`;
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -107,6 +107,7 @@ try {
   await checkCards();
   await page.$eval(mascot, node => node.scrollIntoView({ block: 'center' }));
   await page.waitForFunction(selector => document.querySelector(selector)?.dataset.mascotActive === 'true' && document.querySelector(selector)?.dataset.mascotSpriteReady === 'true', {}, mascot);
+  await pause(650);
   assert.equal(await page.$eval(animation, image => getComputedStyle(image).animationPlayState), 'running');
   const frames = await page.$eval(animation, async image => {
     const animation = image.getAnimations()[0], frames = [];

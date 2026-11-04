@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 
 export const mascotMoods = ['welcoming', 'thoughtful', 'focused', 'confident', 'excited', 'reassuring'];
 export const cardMascotPositions = ['top', 'middle-right', 'bottom-left', 'bottom-right'];
+export const cardMascotImages = ['character-top', 'character-side', 'character-bottom', 'character-wave'].map(name => `/assets/mascots/${name}.webp`);
 export const cardMascotArtwork = Object.fromEntries(cardMascotPositions.map(position => [position, {
   image: `/assets/mascots/card-${position}-v2-static.webp`,
   sprite: `/assets/mascots/card-${position}-v2-wave.webp`,

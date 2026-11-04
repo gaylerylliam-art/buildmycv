@@ -26,7 +26,7 @@ page.on('pageerror',error=>errors.push(error.message));
 await page.setCacheEnabled(false);
 await page.setRequestInterception(true);
 page.on('request',request=>request.url().startsWith(base)&&!request.url().includes('/.netlify/functions/')||request.url().startsWith('data:')?request.continue():request.abort());
-await page.evaluateOnNewDocument(()=>{localStorage.setItem('cvforall:cookie-notice','accepted');localStorage.setItem('bmcv_theme','light');});
+await page.evaluateOnNewDocument(()=>{localStorage.setItem('bmcv:analytics-consent:v1', 'rejected');localStorage.setItem('bmcv_theme','light');});
 await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);
 const click = async text => assert(await page.evaluate(text=>{const button=[...document.querySelectorAll('button')].find(item=>item.getClientRects().length&&item.textContent.trim()===text);button?.click();return Boolean(button);},text),'Missing '+text);
 const ready = async () => {await page.evaluate(()=>document.fonts.ready);await page.waitForFunction(()=>document.querySelector('.bl-feature > img')?.naturalWidth>0);};

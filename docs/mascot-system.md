@@ -98,3 +98,15 @@ Set `PREVIEW_URL=http://127.0.0.1:5186` and run
 The workflow test stubs contact and OTP services, and renders the PDF response
 locally with Chromium. It verifies actual PDF and DOCX files, not live email
 delivery, cloud persistence, or production backend availability. No emails are sent.
+
+## Character-only card artwork (November 2026)
+
+The earlier character-only release used four transparent 512px WebP
+character cutouts: character-top, character-side, character-bottom and
+character-wave. These are edits of the four supplied peeking mascot references,
+with all browser frames, plaques and lettering removed. The four card positions
+and source mapping stay stable during filtering. Existing reveal, gentle tilt,
+hover movement, offscreen/hidden-tab pausing, homepage pause control, reduced
+motion and print/export exclusion use the shared mascot controller. Those source
+assets remain available; galleries now use the pose-specific animation sheets
+documented under Updated Attached Poses above.

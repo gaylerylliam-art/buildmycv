@@ -34,7 +34,7 @@ page.on("request", async (request) => {
   return request.url().startsWith(baseUrl) || request.url().startsWith("data:") || request.url().startsWith("blob:") ? request.continue() : request.abort();
 });
 await page.evaluateOnNewDocument(() => {
-  localStorage.setItem("cvforall:cookie-notice", "accepted");
+  localStorage.setItem('bmcv:analytics-consent:v1', 'rejected');
   localStorage.setItem("bmcv_milestones", "[50,80,100]");
 });
 const clickText = async (text, selector = "button") => {

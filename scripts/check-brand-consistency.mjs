@@ -11,7 +11,7 @@ const page = await browser.newPage(), errors = [];
 page.on('pageerror', error => errors.push(error.message));
 await page.setRequestInterception(true);
 page.on('request', request => request.url().startsWith(base) && !request.url().includes('/.netlify/functions/') || request.url().startsWith('data:') ? request.continue() : request.abort());
-await page.evaluateOnNewDocument(()=>localStorage.setItem('cvforall:cookie-notice','accepted'));
+await page.evaluateOnNewDocument(()=>localStorage.setItem('bmcv:analytics-consent:v1', 'rejected'));
 await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);
 const snapshot = async () => page.$eval('.brand-logo', logo => {
   const image = logo.querySelector('img'), rect = image.getBoundingClientRect();

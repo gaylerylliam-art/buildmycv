@@ -17,7 +17,7 @@ try {
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setRequestInterception(true);
   page.on("request", (request) => request.url().startsWith(baseUrl) || request.url().startsWith("data:") ? request.continue() : request.abort());
-  await page.evaluateOnNewDocument(() => localStorage.setItem("cvforall:cookie-notice", "accepted"));
+  await page.evaluateOnNewDocument(() => localStorage.setItem('bmcv:analytics-consent:v1', 'rejected'));
   for (const [width, height] of [[1440, 1000], [1024, 768], [1920, 1080], [390, 844], [320, 720]]) {
     await page.setViewport({ width, height });
     await page.goto(`${baseUrl}/builder?start=upload&category=finance`, { waitUntil: "networkidle0" });

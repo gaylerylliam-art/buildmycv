@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import React from "react";
+import { privacySections } from "../src/content/privacyContent.js";
 import { renderToString } from "react-dom/server";
 import { createServer } from "vite";
 import { cities, seoJobs, topCityJobSlugs } from "../src/content/programmaticSeo.js";
@@ -122,7 +123,8 @@ function decorateStaticPage(body, canonical) {
     : /^\/(blog|templates|cv-examples)(\/|$)/.test(route) ? 'thoughtful' : 'welcoming';
   const intro = mascotMarkup(mood);
   // These are controlled templates emitted below, not user-supplied HTML.
-  const anchor = body.includes('<article class="article">') ? '<article class="article">' : '<div class="wrap">';
+  const anchor = body.includes('<article class="article">') ? '<article class="article">'
+    : body.includes('<div class="wrap article">') ? '<div class="wrap article">' : '<div class="wrap">';
   let decorated = body.replace(anchor, anchor + intro);
   if (route.startsWith('/cv/')) {
     decorated = decorated.replace('<section class="cta-band card">', '<section class="cta-band card">' + mascotMarkup('excited', 'static-cta'));
@@ -156,8 +158,8 @@ function layout({ title, description, canonical, body, jsonLd = [], type = "webs
   <meta name="twitter:title" content="${escapeHtml(title)}" />
   <meta name="twitter:description" content="${escapeHtml(description)}" />
   <meta name="twitter:image" content="${image}" />
-  <script defer data-domain="buildmycvnow.com" src="https://plausible.io/js/script.js"></script>
-  <script>window.plausible=window.plausible||function(){(window.plausible.q=window.plausible.q||[]).push(arguments)}</script>
+  <script src="/assets/site-analytics.js"></script>
+  ${interactive ? "" : '<link rel="stylesheet" href="/assets/privacy-controls.css" />'}
   <style>${criticalCss()}</style>
   ${interactive ? appAssets : '<link rel="stylesheet" href="/assets/brand.css" />'}
   ${interactive ? '' : '<link rel="stylesheet" href="/assets/mascot.css" />'}
@@ -456,7 +458,7 @@ writePage("/for-ofw", layout({
     ["office-administrator", "Office Assistant"],
   ].map(([slug, label]) => `<a class="card" href="/cv/${slug}-dubai"><h3>${label}</h3><p>Open the free CV example and customize it in the builder.</p></a>`).join("")}</div></div></section><section id="scam-warning" class="section"><div class="wrap"><div class="card" style="border-color:#fca5a5;background:#fff7ed"><h2>Job scam warning signs</h2><p><strong>Legit employers never ask you to pay for a job offer.</strong></p><ul><li>They ask for payment before interview, offer letter, or visa processing.</li><li>They refuse to give company details, license information, or a verifiable email address.</li><li>They pressure you to send passport copies or money urgently through personal accounts.</li></ul></div></div></section><section class="section faq"><div class="wrap"><h2>OFW CV questions</h2>${ofwFaqs.map(([q, a]) => `<details><summary>${q}</summary><p>${a}</p></details>`).join("")}</div></section><section class="section cta-band"><div class="wrap"><h2>Start your free OFW CV now</h2><p>No hidden fees. No sign-up required for download.</p><a class="cta" href="/builder">Build my CV</a></div></section></main>`,
 }));
-writePage("/privacy", layout({ title: "Privacy Policy | BuildMyCVNow", description: "Read how BuildMyCVNow handles CV data, analytics, email subscribers, Supabase storage and user deletion requests.", canonical: `${baseUrl}/privacy`, body: `<main class="section"><div class="wrap"><h1>Privacy Policy</h1><p>We collect only the details you enter to create your CV, such as name, email, phone, work history, skills and optional photo. Download-only mode keeps your CV local in your browser.</p><h2>Analytics and email</h2><p>We use privacy-respecting analytics to understand visits and downloads. If you subscribe for the UAE Job Hunt Checklist, your email is stored in Supabase so we can send useful CV and job-search tips. You can request deletion by contacting us.</p><h2>Advertising</h2><p>Google AdSense may use cookies or similar technologies when ads are enabled.</p></div></main>` }));
+writePage("/privacy", layout({ title: "Privacy Policy | BuildMyCVNow", description: "How CV drafts, uploads, optional analytics and privacy choices work.", canonical: `${baseUrl}/privacy`, body: `<main class="section"><div class="wrap article"><h1>Privacy Policy</h1>${privacySections.map(([title, text]) => `<h2>${title}</h2><p>${text}</p>`).join("")}<p><a href="/contact/">Contact us about privacy</a>. <a href="https://policies.google.com/privacy">Google Privacy Policy</a>.</p></div></main>` }));
 writePage("/terms", layout({ title: "Terms of Use | BuildMyCVNow", description: "Read the terms for using BuildMyCVNow, including user responsibilities, CV ownership and employment disclaimer.", canonical: `${baseUrl}/terms`, body: `<main class="section"><div class="wrap"><h1>Terms of Use</h1><p>You own the CV content you enter. You are responsible for ensuring all information is true and accurate.</p><p>BuildMyCVNow helps with formatting and writing support, but it does not guarantee interviews, job offers, visa approval, or employment.</p></div></main>` }));
 writePage("/faq", layout({ title: "CV Builder FAQ – Free Downloads, ATS CVs & More | BuildMyCVNow", description: "Answers about free PDF and Word downloads, CV uploads, ATS formatting, Arabic CVs, AI help, mobile use and privacy.", canonical: `${baseUrl}/faq`, jsonLd: faqPageSchema, interactive: true, body: faqMarkup }));
 

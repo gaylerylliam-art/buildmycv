@@ -65,7 +65,7 @@ page.on('request', async request => {
   return url.startsWith(base) || url.startsWith('data:') ? request.continue() : request.abort();
 });
 await page.evaluateOnNewDocument(() => {
-  localStorage.setItem('cvforall:cookie-notice', 'accepted');
+  localStorage.setItem('bmcv:analytics-consent:v1', 'rejected');
   window.mascotEntrances = [];
   document.addEventListener('animationstart', event => {
     if (event.animationName === 'mascot-reveal') window.mascotEntrances.push(event.target.closest('[data-mascot]')?.className);
