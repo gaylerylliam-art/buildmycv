@@ -2156,26 +2156,13 @@ export function LiveCVPreview({ cv, theme, layout }) {
   );
   return (
     <div className={`cv-page-stack ${isRtl ? "cv-rtl" : ""}`} dir={isRtl ? "rtl" : "ltr"} aria-label={`${pages.length} page CV preview`}>
-      {pages.map((pageBlocks, pageIndex) => pageIndex > 0 ? (
-        <article key={pageIndex} className={`cv-paper cv-paper-page ${isRtl ? "cv-rtl" : ""}`} style={{ padding: `${pageBorderPadding}px` }}>
-          {renderContinuationHeader()}
-          <div className="mt-6">{renderPageContent(pageBlocks)}</div>
-          {cv.qrCode?.position === "footer" && pageIndex === pages.length - 1 && <div className="mt-6 flex justify-center"><QrBlock qrCode={cv.qrCode} color="#1E293B" /></div>}
-          <p className="cv-page-number">Page {pageIndex + 1} of {pages.length}</p>
-        </article>
-      ) : layout === "sidebar" ? (
-        <article key={pageIndex} className={`cv-paper cv-paper-page grid grid-cols-[0.38fr_0.62fr] overflow-hidden ${isRtl ? "cv-rtl" : ""}`} style={{ padding: `${pageBorderPadding}px` }}>
-          {renderSidebar(pageIndex)}
-          <div className="p-7">
+      {pages.map((pageBlocks, pageIndex) => (
+        <article key={pageIndex} className={`cv-paper cv-paper-page ${layout === "sidebar" ? "grid grid-cols-[minmax(0,0.38fr)_minmax(0,0.62fr)]" : ""} ${isRtl ? "cv-rtl" : ""}`} style={{ padding: `${pageBorderPadding}px` }}>
+          {layout === "sidebar" ? renderSidebar(pageIndex) : pageIndex > 0 ? renderContinuationHeader() : renderHeader()}
+          <div className={layout === "sidebar" ? "min-w-0 p-7" : "mt-6"}>
             {renderPageContent(pageBlocks)}
-            <p className="cv-page-number">Page {pageIndex + 1} of {pages.length}</p>
+            {cv.qrCode?.position === "footer" && pageIndex === pages.length - 1 && <div className="mt-6 flex justify-center"><QrBlock qrCode={cv.qrCode} color="#1E293B" /></div>}
           </div>
-        </article>
-      ) : (
-        <article key={pageIndex} className={`cv-paper cv-paper-page ${isRtl ? "cv-rtl" : ""}`} style={{ padding: `${pageBorderPadding}px` }}>
-          {renderHeader()}
-          <div className="mt-6">{renderPageContent(pageBlocks)}</div>
-          {cv.qrCode?.position === "footer" && pageIndex === pages.length - 1 && <div className="mt-6 flex justify-center"><QrBlock qrCode={cv.qrCode} color="#1E293B" /></div>}
           <p className="cv-page-number">Page {pageIndex + 1} of {pages.length}</p>
         </article>
       ))}

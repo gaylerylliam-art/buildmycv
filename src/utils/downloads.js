@@ -595,6 +595,7 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
   const isRtl = cv.languageDirection === "rtl" || isArabicLanguage(cv.outputLanguage);
   const pageBorder = getCvPageBorderConfig(cv);
   const pageBorderPx = Math.round(pageBorder.inches * 96);
+  const sidebarWidthMm = (210 - pageBorder.millimeters * 2) * 0.38;
   const qrConfig = { ...defaultQrCode, ...(cv.qrCode || {}) };
   const qrSvg = await buildQrSvg(qrConfig, cv.linkedIn || cv.portfolioUrl, layout === "sidebar" && qrConfig.position === "sidebar" ? "#FFFFFF" : "#1E293B");
   const qrHeader = qrConfig.position === "header" ? qrBlockHtml(qrSvg, qrConfig.label, 64) : "";
@@ -659,6 +660,13 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
           body { padding: 0; }
           .main-content { padding-block: 0; }
           .sidebar-paper { min-height: 0; }
+          ${layout === "sidebar" ? `
+          /* Repeat the rail on each printed page while the content column flows. */
+          .sidebar-paper { display: block; }
+          .sidebar { position: fixed; inset-block: 0; inset-inline-start: 0; width: ${sidebarWidthMm}mm; }
+          .sidebar-paper .main-content { margin-inline-start: ${sidebarWidthMm}mm; }
+          .credit-footer { margin-inline-start: calc(${sidebarWidthMm}mm + 20px); margin-inline-end: 20px; }
+          ` : ""}
         }
       </style>
     </head>
