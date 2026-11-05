@@ -123,7 +123,8 @@ function decorateStaticPage(body, canonical) {
     : /^\/(blog|templates|cv-examples)(\/|$)/.test(route) ? 'thoughtful' : 'welcoming';
   const intro = mascotMarkup(mood);
   // These are controlled templates emitted below, not user-supplied HTML.
-  const anchor = body.includes('<article class="article">') ? '<article class="article">' : '<div class="wrap">';
+  const anchor = body.includes('<article class="article">') ? '<article class="article">'
+    : body.includes('<div class="wrap article">') ? '<div class="wrap article">' : '<div class="wrap">';
   let decorated = body.replace(anchor, anchor + intro);
   if (route.startsWith('/cv/')) {
     decorated = decorated.replace('<section class="cta-band card">', '<section class="cta-band card">' + mascotMarkup('excited', 'static-cta'));

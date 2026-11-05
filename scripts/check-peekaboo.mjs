@@ -7,24 +7,28 @@ import { createCanvas, loadImage } from '@napi-rs/canvas';
 const base = process.env.PREVIEW_URL || 'http://127.0.0.1:5186';
 const output = path.resolve('artifacts/peekaboo-review');
 fs.mkdirSync(output, { recursive: true });
-for (const name of ['character-top', 'character-side', 'character-bottom', 'character-wave']) {
-  const image = await loadImage(`public/assets/mascots/${name}.webp`);
-  assert.deepEqual([image.width, image.height], [512, 512]);
-  const canvas = createCanvas(512, 512), context = canvas.getContext('2d');
-  context.drawImage(image, 0, 0);
-  assert.equal(context.getImageData(0, 0, 1, 1).data[3], 0, `${name}: transparent background missing`);
+for (const position of ['top', 'middle-right', 'bottom-left', 'bottom-right']) {
+  const sprite = await loadImage(`public/assets/mascots/card-${position}-v2-wave.webp`);
+  const still = await loadImage(`public/assets/mascots/card-${position}-v2-static.webp`);
+  assert.deepEqual([sprite.width, sprite.height, still.width, still.height], [1024, 256, 256, 256]);
+  const canvas = createCanvas(1024, 256), context = canvas.getContext('2d');
+  context.drawImage(sprite, 0, 0);
+  assert.equal(context.getImageData(0, 0, 1, 1).data[3], 0, `${position}: transparency lost`);
+  assert(!Buffer.from(context.getImageData(0, 0, 256, 256).data).equals(Buffer.from(context.getImageData(768, 0, 256, 256).data)), `${position}: blink frame missing`);
 }
 const browser = await puppeteer.launch({ executablePath: process.env.BROWSER_PATH || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', headless: true, userDataDir: fs.mkdtempSync(path.join(output, 'browser-')) });
 const page = await browser.newPage(), errors = [];
+let blockSprite = false;
 page.on('pageerror', error => errors.push(error.message));
 await page.setRequestInterception(true);
 page.on('request', request => {
   if (request.url().includes('/.netlify/scripts/rum')) return request.abort();
+  if (blockSprite && /\/card-[a-z-]+-v2-wave\.webp$/.test(request.url())) return request.abort();
   return (request.url().startsWith(base) && !request.url().includes('/.netlify/functions/')) || request.url().startsWith('data:') ? request.continue() : request.abort();
 });
 await page.evaluateOnNewDocument(() => localStorage.setItem('bmcv:analytics-consent:v1', 'rejected'));
 const mascot = '.bl-article .mascot-placement-topic-card';
-const animation = `${mascot} .mascot-life`;
+const animation = `${mascot} .mascot-sprite`;
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 const checkCards = async () => {
   const problems = await page.$$eval('.bl-article', cards => cards.flatMap(card => {
@@ -38,6 +42,7 @@ const checkCards = async () => {
       if (Math.min(r.right, c.right) - Math.max(r.left, c.left) > 1 && Math.min(r.bottom, c.bottom) - Math.max(r.top, c.top) > 1) errors.push('Text/link overlap');
     }
     const position = card.dataset.mascotPosition;
+    if (mascot.querySelector('.mascot-image-current').getAttribute('src') !== `/assets/mascots/card-${position}-v2-static.webp` || mascot.querySelector('.mascot-sprite').getAttribute('src') !== `/assets/mascots/card-${position}-v2-wave.webp`) errors.push('Wrong article pose artwork');
     const title = card.querySelector('h3').getBoundingClientRect();
     const summary = card.querySelector('.bl-article-copy > p').getBoundingClientRect();
     const link = card.querySelector('.bl-read').getBoundingClientRect();
@@ -64,6 +69,7 @@ const checkTemplates = async () => {
       if (Math.min(r.right, c.right) - Math.max(r.left, c.left) > 1 && Math.min(r.bottom, c.bottom) - Math.max(r.top, c.top) > 1) errors.push('Template content overlap');
     }
     const position = card.dataset.mascotPosition;
+    if (mascot.querySelector('.mascot-image-current').getAttribute('src') !== `/assets/mascots/card-${position}-v2-static.webp` || mascot.querySelector('.mascot-sprite').getAttribute('src') !== `/assets/mascots/card-${position}-v2-wave.webp`) errors.push('Wrong template pose artwork');
     const preview = card.querySelector('.hm-template-preview').getBoundingClientRect();
     const caption = card.querySelector('.hm-template-info').getBoundingClientRect();
     const link = card.querySelector('.hm-template-use').getBoundingClientRect();
@@ -86,9 +92,8 @@ try {
   assert.equal(await page.$$eval(mascot, items => items.length), 9);
   assert.deepEqual(await page.$$eval('.bl-article', cards => [...new Set(cards.map(card => card.dataset.mascotPosition))]), ['top', 'middle-right', 'bottom-left', 'bottom-right']);
   assert.equal(await page.$eval(`${mascot} .mascot-image-current`, image => getComputedStyle(image).opacity), '1');
-  assert.equal(await page.$('.bl-article .mascot-sprite'), null);
+  assert.equal(await page.$eval(animation, image => getComputedStyle(image).opacity), '0');
   await checkCards();
-  assert.deepEqual(await page.$$eval(`${mascot} .mascot-image-current`, images => [...new Set(images.map(image => image.getAttribute('src')))]), ['character-top', 'character-side', 'character-bottom', 'character-wave'].map(name => `/assets/mascots/${name}.webp`));
   await page.setJavaScriptEnabled(true);
   await page.reload({ waitUntil: 'networkidle0' });
   while (await page.$('.bl-load button')) await page.click('.bl-load button');
@@ -101,12 +106,13 @@ try {
   await page.waitForFunction(() => document.querySelector('.bl-topics [aria-pressed="true"]')?.textContent === 'All guides');
   await checkCards();
   await page.$eval(mascot, node => node.scrollIntoView({ block: 'center' }));
-  await page.waitForFunction(selector => document.querySelector(selector)?.dataset.mascotActive === 'true', {}, mascot);
+  await page.waitForFunction(selector => document.querySelector(selector)?.dataset.mascotActive === 'true' && document.querySelector(selector)?.dataset.mascotSpriteReady === 'true', {}, mascot);
+  await pause(650);
   assert.equal(await page.$eval(animation, image => getComputedStyle(image).animationPlayState), 'running');
   const frames = await page.$eval(animation, async image => {
     const animation = image.getAnimations()[0], frames = [];
     animation.pause();
-    for (const time of [0, 840, 1680, 2640]) {
+    for (const time of [0, 6350, 6650, 8300]) {
       animation.currentTime = time;
       await new Promise(resolve => requestAnimationFrame(resolve));
       frames.push(getComputedStyle(image).transform);
@@ -114,7 +120,7 @@ try {
     animation.play();
     return frames;
   });
-  assert(new Set(frames).size >= 3, 'Uploaded artwork must keep its tilt movement');
+  assert.equal(new Set(frames).size, 4, 'Wave and blink frames must differ');
   await page.screenshot({ path: path.join(output, 'cards-desktop.png') });
   await page.evaluate(() => scrollTo(0, 0));
   await page.waitForFunction(selector => document.querySelector(selector)?.dataset.mascotActive === 'false', {}, mascot);
@@ -126,7 +132,7 @@ try {
   await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
   await page.waitForFunction(selector => document.querySelector(selector)?.dataset.mascotReduced === 'true', {}, mascot);
   assert.equal(await page.$eval(animation, image => getComputedStyle(image).animationName), 'none');
-  assert.equal(await page.$('.bl-article .mascot-sprite'), null);
+  assert.equal(await page.$eval(animation, image => getComputedStyle(image).opacity), '0');
   assert.equal(await page.$eval(`${mascot} .mascot-image-current`, image => getComputedStyle(image).opacity), '1');
   for (const width of [1440, 768, 390, 320]) {
     await page.setViewport({ width, height: 900 });
@@ -145,6 +151,13 @@ try {
   assert.equal(await page.$eval(mascot, node => getComputedStyle(node).display), 'none');
   await page.emulateMediaType('screen');
   await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }]);
+  await page.setCacheEnabled(false); blockSprite = true;
+  await page.goto(base + '/blog/', { waitUntil: 'networkidle0' });
+  await page.$eval(mascot, node => node.scrollIntoView({ block: 'center' }));
+  await page.waitForFunction(selector => document.querySelector(selector)?.complete && !document.querySelector(selector)?.naturalWidth, {}, animation);
+  assert.equal(await page.$eval(animation, image => getComputedStyle(image).opacity), '0');
+  assert.equal(await page.$eval(`${mascot} .mascot-image-current`, image => getComputedStyle(image).opacity), '1');
+  blockSprite = false;
   await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
   for (const width of [1440, 768, 390, 320]) {
     await page.setViewport({ width, height: 900 });
@@ -175,8 +188,8 @@ try {
     assert(await page.$eval('.hm-template-use', link => link.getAttribute('href').includes('category=finance')));
   }
   assert.deepEqual(errors, []);
-  console.log('PASS: four positions across article and template cards, stable filtering, all 10 templates, preview dialogs/links, uploaded artwork and tilt movement, static fallback, grid/list, pagination, responsive 320-1440px, hidden-tab/offscreen pause, reduced motion, dark theme, print exclusion and unchanged menu logo.');
+  console.log('PASS: four positions across article and template cards, stable filtering, all 10 templates, preview dialogs/links, wave/blink frames, static fallback, grid/list, pagination, responsive 320-1440px, hidden-tab/offscreen pause, reduced motion, dark theme, print exclusion and unchanged menu logo.');
 } catch (error) {
-  await page.screenshot({ path: path.join(output, 'failure.png') }).catch(() => {});
+  await page.screenshot({ path: path.join(output, 'failure.png') });
   throw error;
 } finally { await browser.close(); }

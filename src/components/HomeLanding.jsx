@@ -4,7 +4,7 @@ import { HOME_SUBHEAD, HOME_HOW_IT_WORKS_STEPS, HOME_VIDEO } from "../content/ho
 import "./homeLanding.css";
 import { useHomeMotion } from "../hooks/usePageMotion.js";
 import BrandLogo from "./BrandLogo.jsx";
-import Mascot, { cardMascotPositions, cardMascotImages } from "./Mascot.jsx";
+import Mascot, { cardMascotArtwork, cardMascotPositions } from "./Mascot.jsx";
 
 
 
@@ -90,10 +90,11 @@ function TemplatesGallery({ onStart }) {
       <div className="hm-category-tabs" role="group" aria-label="Filter templates by job category"><button type="button" aria-pressed={filter === "all"} onClick={() => setFilter("all")}>All</button>{designs.map((design) => <button type="button" key={design.id} aria-pressed={filter === design.id} onClick={() => setFilter(design.id)}>{design.category}</button>)}</div><div className={`hm-template-grid ${showAll || filter !== "all" ? "hm-template-grid-expanded" : ""}`}>
         {visible.map((design) => {
           const index = designs.indexOf(design);
-          return <article className="hm-template" key={design.id} data-template-id={design.id} data-mascot-position={cardMascotPositions[index % cardMascotPositions.length]}>
+          const mascotPosition = cardMascotPositions[index % cardMascotPositions.length];
+          return <article className="hm-template" key={design.id} data-template-id={design.id} data-mascot-position={mascotPosition}>
           <button type="button" className="hm-template-preview" aria-label={`Preview ${design.category} CV`} onClick={(event) => { openerRef.current = event.currentTarget; setPreview(design); }}><MiniCv design={design} /><span className="hm-preview-label">Preview template <Symbol name="arrow" /></span></button>
           <div className="hm-template-info"><div className="hm-template-caption"><div><span className="hm-industry">{design.category}</span><h3>{design.name}</h3><p>{design.role}</p></div><img className="hm-industry-photo" src={design.industryPhoto.src} alt={design.industryPhoto.alt} width="400" height="300" loading="lazy" decoding="async" /></div></div>
-          <Mascot mood="welcoming" size="compact" placement="template-card" image={cardMascotImages[index % cardMascotImages.length]} />
+          <Mascot mood="welcoming" size="compact" placement="template-card" {...cardMascotArtwork[mascotPosition]} spriteDelay={-(index % 5) * 1.3} />
           <BuilderLink onStart={onStart} query={`category=${design.id}&theme=${design.theme}&layout=${design.layout}`} className="hm-template-use">Use this template <Symbol name="arrow" /></BuilderLink>
         </article>;
         })}
