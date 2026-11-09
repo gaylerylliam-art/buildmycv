@@ -643,6 +643,9 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
         .sidebar { background: ${theme.dark}; color: #ffffff; padding: 20px 24px 28px; }
         .sidebar-header { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 20px; }
         .photo-container { width: 100%; display: flex; justify-content: center; margin-bottom: 20px; }
+        .sidebar-paper.has-profile-photo { position: relative; }
+        .has-profile-photo .sidebar-header { padding-top: calc(40px + ${PASSPORT_PHOTO.heightMm}mm); }
+        .sidebar-profile-photo { position: absolute; z-index: 1; inset-block-start: 40px; inset-inline-start: 0; width: 38%; display: flex; justify-content: center; }
         .profile-photo { width: 170px; height: 170px; object-fit: cover; display: block; background: rgba(255,255,255,0.14); border: 3px solid rgba(255,255,255,0.22); }
         .profile-photo.round { border-radius: 50%; }
         .profile-photo.rounded { border-radius: 16px; }
@@ -664,6 +667,8 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
           /* Repeat the rail on each printed page while the content column flows. */
           .sidebar-paper { display: block; }
           .sidebar { position: fixed; inset-block: 0; inset-inline-start: 0; width: ${sidebarWidthMm}mm; }
+          .sidebar-paper.has-profile-photo { display: flow-root; }
+          .sidebar-profile-photo { width: ${sidebarWidthMm}mm; }
           .sidebar-paper .main-content { margin-inline-start: ${sidebarWidthMm}mm; }
           .credit-footer { margin-inline-start: calc(${sidebarWidthMm}mm + 20px); margin-inline-end: 20px; }
           ` : ""}
@@ -672,12 +677,11 @@ export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a
     </head>
     <body class="${isRtl ? "rtl" : ""}" dir="${isRtl ? "rtl" : "ltr"}">
       ${layout === "sidebar" ? `
-      <div class="sidebar-paper">
+      <div class="sidebar-paper${cv.profilePhoto ? " has-profile-photo" : ""}">
+        ${cv.profilePhoto ? `<div class="sidebar-profile-photo">${passportPhotoHtml(cv)}</div>` : ""}
         <aside class="sidebar">
           <div class="sidebar-header">
-            <div class="photo-container">
-              ${cv.profilePhoto ? passportPhotoHtml(cv) : `<div class="profile-photo placeholder ${exportPhotoShapeClass(cv.photoShape)}">${escapeHtml(initialsForPdf(cv.fullName))}</div>`}
-            </div>
+            ${!cv.profilePhoto ? `<div class="photo-container"><div class="profile-photo placeholder ${exportPhotoShapeClass(cv.photoShape)}">${escapeHtml(initialsForPdf(cv.fullName))}</div></div>` : ""}
             <div class="name-block">
               <h1 class="sidebar-name">${escapeHtml(cv.fullName)}</h1>
               <p class="sidebar-title">${escapeHtml(cv.jobTitle)}</p>

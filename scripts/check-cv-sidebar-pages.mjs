@@ -11,10 +11,15 @@ import { preparePdfHtml } from "../netlify/functions/export-pdf.js";
 import { buildCvHtml } from "../src/utils/downloads.js";
 
 const theme = { color: "#0f66d0", dark: "#153454" };
+const portrait = createCanvas(35, 45);
+const portraitCtx = portrait.getContext("2d");
+portraitCtx.fillStyle = "#c12d99";
+portraitCtx.fillRect(0, 0, 35, 45);
 const cv = {
   fullName: "Alex Example", jobTitle: "Mechanical Engineer", email: "alex@example.com",
   summary: "Experienced in mechanical maintenance and equipment inspections.",
   languages: "English", references: { mode: "on-request" }, pageBorderPreset: "1cm",
+  profilePhoto: portrait.toDataURL("image/png"), photoFrameFormat: "passport-35x45",
   workExperiences: Array.from({ length: 15 }, (_, i) => ({
     id: `role-${i}`, jobTitle: "Mechanical Engineer", employer: `Example Company ${i + 1}`,
     responsibilities: Array.from({ length: 6 }, (_, j) =>
@@ -56,6 +61,7 @@ try {
       const bodyBox = rail?.nextElementSibling.getBoundingClientRect();
       return {
         sidebar: rail?.textContent,
+        photos: sheet.querySelectorAll(".cv-passport-image").length,
         background: rail && getComputedStyle(rail).backgroundColor,
         correctSide: rail && (sheet.dir === "rtl" || getComputedStyle(sheet).direction === "rtl"
           ? railBox.left >= bodyBox.right - 1 : railBox.right <= bodyBox.left + 1),
@@ -66,6 +72,7 @@ try {
     assert(pages.length >= 3);
     for (const [index, sheet] of pages.entries()) {
       assert.equal(sheet.number, `Page ${index + 1} of ${pages.length}`);
+      assert.equal(sheet.photos, index === 0 ? 1 : 0);
       if (layout === "sidebar") {
         assert.match(sheet.sidebar, /Alex Example.*alex@example\.com/);
         assert.equal(sheet.background, "rgb(21, 52, 84)");
@@ -107,6 +114,9 @@ try {
           await pdfPage.render({ canvasContext: ctx, viewport, canvas }).promise;
           const x = direction === "rtl" ? canvas.width - 40 : 40;
           assert.deepEqual([...ctx.getImageData(x, 400, 1, 1).data], [21, 52, 84, 255]);
+          const photoX = direction === "rtl" ? canvas.width - 130 : 130;
+          assert.deepEqual([...ctx.getImageData(photoX, 110, 1, 1).data],
+            i === 1 ? [193, 45, 153, 255] : [21, 52, 84, 255], `Profile photo on PDF page ${i}`);
           if (long && i === 2) await fs.writeFile(path.join(output, `pdf-page-2-${direction}.png`), canvas.toBuffer("image/png"));
         }
         for (const { employer } of workExperiences) assert(content.join(" ").includes(employer));
@@ -116,7 +126,7 @@ try {
       }
     }
   }
-  console.log("PASS: Sidebar repeats in desktop/mobile previews and single/multi-page PDFs, including RTL. Other layouts keep their continuation headers.");
+  console.log("PASS: Sidebar repeats but the profile photo appears only on page one in desktop/mobile previews and PDFs, including RTL.");
 } finally {
   await browser.close();
 }

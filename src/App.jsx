@@ -2108,13 +2108,13 @@ export function LiveCVPreview({ cv, theme, layout }) {
   const renderSidebar = (pageIndex) => (
     <aside className="cv-sidebar text-white" style={{ background: theme.dark }}>
       <div className="sidebar-header">
-        <div className="photo-container">
-          {cv.profilePhoto ? (
-            photo()
-          ) : (
-            <div className={`profile-photo placeholder ${cv.photoShape === "circle" || cv.photoShape === "round" ? "round" : cv.photoShape === "rounded" ? "rounded" : "square"}`}>{initials(cv.fullName)}</div>
-          )}
-        </div>
+        {(!cv.profilePhoto || pageIndex === 0) && (
+          <div className="photo-container">
+            {cv.profilePhoto ? photo() : (
+              <div className={`profile-photo placeholder ${cv.photoShape === "circle" || cv.photoShape === "round" ? "round" : cv.photoShape === "rounded" ? "rounded" : "square"}`}>{initials(cv.fullName)}</div>
+            )}
+          </div>
+        )}
         <div className="name-block">
           <h2 className="text-xl font-black leading-tight">{cv.fullName}</h2>
           <p className="mt-1 text-sm font-bold text-white/85">{cv.jobTitle}</p>
