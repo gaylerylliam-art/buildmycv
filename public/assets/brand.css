@@ -48,7 +48,7 @@
 }
 .site-logo-badge {
   display: inline-flex; align-items: center; justify-content: center; flex: none;
-  padding: 3px 5px; border-radius: 7px; background: #141414; line-height: 0;
+  padding: 3px 5px; border-radius: 7px; background: transparent; line-height: 0;
 }
 .site-header .site-logo-badge .brand-logo { width: 72px; }
 .site-header .site-logo-badge[aria-current="page"] { box-shadow: 0 3px 0 #141414; }
@@ -89,7 +89,7 @@
     backdrop-filter: blur(18px) saturate(160%);
   }
 }
-.builder-topbar.site-glass .builder-logo.site-logo-badge { background: #141414; padding: 2px 4px; }
+.builder-topbar.site-glass .builder-logo.site-logo-badge { background: transparent; padding: 2px 4px; }
 .builder-topbar.site-glass .builder-download-button { background: var(--bauhaus-red); color: white; border-color: transparent; }
 .builder-topbar.site-glass .builder-download-button:hover { background: #b81f18; color: white; }
 @media (max-width: 880px) {

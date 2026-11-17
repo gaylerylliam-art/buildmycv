@@ -5,6 +5,13 @@ import "./blogGuideCards.css";
 
 const colours = { writing: "#1F3A5F", ats: "#4338CA", search: "#0F766E", industry: "#166534", gulf: "#923A16" };
 
+function GuideSplash({ media }) {
+  return <img className="bl-flash-splash" src={media.splash} alt="" loading="lazy" decoding="async" onError={(event) => {
+    const image = event.currentTarget;
+    if (image.getAttribute("src") !== media.src) image.src = media.src;
+  }} />;
+}
+
 function GuideCard({ article, index, active, onHover, onLeave, onFlip, onMove }) {
   const href = `/blog/${article.slug}`;
   const flip = useRef(null);
@@ -34,12 +41,16 @@ function GuideCard({ article, index, active, onHover, onLeave, onFlip, onMove })
     onKeyDown={(event) => { if (event.key === "Escape" && active) { onFlip(article.slug, false); button.current.focus(); } }}>
     <div className="bl-flash-tilt"><div ref={flip} className="bl-flash-turn">
       <div className="bl-flash-face bl-flash-front" inert={active || undefined} aria-hidden={active || undefined}>
+        <GuideSplash media={article.media} />
         <span className="bl-flash-number" aria-hidden="true">{number}</span>
         <span className="bl-flash-tag">{article.label}</span>
-        <h3><a href={href}>{article.title}</a></h3>
-        <div className="bl-flash-meta"><time dateTime={article.date}>{formatBlogDate(article.date)}</time><span>{article.readTime}</span></div>
+        <div className="bl-flash-heading">
+          <h3><a href={href}>{article.title}</a></h3>
+          <div className="bl-flash-meta"><time dateTime={article.date}>{formatBlogDate(article.date)}</time><span>{article.readTime}</span></div>
+        </div>
       </div>
       <div id={id} className="bl-flash-face bl-flash-back" inert={!active || undefined} aria-hidden={!active || undefined}>
+        <GuideSplash media={article.media} />
         <span className="bl-flash-number" aria-hidden="true">{number}</span>
         <span className="bl-flash-tag">In this guide</span>
         <p>{article.excerpt}</p>

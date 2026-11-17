@@ -43,7 +43,7 @@ try {
   assert.equal(await page.$eval(".hm-hero h1", (h1) => h1.textContent), "Make your CV job-ready today.");
   assert(await page.evaluate(async () => (await document.fonts.load("700 52px Jost"))[0]?.status === "loaded"));
   assert.equal(await page.$eval(".site-build-cta", (el) => getComputedStyle(el).backgroundColor), "rgb(215, 38, 30)");
-  assert.equal(await page.$eval(".site-logo-badge", (el) => getComputedStyle(el).backgroundColor), "rgb(20, 20, 20)");
+  assert.equal(await page.$eval(".site-logo-badge", (el) => getComputedStyle(el).backgroundColor), "rgba(0, 0, 0, 0)");
   await assertFits("/");
   await page.screenshot({ path: path.join(output, "home-desktop.png") });
   await page.mouse.move(133, 240);
@@ -73,13 +73,18 @@ try {
   await page.evaluate(() => scrollBy(0, 240));
   await page.waitForFunction((previous) => document.querySelector(".hm-liquid-shapes i").style.transform !== previous, {}, transform);
   await page.screenshot({ path: path.join(output, "home-waves-desktop.png") });
-  await page.click(".hm-motion-control > button");
+  await page.focus(".hm-motion-control > button");
+  await page.keyboard.press("Space");
+  await page.waitForFunction(() => document.querySelector(".hm-motion-control > button").getAttribute("aria-pressed") === "true" &&
+    !document.querySelector(".hm-liquid-shapes i").style.transform);
   const paused = await wavePath();
   await page.$eval(wave, (el) => el.closest("svg").scrollIntoView({ block: "center" }));
   await new Promise((resolve) => setTimeout(resolve, 150));
   assert.equal(await wavePath(), paused);
   assert.equal(await page.$eval(".hm-liquid-shapes i", (el) => el.style.transform), "");
-  await page.click(".hm-motion-control > button");
+  await page.focus(".hm-motion-control > button");
+  await page.keyboard.press("Space");
+  await page.waitForSelector('.hm-motion-control > button[aria-pressed="false"]');
 
   for (const [route, active] of [
     ["/templates/", "/templates"], ["/faq/", "/faq"], ["/blog/", "/blog"],
@@ -94,6 +99,7 @@ try {
   await page.click(".site-build-cta");
   await page.waitForSelector(".builder-topbar");
   await assertGlass(".builder-topbar");
+  assert.equal(await page.$eval(".builder-logo", (el) => getComputedStyle(el).backgroundColor), "rgba(0, 0, 0, 0)");
   await page.click(".builder-download-button");
   await page.waitForFunction(() => document.body.innerText.includes("Verify to download"));
 

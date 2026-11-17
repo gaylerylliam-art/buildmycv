@@ -147,6 +147,9 @@ try {
   await page.waitForSelector(card);
   assert.equal(await page.$$eval(".bl-flash", (items) => items.length), 9);
   await page.$eval(card, (item) => item.scrollIntoView({ block: "center", behavior: "instant" }));
+  await page.waitForFunction(() => document.querySelector(".bl-flash-front .bl-flash-splash").naturalWidth > 0);
+  assert.equal(await page.$eval(card + " h3 a", (link) => getComputedStyle(link).color), "rgb(255, 255, 255)");
+  await page.screenshot({ path: path.join(output, "blog-splash-grid.png") });
   await page.hover(card + " .bl-flash-tag");
   await page.waitForSelector(card + '[data-open="true"]');
   await page.waitForFunction((selector) => {
@@ -162,6 +165,21 @@ try {
   await page.keyboard.press("Escape");
   await page.waitForSelector(card + '[data-open="false"]');
   assert(await page.$eval(card + " button", (button) => button === document.activeElement));
+  const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
+  while (await page.$(".bl-load button")) await page.click(".bl-load button");
+  assert.equal(await page.$$eval(".bl-flash", (items) => items.length), total);
+  const photos = await page.$$eval(".bl-flash-front .bl-flash-splash", async (images) => {
+    for (const image of images) image.loading = "eager";
+    await Promise.all(images.map((image) => image.decode()));
+    return images.map((image) => ({ src: image.currentSrc, width: image.naturalWidth, alt: image.alt }));
+  });
+  assert.equal(new Set(photos.map(({ src }) => src)).size, total);
+  assert(photos.every(({ src, width, alt }) => src.includes("/blog/cards/") && width > 0 && width <= 720 && !alt));
+  await page.click('button[aria-label="List view"]');
+  await page.waitForSelector(".bl-flash-list");
+  await page.$eval(card, (item) => item.scrollIntoView({ block: "center", behavior: "instant" }));
+  await page.screenshot({ path: path.join(output, "blog-splash-list.png") });
+  await page.click('button[aria-label="Grid view"]');
   for (const { id, label } of topics.filter((item) => item.id !== "all")) {
     await page.$$eval(".bl-topics button", (items, label) => items.find((button) => button.textContent === label).click(), label);
     const expected = Math.min(9, counts[id]);

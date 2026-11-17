@@ -13,6 +13,8 @@ Editorial photographs from Unsplash and Pexels. These are illustrative, not port
 
 Each guide has a distinct photograph. The existing featured Dubai image and the owner-selected visa-status image are preserved. Pexels images are stored locally as optimized 1200 x 800 JPEGs; source and credit metadata is shared by the journal cards and article pages in `src/content/blogPhotography.js`. Photographs are illustrative and do not identify authors, customers, or people whose CVs appear on this website.
 
+Card backgrounds in `cards/` are smaller WebP copies of the same photographs. Regenerate them after changing the article photography with `node scripts/generate-blog-card-images.mjs`.
+
 - `cv-writing.jpg`: Lukas Blazek / Pexels, https://www.pexels.com/photo/two-white-printer-papers-near-macbook-on-brown-surface-590016/
 - `hospitality.jpg`: abdo alshreef / Pexels, https://www.pexels.com/photo/hotel-reception-desk-attendant-in-lobby-36684286/
 - `overseas-careers.jpg`: Gu Ko / Pexels, https://www.pexels.com/photo/modern-airport-terminal-with-travelers-at-sunrise-31519545/

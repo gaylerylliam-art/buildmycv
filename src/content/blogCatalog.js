@@ -18,7 +18,9 @@ function decorate(article) {
     : /uae|gcc|dubai|ofw|visa/i.test(subject) ? "gulf" : "writing";
   const label = blogTopics.find(item => item.id === topic).label;
   const photography = getBlogPhotography(article);
-  const media = { src: photography.image || "/assets/blog/documents.jpg", alt: photography.imageAlt || article.title };
+  const src = photography.image || "/assets/blog/documents.jpg";
+  const splash = src.startsWith("/assets/blog/") ? src.replace(/^\/assets\/blog\/([^/]+)\.jpg$/, "/assets/blog/cards/$1.webp") : src;
+  const media = { src, splash, alt: photography.imageAlt || article.title };
   return { ...article, topic, label, media };
 }
 const markdown = Object.values(import.meta.glob("../../content/blog/*.md", { eager: true, query: "?raw", import: "default" })).map(raw => {
