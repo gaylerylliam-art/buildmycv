@@ -6,11 +6,18 @@ import { CSS } from "@dnd-kit/utilities";
 import { categories, layouts, themes } from "./data/categories";
 import HomeLanding from "./components/HomeLanding";
 import BrandLogo from "./components/BrandLogo.jsx";
+import SiteHeader from "./components/SiteHeader.jsx";
 import { privacySections } from "./content/privacyContent.js";
 import Mascot from "./components/Mascot.jsx";
 import { cvTextLines } from "./lib/cvText.js";
 import FaqLanding from "./components/FaqLanding.jsx";
 import BlogLanding from "./components/BlogLanding.jsx";
+import TemplatesPage, { TemplateStyleControls } from "./components/TemplatesPage.jsx";
+import TemplatePreview from "./components/TemplatePreview.jsx";
+import { readTemplateDesign, resolveTemplateStyle } from "./data/cvTemplates.js";
+import { getTemplateSampleStatus } from "./data/cvTemplateSamples.js";
+import { readTemplateDraft, updateTemplateDraft } from "./lib/templateDrafts.js";
+import { isSamplePreview } from "./lib/templateDocument.js";
 import ExistingCVImporter from "./components/ExistingCVImporter.jsx";
 import { useBuilderMotion } from "./hooks/usePageMotion.js";
 import PhotoUploadCrop from "./components/PhotoUploadCrop";
@@ -617,34 +624,8 @@ function AdBanner({ label = "Google AdSense ad space", compact = false, slot = "
 function CookieNotice() { return null; }
 
 function Header({ onStart }) {
-  const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 10);
-    onScroll();
-    window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  return (
-    <header className={`landing-nav ${scrolled ? "scrolled" : ""}`}>
-      <Link to="/" className="nav-logo" aria-label="BuildMyCVNow home">
-        <BrandLogo />
-        </Link>
-      <div className="nav-right">
-        <nav className="nav-links" aria-label="Landing page navigation">
-          <Link to="/#templates" className="nav-link">Templates</Link>
-          <Link to="/#how-it-works" className="nav-link">How it works</Link>
-          <Link to="/blog" className="nav-link">Blog</Link>
-        </nav>
-        <button onClick={onStart} className="nav-cta">
-          Build my CV - it's free
-        </button>
-      </div>
-      <button onClick={onStart} className="nav-mobile-cta" aria-label="Build my CV">
-        CV
-      </button>
-    </header>
-  );
+  const { pathname } = useLocation();
+  return <SiteHeader path={pathname} onStart={onStart} />;
 }
 
 function HomeHowItWorksSection({ onStart }) {
@@ -1432,14 +1413,14 @@ function CollapsibleFormSection({ id, title, icon = "file", defaultOpen = false,
   );
 }
 
-function FormField({ label, value, onChange, type = "text", rows = 3, placeholder = "" }) {
+function FormField({ label, value, onChange, type = "text", rows = 3, placeholder = "", sample = false }) {
   return (
     <label className="block">
-      <span className="form-label">{label}</span>
+      <span className="form-label">{label}{sample && <small className="tpl-sample-label">Sample</small>}</span>
       {type === "textarea" ? (
-        <textarea value={value || ""} onChange={(event) => onChange(event.target.value)} rows={rows} className="form-field resize-y" placeholder={placeholder} />
+        <textarea value={value || ""} onChange={(event) => onChange(event.target.value)} rows={rows} className={`form-field resize-y ${sample ? "tpl-sample-field" : ""}`} placeholder={placeholder} />
       ) : (
-        <input type={type} value={value || ""} onChange={(event) => onChange(event.target.value)} className="form-field" placeholder={placeholder} />
+        <input type={type} value={value || ""} onChange={(event) => onChange(event.target.value)} className={`form-field ${sample ? "tpl-sample-field" : ""}`} placeholder={placeholder} />
       )}
     </label>
   );
@@ -1647,6 +1628,7 @@ function ReferencesSection({ cv, onChange }) {
 
 function CVBuilderForm({ cv, onChange, activeSection }) {
   const [smartTips, setSmartTips] = useState({});
+  const samples = getTemplateSampleStatus(cv);
   const tipsEnabled = cv.tipsEnabled !== false;
   const handleBlurTip = (field, value) => {
     if (!tipsEnabled) return;
@@ -1671,18 +1653,18 @@ function CVBuilderForm({ cv, onChange, activeSection }) {
     <div className="space-y-3">
       <CollapsibleFormSection id="personal" title="Personal info" icon="file" defaultOpen badge={cv.fullName ? "Done" : ""} focused={activeSection === "personal"} hidden={Boolean(activeSection && activeSection !== "personal")}>
         <div className="field-pair">
-          <FormField label="Full name" value={cv.fullName} onChange={(value) => onChange("fullName", value)} placeholder="Example: Juan Dela Cruz" />
-          <FormField label="Job title" value={cv.jobTitle} onChange={(value) => onChange("jobTitle", value)} placeholder="Example: Logistics Assistant" />
+          <FormField label="Full name" value={cv.fullName} sample={samples.personal.includes("fullName")} onChange={(value) => onChange("fullName", value)} placeholder="Example: Juan Dela Cruz" />
+          <FormField label="Job title" value={cv.jobTitle} sample={samples.sections.includes("jobTitle")} onChange={(value) => onChange("jobTitle", value)} placeholder="Example: Logistics Assistant" />
         </div>
         <div className="field-pair">
           <label className="block">
-            <span className="form-label">Contact email</span>
-            <input type="email" value={cv.email || ""} onChange={(event) => onChange("email", event.target.value)} onBlur={(event) => handleBlurTip("email", event.target.value)} className="form-field" placeholder="name@email.com" />
+            <span className="form-label">Contact email{samples.personal.includes("email") && <small className="tpl-sample-label">Sample</small>}</span>
+            <input type="email" value={cv.email || ""} onChange={(event) => onChange("email", event.target.value)} onBlur={(event) => handleBlurTip("email", event.target.value)} className={`form-field ${samples.personal.includes("email") ? "tpl-sample-field" : ""}`} placeholder="name@email.com" />
             <SmartTip message={smartTips.email} onDismiss={() => clearSmartTip("email")} />
           </label>
           <label className="block">
-            <span className="form-label">Contact number</span>
-            <input type="tel" value={cv.phone || ""} onChange={(event) => onChange("phone", event.target.value)} onBlur={(event) => handleBlurTip("phone", event.target.value)} className="form-field" placeholder="+971 50 123 4567" />
+            <span className="form-label">Contact number{samples.personal.includes("phone") && <small className="tpl-sample-label">Sample</small>}</span>
+            <input type="tel" value={cv.phone || ""} onChange={(event) => onChange("phone", event.target.value)} onBlur={(event) => handleBlurTip("phone", event.target.value)} className={`form-field ${samples.personal.includes("phone") ? "tpl-sample-field" : ""}`} placeholder="+971 50 123 4567" />
             <SmartTip message={smartTips.phone} onDismiss={() => clearSmartTip("phone")} />
           </label>
         </div>
@@ -2278,6 +2260,7 @@ function DownloadModal({ cv, onClose, onVerifiedDownload, canEmailCopy = false, 
             </p>
           )}
         </div>
+        {readTemplateDesign(cv.templateStyle) && <p className="mt-2 text-xs text-slate-600">Word uses {readTemplateDesign(cv.templateStyle).font.word} for compatibility.</p>}
         {actionStatus && <p className="mt-3 rounded bg-slate-50 p-3 text-sm font-bold leading-6 text-slate-700">{actionStatus}</p>}
       </div>
     </div>
@@ -3129,8 +3112,8 @@ function BuilderTopBar({ onHome, onDownload, saveStatus, cloudSavingEnabled, use
   const { mode, setMode, cycleMode } = useTheme("dark");
   const isSaving = /saving/i.test(saveStatus);
   return (
-    <header className="builder-topbar">
-      <button type="button" onClick={onHome} className="builder-logo" aria-label="BuildMyCVNow home"><BrandLogo /></button>
+    <header className="builder-topbar site-glass">
+      <button type="button" onClick={onHome} className="builder-logo site-logo-badge" aria-label="BuildMyCVNow home"><BrandLogo /></button>
       {workspaceMode ? <WorkspaceTabs mode={workspaceMode} onChange={onWorkspaceMode} /> : <nav className="builder-type-switch" aria-label="Builder type">
         {[["cv", "CV Builder"], ["cover", "Cover Letter Builder"]].map(([id, label]) => <button key={id} type="button" aria-pressed={activeBuilder === id} onClick={() => onSwitchBuilder(id)}>{label}</button>)}
       </nav>}
@@ -3434,7 +3417,9 @@ function BuilderPreviewPanel({ cv, theme, layout, onDownload }) {
         {message && <p className="mt-2 text-xs font-bold text-blue-700">{message}</p>}
       </div>
       <div ref={sheetRef} className="preview-sheet-scroll" style={{ "--preview-zoom": (previewZoom ?? fitZoom) / 100 }}>
-        <LiveCVPreview cv={cv} theme={theme} layout={layout} />
+        {readTemplateDesign(cv.templateStyle)
+          ? <TemplatePreview cv={cv} style={cv.templateStyle} demo={isSamplePreview(cv)} zoom={(previewZoom ?? fitZoom) / 100} />
+          : <LiveCVPreview cv={cv} theme={theme} layout={layout} />}
         <button type="button" onClick={onDownload} className="mt-4 flex w-full items-center justify-center gap-2 rounded bg-green-600 px-4 py-3 text-sm font-black text-white hover:bg-green-700">
           <Icon name="download" className="h-4 w-4" /> Download Free PDF
         </button>
@@ -3562,10 +3547,20 @@ function CoverLetterBuilder({
   );
 }
 
+const makeBuilderTemplateCv = (draft) => ({
+  ...initialCv, fullName: "", jobTitle: "", email: "", phone: "", country: "",
+  nationality: "", visaStatus: "", drivingLicense: "", experience: "", showCredit: false,
+  summary: "", skills: "", workExperiences: [], education: "", certifications: "", languages: "", references: { mode: "none", entries: [] },
+  ...draft.cv, templateStyle: draft.cv?.templateStyle === null ? null : (readTemplateDesign(draft.cv?.templateStyle) ? draft.cv.templateStyle : draft.style),
+  createdFrom: "templates_page", builderStartOption: "ready-made template",
+});
+
 function CVBuilderApp({ onHome }) {
   const [entryOptions] = useState(() => {
     const query = new URLSearchParams(window.location.search);
     return {
+      templateDraft: readTemplateDraft(query.get("cv")),
+      templateDraftRequested: query.has("cv"),
       category: categories.find((item) => item.id === query.get("category")),
       theme: themes.find((item) => item.id === query.get("theme")),
       layout: layouts.find((item) => item.id === query.get("layout")),
@@ -3574,9 +3569,11 @@ function CVBuilderApp({ onHome }) {
     };
   });
   const [activeBuilder, setActiveBuilder] = useState(() => (window.location.hash === "#cover-letter" ? "cover" : "cv"));
-  const [categoryId, setCategoryId] = useState(entryOptions.category?.id || defaultCategory.id);
+  const browserTemplate = entryOptions.templateDraft?.ownerId ? null : entryOptions.templateDraft;
+  const [categoryId, setCategoryId] = useState(browserTemplate?.categoryId || entryOptions.category?.id || defaultCategory.id);
   const [cv, setCv] = useState(() => {
     const category = entryOptions.category;
+    if (browserTemplate) return makeBuilderTemplateCv(browserTemplate);
     return {
       ...initialCv,
       ...(category ? { jobTitle: category.title, summary: category.summary, skills: category.skills, experience: category.experience, workExperiences: [createExperienceEntry(category)] } : {}),
@@ -3591,6 +3588,8 @@ function CVBuilderApp({ onHome }) {
   const [coverFontId, setCoverFontId] = useState("sans");
   const [coverLayoutId, setCoverLayoutId] = useState("classic");
   const [downloadTarget, setDownloadTarget] = useState(null);
+  const [templateMessage, setTemplateMessage] = useState(entryOptions.templateDraftRequested && !entryOptions.templateDraft
+    ? "This template draft expired or was opened in another browser." : "");
   const [downloaded, setDownloaded] = useState(false);
   const [coverDownloaded, setCoverDownloaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState("Auto-save ready");
@@ -3620,6 +3619,8 @@ function CVBuilderApp({ onHome }) {
   const noCloudMode = userMode === "urgent-local";
   const builderMotionRoot = useBuilderMotion(currentStep, activeBuilder === "cv");
   const completedSteps = useMemo(() => getBuilderStepState(cv), [cv]);
+  const templateDesign = readTemplateDesign(cv.templateStyle);
+  const sampleStatus = getTemplateSampleStatus(cv);
   const recordCvEvent = (eventName, metadata = {}) => {
     trackEvent(eventName, metadata);
     trackCvEvent({
@@ -3650,6 +3651,13 @@ function CVBuilderApp({ onHome }) {
     document.querySelector(".builder-workspace .builder-form-panel-v2")?.scrollTo({ top: 0 });
   }, [workspaceMode, currentStep]);
   const requestCvDownload = () => {
+    if (sampleStatus.personal.length) {
+      jumpToStep("personal");
+      setTemplateMessage("Replace the sample name, email, and phone number before downloading.");
+      return;
+    }
+    if (sampleStatus.sections.length && !window.confirm(`${sampleStatus.sections.length} sections still contain sample text. Download anyway?`)) return;
+    setTemplateMessage("");
     if (completion.percent < 40) {
       logEvent("export_below_threshold", { percent: completion.percent });
       if (!window.confirm(`Your CV is only ${completion.percent}% complete. Recruiters may reject incomplete CVs. Export anyway?`)) return;
@@ -3813,7 +3821,7 @@ function CVBuilderApp({ onHome }) {
     }
   };
   useEffect(() => {
-    if (!cloudSavingEnabled) return;
+    if (!cloudSavingEnabled || entryOptions.templateDraft) return;
     let ignore = false;
     const restoreInitialDraft = async () => {
       try {
@@ -3832,6 +3840,32 @@ function CVBuilderApp({ onHome }) {
     };
   }, [cloudSavingEnabled, user?.id]);
   useEffect(() => {
+    const draft = entryOptions.templateDraft;
+    if (!draft?.ownerId || !supabase) return;
+    let active = true;
+    supabase.auth.getUser().then(({ data }) => {
+      if (!active) return;
+      if (data.user?.id !== draft.ownerId) {
+        setTemplateMessage("Sign in to the account that opened this saved CV, then reopen the template from the catalog.");
+        return;
+      }
+      const next = makeBuilderTemplateCv(draft);
+      setCv(next);
+      setCategoryId(draft.categoryId || defaultCategory.id);
+      setCoverLetter(createCoverLetterFromCv(next, draft.categoryId || defaultCategory.id));
+    }).catch(() => { if (active) setTemplateMessage("Could not verify access to the saved CV."); });
+    return () => { active = false; };
+  }, [entryOptions.templateDraft]);
+  useEffect(() => {
+    const draft = entryOptions.templateDraft;
+    if (!draft || cv.createdFrom !== "templates_page" || (draft.ownerId && draft.ownerId !== user?.id)) return;
+    const timer = window.setTimeout(() => {
+      try { updateTemplateDraft(draft.id, cv, categoryId); }
+      catch { setTemplateMessage("This browser could not save the latest template draft changes."); }
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [cv, categoryId, entryOptions.templateDraft, user?.id]);
+  useEffect(() => {
     if (!noCloudMode || downloaded || coverDownloaded) return;
     const warnBeforeLeave = (event) => {
       event.preventDefault();
@@ -3843,7 +3877,7 @@ function CVBuilderApp({ onHome }) {
   useEffect(() => {
     const saveDraft = async () => {
       const payload = draftPayload();
-      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payload));
+      if (!entryOptions.templateDraft?.ownerId) localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(payload));
       recordCvEvent("cv_draft_updated", { save_mode: cloudSavingEnabled ? "cloud-and-local" : "local" });
       setSaveStatus("Saved locally");
       if (cloudSavingEnabled) {
@@ -4065,7 +4099,9 @@ function CVBuilderApp({ onHome }) {
       return result;
     }
     const trackedCvId = await ensureTrackedCvRecord();
-    await downloadCvFile(cv, type, theme, layoutId);
+    if (getTemplateSampleStatus(cv).personal.length) throw new Error("Replace the sample contact details before downloading.");
+    const { pageCount } = await downloadCvFile(cv, type, theme, layoutId) || {};
+    if (templateDesign) trackEvent("cv_exported", { templateId: templateDesign.template.id, format: type === "word" ? "docx" : "pdf", pageCount, createdFrom: cv.createdFrom || "builder" });
     recordCvEvent("download_completed", { format: type, completion_percent: completion.percent, cv_id: trackedCvId });
     if (trackedCvId) await markCvDownloaded(trackedCvId);
     setDownloaded(true);
@@ -4160,6 +4196,10 @@ function CVBuilderApp({ onHome }) {
               <div hidden={workspaceMode !== "design"} className="workspace-design-templates">
                 <BuilderTemplateDock categoryId={categoryId} onCategory={handleCategory} themeId={themeId} onTheme={setThemeId} />
               </div>
+              {templateMessage && <p className="tpl-warning" role="alert">{templateMessage}</p>}
+              {cv.sampleTemplateId && (sampleStatus.personal.length > 0 || sampleStatus.sections.length > 0) && (
+                <p className="tpl-sample-note">Sample CV: replace the highlighted contact details before downloading. {sampleStatus.sections.length} other sample sections remain.</p>
+              )}
               <div hidden={workspaceMode !== "content" || currentStep !== "import"}><ExistingCVImporter onImport={handleImport} currentCv={cv} onRestore={(previous) => { setCv(previous); appliedImportIdsRef.current.clear(); }} /></div>
               {storageMessage && cloudSavingEnabled && <p className="rounded bg-slate-50 p-3 text-xs font-bold leading-5 text-slate-600">{storageMessage}</p>}
               <div hidden={workspaceMode !== "ai"} className="workspace-ai-panel"><ATSPanel cv={cv} jobDescription={cv.jobDescription || ""} onJobDescriptionChange={(value) => updateCvField("jobDescription", value)} onApplySuggestion={applyAtsSuggestion} onTrackEvent={recordCvEvent} /></div>
@@ -4171,8 +4211,20 @@ function CVBuilderApp({ onHome }) {
                 <h3 className="panel-title">Save and layout</h3>
                 <div className="workspace-settings-grid mt-4 grid gap-4 lg:grid-cols-2">
                   <div className="grid gap-4">
-                    <LayoutSelector selected={layoutId} onSelect={setLayoutId} />
-                    <PageBorderSelector cv={cv} onChange={updateCvField} />
+                    {templateDesign ? <>
+                      <TemplateStyleControls style={cv.templateStyle} chooseTemplate onChange={(style) => updateCvField("templateStyle", style)} />
+                      <button type="button" className="form-field" onClick={() => updateCvField("templateStyle", null)}>Use standard builder layouts</button>
+                    </> : <>
+                      <LayoutSelector selected={layoutId} onSelect={setLayoutId} />
+                      <PageBorderSelector cv={cv} onChange={updateCvField} />
+                      <label className="tpl-field">Ready-made template
+                        <select value="" onChange={(event) => { if (event.target.value) updateCvField("templateStyle", resolveTemplateStyle({ templateId: event.target.value })); }}>
+                          <option value="">Choose a layout</option>
+                          <option value="classic">Classic</option><option value="sidebar">Modern Sidebar</option>
+                          <option value="executive">Executive</option><option value="timeline">Timeline</option><option value="compact">Compact (ATS)</option>
+                        </select>
+                      </label>
+                    </>}
                     <button
                       type="button"
                       onClick={() => setSectionReorderOpen(true)}
@@ -4411,6 +4463,7 @@ export default function App() {
           }
         />
         <Route path="/builder" element={<CVBuilderApp onHome={goHome} />} />
+        <Route path="/templates" element={<TemplatesPage />} />
         <Route path="/about" element={<AboutPage onStart={goToBuilder} />} />
         <Route path="/contact" element={<ContactPage onStart={goToBuilder} />} />
         <Route path="/privacy" element={<PrivacyPage onStart={goToBuilder} />} />

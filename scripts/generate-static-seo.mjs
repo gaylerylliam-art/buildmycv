@@ -30,17 +30,20 @@ const appAssets = (appShell.match(/<script\b[^>]*type="module"[^>]*>[\s\S]*?<\/s
 
 // Render the same component used by the app so first-load HTML cannot drift.
 const renderer = await createServer({ root, configFile: false, server: { middlewareMode: true, watch: null }, optimizeDeps: { noDiscovery: true, entries: [] }, appType: "custom" });
-let homepageMarkup, blogMarkup, faqMarkup, brandMarkup, inverseBrandMarkup, mascotMarkup;
+let homepageMarkup, blogMarkup, faqMarkup, templatesMarkup, headerMarkup, inverseBrandMarkup, mascotMarkup;
 try {
   const { default: HomeLanding } = await renderer.ssrLoadModule("/src/components/HomeLanding.jsx");
   const { default: BrandLogo } = await renderer.ssrLoadModule("/src/components/BrandLogo.jsx");
+  const { default: SiteHeader } = await renderer.ssrLoadModule("/src/components/SiteHeader.jsx");
   const { default: BlogLanding } = await renderer.ssrLoadModule("/src/components/BlogLanding.jsx");
   const { default: FaqLanding } = await renderer.ssrLoadModule("/src/components/FaqLanding.jsx");
+  const { default: TemplatesPage } = await renderer.ssrLoadModule("/src/components/TemplatesPage.jsx");
   const { default: Mascot } = await renderer.ssrLoadModule("/src/components/Mascot.jsx");
   homepageMarkup = renderToString(React.createElement(HomeLanding));
   blogMarkup = renderToString(React.createElement(BlogLanding));
   faqMarkup = renderToString(React.createElement(FaqLanding));
-  brandMarkup = renderToString(React.createElement(BrandLogo));
+  templatesMarkup = renderToString(React.createElement(TemplatesPage));
+  headerMarkup = (canonical) => renderToString(React.createElement(SiteHeader, { path: new URL(canonical).pathname }));
   inverseBrandMarkup = renderToString(React.createElement(BrandLogo, { tone: "inverse" }));
   mascotMarkup = (mood, placement = 'static-intro', size = 'small') => renderToString(React.createElement(Mascot, { mood, placement, size, eager: placement === 'static-intro' }));
 } finally {
@@ -167,7 +170,7 @@ function layout({ title, description, canonical, body, jsonLd = [], type = "webs
   ${schemas.filter(Boolean).map((schema) => `<script type="application/ld+json">${JSON.stringify(schema)}</script>`).join("\n")}
 </head>
 <body>
-${interactive ? `<div id="root">${body}</div>` : `${header()}<div class="mascot-static-content">${decorateStaticPage(body, canonical)}</div>${footer()}`}
+${interactive ? `<div id="root">${body}</div>` : `${headerMarkup(canonical)}<div class="mascot-static-content">${decorateStaticPage(body, canonical)}</div>${footer()}`}
 </body>
 </html>`;
 }
@@ -188,12 +191,6 @@ function criticalCss() {
     h3{margin:0 0 8px}
     .lead{font-size:20px;color:#475569}
     .muted{color:#64748b}
-    .nav{position:sticky;top:0;background:#fff;border-bottom:1px solid #e5e7eb;z-index:10}
-    .nav-inner{max-width:1120px;margin:auto;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:18px}
-    .brand{font-weight:900;text-decoration:none;color:#0f172a}
-    .brand span{color:#16a34a}
-    .nav-links{display:flex;gap:18px;align-items:center}
-    .nav-links a{text-decoration:none;color:#334155;font-weight:800;font-size:14px}
     .cta,.btn{display:inline-flex;align-items:center;justify-content:center;border-radius:8px;background:#16a34a;color:#fff!important;padding:12px 18px;text-decoration:none;font-weight:900}
     .btn.secondary{background:#eff6ff;color:#185fa5!important}
     .footer{padding:34px 20px;background:#0f172a;color:#cbd5e1}
@@ -315,7 +312,6 @@ function criticalCss() {
     .static-final-cta .wrap{max-width:820px}
     .static-final-cta .cta{background:#fff;color:#185fa5!important}
     @media(max-width:900px){
-      .nav-links{display:none}
       .section{padding:38px 18px}
       .static-hero{padding:46px 18px}
       .static-hero-grid,.static-trust,.grid-3,.grid-4,.static-template-grid,.static-hiw-stats{grid-template-columns:1fr}
@@ -342,10 +338,6 @@ function criticalCss() {
       .static-hiw-pro-step-card{border-radius:18px;padding:16px}
     }
   `;
-}
-
-function header() {
-  return `<nav class="nav"><div class="nav-inner"><a class="brand" href="/" aria-label="BuildMyCVNow home">${brandMarkup}</a><div class="nav-links"><a href="/#templates">Templates</a><a href="/#how-it-works">How it works</a><a href="/blog">Blog</a><a href="/faq">FAQ</a><a class="cta" href="/builder">Build my CV - it's free</a></div></div></nav>`;
 }
 
 function footer() {
@@ -428,7 +420,7 @@ function faqSection() {
   return `<section class="section faq"><div class="wrap"><h2>Frequently asked questions</h2>${homepageFaqs.map((faq) => `<details><summary>${escapeHtml(faq.question)}</summary><p>${escapeHtml(faq.answer)}</p></details>`).join("")}</div></section>`;
 }
 
-writePage("/templates", layout({ title: "CV Templates for Global and Gulf Jobs | BuildMyCVNow", description: "Browse free ATS-friendly CV templates for hospitality, finance, engineering, logistics, sales, admin and skilled worker jobs.", canonical: `${baseUrl}/templates`, body: `<main class="section"><div class="wrap"><h1>CV templates for global and Gulf jobs</h1><p class="lead">Choose a template built for your industry, then customize it in the free builder. Each template keeps the layout simple, readable, and friendly for ATS screening.</p><p>Use these templates for local jobs, overseas applications, remote work, and Gulf-market applications where employers may ask for details such as visa status, languages, nationality, driving license, or availability. You can switch templates without losing your current CV data.</p><div class="grid grid-4">${seoJobs.slice(0, 16).map((job) => `<a class="card" href="/cv/${job.slug}-dubai"><h3>${job.title}</h3><p>${job.skills.slice(0, 5).join(", ")}</p><p class="muted">Includes role-specific wording ideas, skills, example duties, and salary guidance where available.</p></a>`).join("")}</div></div></main>` }));
+writePage("/templates", layout({ title: "Free CV Templates | BuildMyCVNow", description: "Preview five ready-made CV templates, choose a colour and font, then edit in the free CV builder.", canonical: `${baseUrl}/templates`, interactive: true, body: templatesMarkup }));
 writePage("/about", layout({ title: "About BuildMyCVNow | Free Global CV Builder", description: "BuildMyCVNow helps job seekers worldwide create professional CVs for free.", canonical: `${baseUrl}/about`, body: `<main class="section"><div class="wrap"><h1>About BuildMyCVNow</h1><p class="lead">BuildMyCVNow was created to help job seekers build better CVs without paying before download.</p><p>We support applicants worldwide, including people applying locally, overseas, remotely, or across competitive international job markets. The mission is simple: make professional CV creation easy, mobile-friendly, and free.</p></div></main>` }));
 writePage("/contact", layout({ title: "Contact BuildMyCVNow | CV Builder Support", description: "Contact BuildMyCVNow with questions, support requests, feedback, or partnership messages. Messages are forwarded to info@buildmycvnow.com.", canonical: `${baseUrl}/contact`, body: `<main class="section"><div class="wrap"><h1>Contact BuildMyCVNow</h1><p class="lead">Have a question, support request, or suggestion? Send a message and it will be forwarded to info@buildmycvnow.com.</p><form class="card" method="post" action="/.netlify/functions/contact" style="display:grid;gap:14px;max-width:680px"><input type="hidden" name="form-name" value="contact"><label style="display:none">Website<input name="website" tabindex="-1" autocomplete="off"></label><label><strong>Name</strong><br><input name="name" required style="width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:8px"></label><label><strong>Email</strong><br><input name="email" type="email" required style="width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:8px"></label><label><strong>Message</strong><br><textarea name="message" required rows="6" style="width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:8px"></textarea></label><button class="cta" type="submit" style="border:0;max-width:190px">Send message</button><p class="muted">All contact form messages are forwarded to info@buildmycvnow.com.</p></form></div></main>` }));
 const ofwFaqs = [

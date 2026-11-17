@@ -23,23 +23,12 @@ export function useHomeMotion(paused = false) {
       media.add('(prefers-reduced-motion: no-preference)', () => {
         const host = root.current;
         const q = selector => [...host.querySelectorAll(selector)];
-        let observer, rotation, contextSetup;
-        const word = host.querySelector(".hm-rotating-word");
+        let observer, contextSetup;
         const context = gsap.context(() => {
           const hero = gsap.timeline({ defaults: { duration: .65, ease: 'power3.out' } });
-          hero.from(q('.hm-nav a'), { y: -14, opacity: 0, stagger: .035 })
-            .from(q('.hm-hero-copy h1 .hm-word-inner'), { yPercent: 115, stagger: .08 }, '-=.3')
-            .from(q('.hm-hero-copy mark'), { scaleX: 0, transformOrigin: 'left center' }, '-=.4')
+          hero.from(q('.hm-hero-copy h1'), { y: 14, opacity: 0 })
             .from(q('.hm-hero-copy > p, .hm-hero-actions .hm-button, .hm-download-explainer'), { y: 18, opacity: 0, stagger: .1 }, '-=.35')
             .from(q('.hm-hero-photo img'), { opacity: 0, duration: .8 }, .2);
-          const words = ['job-ready', 'interview-ready', 'recruiter-ready', 'stand out'];
-          let index = 0;
-          if (word) {
-            rotation = gsap.timeline({ repeat: -1, delay: 2.6, repeatDelay: 2.1 });
-            rotation.to(word, { yPercent: -115, opacity: 0, duration: .35 })
-              .call(() => { index = (index + 1) % words.length; word.textContent = words[index]; })
-              .fromTo(word, { yPercent: 115, opacity: 0 }, { yPercent: 0, opacity: 1, duration: .5, ease: 'power3.out', immediateRender: false });
-          }
           // Elements remain visible until their entrance starts; fast scrolling cannot strand them hidden.
           const seen = new WeakSet();
           const reveal = (items, vars = {}) => items.forEach((item, index) => {
@@ -76,7 +65,7 @@ export function useHomeMotion(paused = false) {
         const grid = host.querySelector('.hm-template-grid');
         if (grid) observer.observe(grid, { childList: true });
         ScrollTrigger.refresh();
-        return () => { observer?.disconnect(); rotation?.kill(); context.revert(); if (word) word.textContent = 'job-ready'; };
+        return () => { observer?.disconnect(); context.revert(); };
       });
     });
     return () => { cancelled = true; media?.revert(); };

@@ -1,23 +1,19 @@
 import React, { useMemo, useState } from "react";
 import BrandLogo from "./BrandLogo.jsx";
+import SiteHeader from "./SiteHeader.jsx";
 import Mascot from "./Mascot.jsx";
 import { Symbol } from "./HomeLanding.jsx";
 import { faqGroups, faqQuestions } from "../content/faqContent.js";
 import "./faqLanding.css";
 
 export default function FaqLanding() {
-  const [topic, setTopic] = useState("all"), [query, setQuery] = useState(""), [menuOpen, setMenuOpen] = useState(false);
+  const [topic, setTopic] = useState("all"), [query, setQuery] = useState("");
   const filtered = useMemo(() => faqGroups.map(group => ({ ...group, questions: group.questions.filter(item => (topic === "all" || topic === group.id) && `${item.question} ${item.paragraphs.join(" ")}`.toLowerCase().includes(query.trim().toLowerCase())) })).filter(group => group.questions.length), [topic, query]);
   const count = filtered.reduce((total, group) => total + group.questions.length, 0);
   const reset = () => { setQuery(""); setTopic("all"); };
   return <div className="faq-page">
     <a className="fq-skip" href="#faq-main">Skip to content</a>
-    <header className="fq-header"><div className="fq-wrap fq-nav">
-      <a href="/" aria-label="BuildMyCVNow home"><BrandLogo /></a>
-      <button className="fq-menu" type="button" aria-expanded={menuOpen} aria-controls="fq-navigation" onClick={() => setMenuOpen(value => !value)}>Menu</button>
-      <nav id="fq-navigation" className={menuOpen ? "fq-links open" : "fq-links"} aria-label="Main navigation"><a href="/#improve">Improve my CV</a><a href="/#templates">Templates</a><a href="/#free-download">Free download</a><a href="/faq" aria-current="page">FAQ</a><a href="/blog">Career tips</a></nav>
-      <a className="fq-button fq-primary fq-header-cta" href="/builder">Build my CV — free</a>
-    </div></header>
+    <SiteHeader path="/faq" />
     <section className="fq-hero"><div className="fq-wrap">
       <nav className="fq-crumbs" aria-label="Breadcrumb"><a href="/">Home</a><span aria-hidden="true">/</span><span>FAQ</span></nav>
       <div className="fq-hero-grid"><div>

@@ -3,6 +3,9 @@ import { normalizeQrUrl } from "../lib/validateQrUrl.js";
 import { sanitizeQrSvg } from "../hooks/useQrSvg.js";
 import { PASSPORT_PHOTO, getPassportPhotoStyles, normalizePhotoShape } from "../lib/profilePhoto.js";
 import { cvTextLines } from "../lib/cvText.js";
+import { readTemplateDesign } from "../data/cvTemplates.js";
+import { buildTemplatePrintHtml } from "../lib/templateDocument.js";
+import { buildTemplateWord } from "../lib/templateWord.js";
 
 const escapeHtml = (value = "") =>
   String(value)
@@ -355,8 +358,6 @@ export const downloadPdfFromHtml = async (html, filename, pageMarginMm = 10) => 
     console.warn("Server PDF export unavailable; using browser fallback.", error);
   }
 
-  const module = await import("html2pdf.js");
-  const html2pdf = module.default || module;
   // Render in an isolated document so export styles never affect the builder.
   const frame = document.createElement("iframe");
   frame.setAttribute("aria-hidden", "true");
@@ -367,6 +368,20 @@ export const downloadPdfFromHtml = async (html, filename, pageMarginMm = 10) => 
     doc.open(); doc.write(html); doc.close();
     await doc.fonts?.ready;
     await Promise.all(Array.from(doc.images, image => image.decode().catch(() => {})));
+    const sheets = Array.from(doc.body.children).filter((child) => child.matches(".tcv-paper"));
+    if (sheets.length) {
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
+      const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
+      // The template renderer has already decided each page break.
+      for (const [index, sheet] of sheets.entries()) {
+        const canvas = await html2canvas(sheet, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
+        if (index) pdf.addPage();
+        pdf.addImage(canvas.toDataURL("image/jpeg", 0.98), "JPEG", 0, 0, 210, 297);
+      }
+      pdf.save(filename);
+      return;
+    }
+    const { default: html2pdf } = await import("html2pdf.js");
     const margin = Math.min(76.2, Math.max(0, Number(pageMarginMm) || 0));
     doc.body.style.width = (210 - margin * 2) + "mm";
     doc.body.style.minHeight = "0";
@@ -380,8 +395,8 @@ export const downloadPdfFromHtml = async (html, filename, pageMarginMm = 10) => 
     root.style.cssText = doc.body.style.cssText;
     const scopedStyle = doc.createElement("style");
     scopedStyle.textContent = Array.from(doc.styleSheets).flatMap(sheet => Array.from(sheet.cssRules))
-      .filter(rule => rule.type === 1)
-      .map(rule => `${rule.selectorText.split(",").map(selector => {
+      .filter(rule => rule.type === 1 || rule.type === 5)
+      .map(rule => rule.type === 5 ? rule.cssText : `${rule.selectorText.split(",").map(selector => {
         const value = selector.trim();
         return /^(html|body)(?=[.\s:]|$)/.test(value)
           ? value.replace(/^(html|body)/, ".cv-pdf-export-root")
@@ -453,6 +468,8 @@ const downloadCoverLetterDocx = async (letter, cv, filename) => {
 };
 
 export const buildCvDocxBlob = async (cv, theme = { color: "#0f66d0", dark: "#0f172a" }, layout = "classic") => {
+  const design = readTemplateDesign(cv.templateStyle);
+  if (design) return (await buildTemplateWord(cv, design.showPhoto ? await profilePhotoDataForDocx(cv.profilePhoto) : null)).blob;
   const { AlignmentType, Document, ImageRun, Packer, Paragraph, TextRun } = await import("docx");
   const isRtl = cv.languageDirection === "rtl" || isArabicLanguage(cv.outputLanguage);
   const accent = hexToDocxColor(theme.color);
@@ -592,6 +609,7 @@ const passportPhotoHtml = (cv) => {
 };
 
 export const buildCvHtml = async (cv, theme = { color: "#0f66d0", dark: "#0f172a" }, layout = "classic") => {
+  if (readTemplateDesign(cv.templateStyle)) return (await buildTemplatePrintHtml(cv)).html;
   const isRtl = cv.languageDirection === "rtl" || isArabicLanguage(cv.outputLanguage);
   const pageBorder = getCvPageBorderConfig(cv);
   const pageBorderPx = Math.round(pageBorder.inches * 96);
@@ -726,6 +744,17 @@ const initialsForPdf = (name) =>
 
 export const downloadCvFile = async (cv, type, theme, layout = "classic") => {
   const baseName = fileBaseName(cv.fullName, "CV");
+  const design = readTemplateDesign(cv.templateStyle);
+  if (design) {
+    if (type === "word") {
+      const { blob, pageCount } = await buildTemplateWord(cv, design.showPhoto ? await profilePhotoDataForDocx(cv.profilePhoto) : null);
+      saveBlob(blob, `${baseName}.docx`);
+      return { pageCount };
+    }
+    const { html, pageCount } = await buildTemplatePrintHtml(cv);
+    await downloadPdfFromHtml(html, `${baseName}.pdf`, 0);
+    return { pageCount };
+  }
   if (type === "word") {
     await downloadCvDocx(cv, `${baseName}.docx`, theme, layout);
     return;

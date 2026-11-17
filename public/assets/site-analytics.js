@@ -7,17 +7,25 @@
   const once = new Set();
   try { choice = localStorage.getItem(key); } catch { /* Storage may be unavailable. */ }
   const allowedEvents = new Set(['builder_started','cv_import_completed','download_completed','cover_letter_downloaded','download_clicked','cv_draft_created','personal_info_completed','work_experience_added','education_added','skills_added','preview_viewed','contact_form_sent','contact_form_failed','share_clicked','email_subscribed','export_below_threshold','nextstep_clicked','completion_milestone','builder_opened','seo_page_to_builder','account_email_otp_sent','urgent_mode_start','signup','login','signup_confirmation_resend','account_email_otp_verified','save_cv','restore_cloud_draft','switch_template_keep_data','switch_template_load_sample','load_saved_cv','logout','cv_email_requested']);
+  const templateEvents = new Set(['template_viewed','template_color_changed','template_font_changed','template_used','cv_exported']);
   const enums = {format:['pdf','docx','word','image'],start_option:['scratch','upload','template'],channel:['native','copylink','whatsapp','facebook'],method:['local','email'],mode:['local','registered'],step:['personal','experience','education','skills','summary','extras','download','import'],moment:['download','completion','milestone'],source:['homepage','builder','blog','footer']};
-  function clean(params) {
+  const templateEnums = {templateId:['classic','sidebar','executive','timeline','compact'],fontId:['inter','lato','sourcesans','merriweather','garamond'],contentSource:['sample','blank','existing_cv'],createdFrom:['builder','templates_page','upload_improve']};
+  function clean(name, params) {
     const safe = {};
     for (const [name, values] of Object.entries(enums)) if (values.includes(params[name])) safe[name] = params[name];
     for (const name of ['completion_percent','percent']) if (Number.isFinite(params[name])) safe[name] = Math.max(0, Math.min(100, params[name]));
+    if (templateEvents.has(name)) {
+      for (const [key, values] of Object.entries(templateEnums)) if (values.includes(params[key])) safe[key] = params[key];
+      if (typeof params.accentColor === 'string' && /^#[0-9A-F]{6}$/.test(params.accentColor)) safe.accentColor = params.accentColor;
+      if (typeof params.isPreset === 'boolean') safe.isPreset = Number(params.isPreset);
+      if (Number.isInteger(params.pageCount) && params.pageCount >= 1 && params.pageCount <= 4) safe.pageCount = params.pageCount;
+    }
     return safe;
   }
   function permitted() { return production && choice === 'accepted'; }
   function send(name, params = {}) {
-    if (!permitted() || !started || !allowedEvents.has(name)) return false;
-    window.gtag('event', name, clean(params)); return true;
+    if (!permitted() || !started || (!allowedEvents.has(name) && !templateEvents.has(name))) return false;
+    window.gtag('event', name, clean(name, params)); return true;
   }
   function sendOnce(name, params = {}) {
     if (once.has(name)) return false;

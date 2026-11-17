@@ -143,9 +143,9 @@ export async function loadLatestDraftForUser(userId) {
   return data?.[0] || null;
 }
 
-export async function listUserCvs(userId) {
+export async function listUserCvs(userId, { cleanupExpired = true } = {}) {
   if (!supabase || !userId) return [];
-  await deleteExpiredUserCvs(userId);
+  if (cleanupExpired) await deleteExpiredUserCvs(userId);
   let { data, error } = await supabase
     .from("cvs")
     .select("*")
@@ -159,7 +159,7 @@ export async function listUserCvs(userId) {
       .order("updated_at", { ascending: false }));
   }
   if (error) throw error;
-  return data || [];
+  return (data || []).filter((item) => !item.expires_at || Date.parse(item.expires_at) > Date.now());
 }
 
 export async function deleteUserCv(id) {

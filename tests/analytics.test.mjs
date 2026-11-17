@@ -23,3 +23,11 @@ test('preview hosts never load GA, even with saved opt-in',()=>{for(const host o
 test('reject/revoke stops events; accepting again restores consent without a duplicate loader',()=>{const s=setup();s.select('Reject analytics');assert.equal(s.document.head.children.length,0);s.window.BuildMyCVAnalytics.showPreferences();s.select('Allow analytics');s.window.BuildMyCVAnalytics.showPreferences();s.select('Reject analytics');assert.equal(s.window.BuildMyCVAnalytics.track('builder_started'),false);s.window.BuildMyCVAnalytics.showPreferences();s.select('Allow analytics');assert.equal(s.document.head.children.length,1);assert.equal(s.window['ga-disable-G-3RM5XEZD4C'],false);assert(s.commands().some(x=>x[0]==='consent'&&x[1]==='update'&&x[2].analytics_storage==='granted'));});
 test('StrictMode/remounts cannot duplicate builder start',()=>{const s=setup('buildmycvnow.com','accepted');assert(s.window.BuildMyCVAnalytics.trackOnce('builder_started'));assert.equal(s.window.BuildMyCVAnalytics.trackOnce('builder_started'),false);assert.equal(s.commands().filter(x=>x[1]==='builder_started').length,1);});
 test('unknown events and arbitrary strings are dropped',()=>{const s=setup('buildmycvnow.com','accepted');assert.equal(s.window.BuildMyCVAnalytics.track('private_person_name'),false);s.window.BuildMyCVAnalytics.track('share_clicked',{channel:'private@example.com',url:'https://private.test'});assert.deepEqual(JSON.parse(JSON.stringify(s.commands().at(-1)[2])),{});});
+test('template events are consent gated and accept only public configuration fields', () => {
+  const s = setup();
+  const params = { templateId: 'sidebar', accentColor: '#0F766E', fontId: 'inter', contentSource: 'sample', email: 'private@example.com', pageCount: 99 };
+  assert.equal(s.window.BuildMyCVAnalytics.track('template_used', params), false);
+  s.select('Allow analytics');
+  assert.equal(s.window.BuildMyCVAnalytics.track('template_used', params), true);
+  assert.deepEqual(JSON.parse(JSON.stringify(s.commands().at(-1)[2])), { templateId: 'sidebar', accentColor: '#0F766E', fontId: 'inter', contentSource: 'sample' });
+});
